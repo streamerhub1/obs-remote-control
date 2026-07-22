@@ -1,19 +1,55 @@
 version: '3.8'
+
 services:
   postgres:
     image: postgres:15-alpine
+    restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: obs_remote
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     ports:
-      - "6379:6379"
+      - '127.0.0.1:6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   coturn:
-    image: coturn/coturn:latest
+    image: coturn/coturn:4.6.2
+    restart: unless-stopped
+    env_file:
+      - .env
     ports:
-      - "3478:3478"
-      - "3478:3478/udp"
+      - '3478:3478'
+      - '3478:3478/udp'
+    command:
+      [
+        '-n',
+        '--log-file=stdout',
+        '--use-auth-secret',
+        '--static-auth-secret=${COTURN_SECRET}',
+        '--realm=obsremote.local',
+      ]
+
+volumes:
+  postgres_data:
+  redis_data:

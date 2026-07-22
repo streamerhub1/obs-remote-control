@@ -26,16 +26,16 @@ ws://127.0.0.1:4455
 
 ```ts
 type ObsCommand =
-  | { type: "scene.switch"; sceneName: string }
-  | { type: "scene.create"; sceneName: string }
-  | { type: "scene.remove"; sceneName: string }
+  | { type: 'scene.switch'; sceneName: string }
+  | { type: 'scene.create'; sceneName: string }
+  | { type: 'scene.remove'; sceneName: string }
   | {
-      type: "sceneItem.setEnabled";
+      type: 'sceneItem.setEnabled';
       sceneName: string;
       sceneItemId: number;
       enabled: boolean;
     }
-  | { type: "input.setMute"; inputName: string; muted: boolean };
+  | { type: 'input.setMute'; inputName: string; muted: boolean };
 ```
 
 Для каждой команды нужны:
@@ -95,6 +95,7 @@ interface ProtocolEnvelope<T> {
 ## Ограничения TURN (Relay)
 
 TURN не считается основным способом передачи данных, а используется только как fallback.
+
 - команды и события могут работать через TURN;
 - preview через TURN должен иметь лимит качества, FPS и трафика;
 - file transfer через TURN должен иметь ограничения размера;

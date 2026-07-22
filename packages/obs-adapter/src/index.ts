@@ -1,1 +1,1 @@
-export const testFn = () => 'obs-adapter';
+export const obs_adapter = {};

@@ -1,33 +1,43 @@
-# OBS Remote Control — документация проекта
+# OBS Remote Control
 
-Комплект контекста для Gemini 3.1 Pro.
+Secure P2P remote control for OBS Studio.
 
-## Порядок чтения
+## Prerequisites
 
-1. `00_MASTER_PROMPT.md`
-2. `01_PROJECT.md`
-3. `02_PRODUCT_REQUIREMENTS.md`
-4. `03_ARCHITECTURE.md`
-5. `04_REPOSITORY.md`
-6. `05_DATABASE.md`
-7. `06_AUTH_MODERATORS_SUBSCRIPTION.md`
-8. `07_OBS_AND_P2P.md`
-9. `08_API.md`
-10. `09_SECURITY.md`
-11. `10_DEVELOPMENT_PLAN.md`
-12. `11_CODING_AND_DONE.md`
+- Node.js >= 20
+- pnpm >= 9
+- Docker & Docker Compose
 
-## Состав продукта
+## Setup
 
-- одно desktop-приложение для стримера и модератора;
-- один сайт;
-- один backend;
-- Twitch OAuth;
-- профиль и индивидуальный код;
-- добавление модераторов по коду;
-- права доступа;
-- подписка;
-- полный контроль функций OBS, доступных через `obs-websocket`;
-- P2P-связь между компьютерами;
-- TURN fallback;
-- установщик и автообновления.
+1. `pnpm install --frozen-lockfile`
+2. Setup env: `cp infrastructure/docker/.env.example infrastructure/docker/.env`
+3. Start infrastructure: `docker compose -f infrastructure/docker/docker-compose.yml up -d`
+
+## Commands
+
+- `pnpm dev` - Start all apps in development mode
+- `pnpm build` - Build all apps and packages
+- `pnpm lint` - Run ESLint across the workspace
+- `pnpm typecheck` - Run TypeScript checks
+- `pnpm test` - Run Vitest test suite
+- `pnpm format:check` - Check formatting
+
+## Structure
+
+- `apps/backend` - Fastify backend (Health route setup)
+- `apps/website` - Next.js App Router (Base page setup)
+- `apps/desktop` - Electron + React + Vite (Window config and IPC setup)
+- `packages/env` - Zod environment validation
+- `packages/logger` - Pino logger
+- `packages/shared-types` - Common errors and types
+- `packages/validation` - Zod schemas
+
+## Current Status
+
+- ✅ Monorepo foundation established
+- ✅ Apps scaffolded and building
+- ✅ Packages established with unit tests
+- ❌ Twitch OAuth (Next step)
+- ❌ WebRTC P2P
+- ❌ OBS Connection

@@ -1,1 +1,1 @@
-export const testFn = () => 'obs-contracts';
+export const obs_contracts = {};

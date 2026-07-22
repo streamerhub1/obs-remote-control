@@ -1,1 +1,1 @@
-export const testFn = () => 'permissions';
+export const permissions = {};

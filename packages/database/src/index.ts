@@ -1,1 +1,1 @@
-export const testFn = () => 'database';
+export const database = {};

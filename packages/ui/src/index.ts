@@ -1,1 +1,1 @@
-export const testFn = () => 'ui';
+export const ui = {};

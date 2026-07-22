@@ -1,1 +1,1 @@
-export const testFn = () => 'api-client';
+export const api_client = {};

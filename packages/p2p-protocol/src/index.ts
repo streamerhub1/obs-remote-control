@@ -1,1 +1,1 @@
-export const testFn = () => 'p2p-protocol';
+export const p2p_protocol = {};
