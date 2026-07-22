@@ -1,0 +1,15 @@
+{
+  "name": "@obs-remote/website",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "echo 'build website'",
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'test website'"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

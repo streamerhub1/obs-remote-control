@@ -1,0 +1,15 @@
+{
+  "name": "@obs-remote/backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "echo 'build backend'",
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'test backend'"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
