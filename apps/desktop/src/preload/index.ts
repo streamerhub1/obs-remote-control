@@ -14,6 +14,13 @@ const API = {
       ipcRenderer.on('auth:callback', (_, code) => callback(code));
       return () => ipcRenderer.removeAllListeners('auth:callback');
     }
+  },
+  obs: {
+    getStatus: () => ipcRenderer.invoke('obs:getStatus'),
+    connect: (config: any) => ipcRenderer.invoke('obs:connect', config),
+    disconnect: () => ipcRenderer.invoke('obs:disconnect'),
+    getSnapshot: () => ipcRenderer.invoke('obs:getSnapshot'),
+    execute: (command: any) => ipcRenderer.invoke('obs:execute', command),
   }
 };
 

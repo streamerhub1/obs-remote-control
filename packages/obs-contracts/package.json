@@ -1,8 +1,8 @@
 {
   "name": "@obs-remote/obs-contracts",
   "version": "1.0.0",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,5 +13,8 @@
   "devDependencies": {
     "typescript": "^5.0.0",
     "vitest": "^2.0.0"
+  },
+  "dependencies": {
+    "zod": "^3.0.0"
   }
 }

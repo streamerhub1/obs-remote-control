@@ -13,6 +13,7 @@ const backendSchema = z.object({
   DESKTOP_DEEP_LINK: z.string().url(),
   JWT_SECRET: z.string().min(10),
   SESSION_SECRET: z.string().min(10),
+  TOKEN_ENCRYPTION_KEY: z.string().length(64).describe('32-byte hex string'),
 });
 
 const websiteSchema = z.object({

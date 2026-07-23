@@ -19,18 +19,11 @@ export function setupAuthHandlers() {
     return deviceKeys.publicKey;
   });
 
-  ipcMain.handle('auth:store-refresh-token', (_, token: string) => {
-    try {
-      if (safeStorage.isEncryptionAvailable()) {
-        const encrypted = safeStorage.encryptString(token);
-        fs.writeFileSync(getStorePath(), encrypted);
-      }
-      refreshTokenCache = token;
-      return true;
-    } catch (e) {
-      console.error(e);
-      return false;
-    }
+  ipcMain.handle('auth:store-refresh-token', async (_, token: string) => {
+    const storePath = getStorePath();
+    // Only encrypt if safeStorage is available, otherwise use plain text fallback
+    const buffer = safeStorage.isEncryptionAvailable() ? safeStorage.encryptString(token) : Buffer.from(token, 'utf-8');
+    fs.writeFileSync(storePath, buffer);
   });
 
   ipcMain.handle('auth:login', async () => {
@@ -54,19 +47,10 @@ export function handleDeepLink(url: string, mainWindow: Electron.BrowserWindow) 
 }
 
 function generateKeys() {
-  const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
-    modulusLength: 2048,
-    publicKeyEncoding: {
-      type: 'spki',
-      format: 'pem'
-    },
-    privateKeyEncoding: {
-      type: 'pkcs8',
-      format: 'pem'
-    }
-  });
-  
-  // Store private key securely
-  // In production, we'd save this encrypted to disk via safeStorage
-  return { publicKey, privateKey };
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+
+  return {
+    publicKey: publicKey.export({ type: 'spki', format: 'pem' }) as string,
+    privateKey: privateKey.export({ type: 'pkcs8', format: 'pem' }) as string,
+  };
 }

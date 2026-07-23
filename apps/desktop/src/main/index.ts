@@ -1,6 +1,7 @@
 import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import path, { join } from 'path';
 import { setupAuthHandlers, handleDeepLink } from './auth';
+import { setupObsHandlers } from './obs';
 
 // Prevent multiple instances
 const gotTheLock = app.requestSingleInstanceLock();
@@ -102,7 +103,8 @@ if (!gotTheLock) {
     createWindow();
     
     if (mainWindow) {
-      setupAuthHandlers(mainWindow);
+      setupAuthHandlers();
+      setupObsHandlers();
     }
 
     app.on('activate', function () {

@@ -37,6 +37,18 @@ export async function buildApp(): Promise<any> {
     secret: process.env.JWT_SECRET!,
   });
 
+  // Rate Limiting
+  const fastifyRateLimit = (await import('@fastify/rate-limit')).default;
+  await app.register(fastifyRateLimit, {
+    max: 100,
+    timeWindow: '1 minute'
+  });
+
+  // Zod Type Provider
+  const { serializerCompiler, validatorCompiler } = await import('fastify-type-provider-zod');
+  app.setValidatorCompiler(validatorCompiler);
+  app.setSerializerCompiler(serializerCompiler);
+
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof AppError) {
       reply.status(400).send(error.toJSON());
