@@ -1,18 +1,34 @@
-appId: com.streamerhub.obsremote
+appId: com.streamerhub.desktop
 productName: StreamerHub
+copyright: Copyright © 2024-2025 StreamerHub
+
 directories:
   buildResources: build
   output: release
+
+# Only include compiled output
 files:
   - dist
   - package.json
+
+# Windows-specific
 win:
+  icon: build/icon.ico
   target:
     - target: nsis
       arch:
         - x64
 
+# NSIS installer settings
 nsis:
   oneClick: false
+  perMachine: false
   allowToChangeInstallationDirectory: true
-  artifactName: ${productName}-Setup-${version}.${ext}
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
+  shortcutName: StreamerHub
+  uninstallDisplayName: StreamerHub
+  artifactName: StreamerHub-Setup-${version}.${ext}
+  createDesktopShortcut: true
+  createStartMenuShortcut: true

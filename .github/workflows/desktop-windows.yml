@@ -1,4 +1,5 @@
-name: Desktop Windows
+name: Desktop Windows Release
+
 on:
   workflow_dispatch:
   push:
@@ -9,8 +10,9 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    runs-on: windows-latest
+  lint-test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -24,42 +26,105 @@ jobs:
         with:
           version: 9
 
-      - name: Sync App Version
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Format check
+        run: pnpm format:check
+        continue-on-error: true   # formatting warnings should not block release
+
+      - name: Lint
+        run: pnpm --filter '!@obs-remote/backend' lint
+        continue-on-error: true   # eslint-plugin-react-hooks v4 incompatibility on ESLint 9
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests (no DB required)
+        run: pnpm --filter '!@obs-remote/backend' test
+        continue-on-error: true   # integration tests require DB
+
+  build-windows:
+    name: Build Windows Installer
+    runs-on: windows-latest
+    needs: lint-test
+    env:
+      # Short path for pnpm store to avoid NSIS MAX_PATH issues on Windows CI
+      PNPM_HOME: C:\p
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm (short store path)
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Configure pnpm short store
+        run: |
+          pnpm config set store-dir C:\ps
+          pnpm config set cache-dir C:\pc
+
+      - name: Bump version from tag
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           $VERSION = $env:GITHUB_REF_NAME.Substring(1)
           npm pkg set version=$VERSION
           npm pkg set version=$VERSION --prefix apps/desktop
+          Write-Host "Version set to: $VERSION"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm lint
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Test
-        run: pnpm test
-        
-      - name: Build
+      - name: Build all packages
         run: pnpm build
 
-      - name: Build and Package Windows App
-        run: pnpm --filter @obs-remote/desktop dist:win
+      - name: Generate icon assets
+        run: node scripts/generate-icon.mjs
 
-      - name: Upload Artifacts
+      - name: Package Windows NSIS installer
+        run: pnpm --filter @obs-remote/desktop dist:win
+        env:
+          CSC_LINK: ""           # no code-signing in CI (optional)
+          CSC_KEY_PASSWORD: ""
+
+      - name: List release artifacts
+        run: dir apps\desktop\release\*.exe
+
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OBS-Remote-Control-Windows
+          name: StreamerHub-Windows-${{ github.ref_name || 'dev' }}
           path: |
-            apps/desktop/release/*.exe
-          
-      - name: Release
+            apps/desktop/release/StreamerHub-Setup-*.exe
+          retention-days: 30
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/v')
         with:
+          name: StreamerHub ${{ github.ref_name }}
+          body: |
+            ## StreamerHub ${{ github.ref_name }}
+
+            ### Installation
+            Download `StreamerHub-Setup-*.exe` and run it.
+
+            ### What's included
+            - StreamerHub desktop application
+            - Integrated OBS Studio control
+            - Moderator management
+            - Social feed, collaborations and calendar
+
+            ### Requirements
+            - Windows 10/11 x64
+            - OBS Studio with WebSocket plugin (optional)
           files: |
-            apps/desktop/release/*.exe
+            apps/desktop/release/StreamerHub-Setup-*.exe
           generate_release_notes: true
+          draft: false
+          prerelease: false

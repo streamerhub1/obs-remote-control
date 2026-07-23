@@ -1,67 +1,98 @@
 import React from 'react';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@obs-remote/ui';
-import { Button } from '@obs-remote/ui';
-import { Avatar } from '@obs-remote/ui';
-import { Heart, MessageCircle, Share2, Send } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter, Button, Avatar } from '@obs-remote/ui';
+import { Heart, MessageCircle, Share2, Send, Loader2, RefreshCw } from 'lucide-react';
+
+interface Post {
+  id: string;
+  content: string;
+  likesCount: number;
+  commentsCount: number;
+  createdAt: string;
+  author: { id: string; displayName: string; twitchLogin: string; avatarUrl: string | null };
+}
+
+async function apiFetch(path: string, opts?: RequestInit) {
+  const token = await window.desktop?.auth?.getToken?.();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`http://localhost:3000${path}`, { ...opts, headers: { ...headers, ...(opts?.headers as Record<string, string> || {}) } });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
 
 export function Feed() {
-  const [posts, setPosts] = React.useState<any[]>([]);
+  const [posts, setPosts] = React.useState<Post[]>([]);
   const [newPostContent, setNewPostContent] = React.useState('');
+  const [loading, setLoading] = React.useState(true);
+  const [posting, setPosting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    // In a real app, we would fetch from /api/v1/feed
-    // For now, mockup data
-    setPosts([
-      {
-        id: '1',
-        content: 'Just finished an amazing 12-hour subathon! Thanks everyone for the support! 🎮💜',
-        likesCount: 124,
-        commentsCount: 15,
-        createdAt: new Date().toISOString(),
-        author: {
-          id: 'user1',
-          displayName: 'ProGamer_99',
-          twitchLogin: 'progamer_99',
-          avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=ProGamer_99'
-        }
-      },
-      {
-        id: '2',
-        content: 'Looking for someone to collab on a Minecraft hardcore series this weekend. Any takers?',
-        likesCount: 45,
-        commentsCount: 8,
-        createdAt: new Date(Date.now() - 3600000).toISOString(),
-        author: {
-          id: 'user2',
-          displayName: 'CraftyBuilder',
-          twitchLogin: 'crafty',
-          avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Crafty'
-        }
-      }
-    ]);
+  const fetchPosts = React.useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await apiFetch('/api/v1/feed');
+      setPosts(data.posts ?? data ?? []);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  React.useEffect(() => { fetchPosts(); }, [fetchPosts]);
+
+  const handlePost = async () => {
+    if (!newPostContent.trim()) return;
+    setPosting(true);
+    try {
+      const post = await apiFetch('/api/v1/feed', {
+        method: 'POST',
+        body: JSON.stringify({ content: newPostContent.trim() }),
+      });
+      setPosts(prev => [post, ...prev]);
+      setNewPostContent('');
+    } catch (e: any) {
+      alert('Не удалось опубликовать: ' + e.message);
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  const handleLike = async (postId: string) => {
+    try {
+      await apiFetch(`/api/v1/feed/${postId}/like`, { method: 'POST' });
+      setPosts(prev => prev.map(p => p.id === postId ? { ...p, likesCount: p.likesCount + 1 } : p));
+    } catch { /* silent */ }
+  };
 
   return (
     <div className="space-y-6">
-      <header>
-        <h2 className="text-3xl font-semibold text-gray-100">Лента активности</h2>
-        <p className="text-gray-400 mt-2">Следите за обновлениями стримеров и находите новые коллаборации.</p>
+      <header className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-semibold text-gray-100">Лента активности</h2>
+          <p className="text-gray-400 mt-1">Следите за обновлениями стримеров и находите коллаборации.</p>
+        </div>
+        <button onClick={fetchPosts} className="p-2 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white transition-colors" title="Обновить">
+          <RefreshCw className="w-5 h-5" />
+        </button>
       </header>
 
+      {/* New post */}
       <Card className="bg-[#161616] border-gray-800">
         <CardContent className="pt-6">
           <div className="flex gap-4">
             <Avatar fallback="ME" />
             <div className="flex-1 space-y-3">
-              <textarea 
-                className="w-full bg-black/50 border border-gray-800 rounded-lg p-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none min-h-[100px]"
+              <textarea
+                className="w-full bg-black/50 border border-gray-800 rounded-lg p-3 text-sm focus:border-blue-500 outline-none resize-none min-h-[90px]"
                 placeholder="Что нового, стример?"
                 value={newPostContent}
                 onChange={e => setNewPostContent(e.target.value)}
               />
               <div className="flex justify-end">
-                <Button>
-                  <Send className="w-4 h-4 mr-2" />
+                <Button onClick={handlePost} disabled={posting || !newPostContent.trim()}>
+                  {posting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
                   Опубликовать
                 </Button>
               </div>
@@ -70,35 +101,61 @@ export function Feed() {
         </CardContent>
       </Card>
 
-      <div className="space-y-4">
-        {posts.map(post => (
-          <Card key={post.id} className="bg-[#161616] border-gray-800">
-            <CardHeader className="flex flex-row items-center gap-4 pb-2">
-              <Avatar src={post.author.avatarUrl} fallback={post.author.displayName[0]} />
-              <div>
-                <CardTitle className="text-base">{post.author.displayName}</CardTitle>
-                <p className="text-xs text-gray-400">@{post.author.twitchLogin} • {new Date(post.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-300">{post.content}</p>
-            </CardContent>
-            <CardFooter className="pt-0 border-t border-gray-800/50 mt-4 pt-4 flex gap-6 text-gray-400">
-              <button className="flex items-center gap-2 hover:text-pink-500 transition-colors">
-                <Heart className="w-5 h-5" />
-                <span className="text-sm">{post.likesCount}</span>
-              </button>
-              <button className="flex items-center gap-2 hover:text-blue-500 transition-colors">
-                <MessageCircle className="w-5 h-5" />
-                <span className="text-sm">{post.commentsCount}</span>
-              </button>
-              <button className="flex items-center gap-2 hover:text-green-500 transition-colors ml-auto">
-                <Share2 className="w-5 h-5" />
-              </button>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
+      {/* Loading / error */}
+      {loading && (
+        <div className="flex items-center justify-center py-16 text-gray-500">
+          <Loader2 className="w-6 h-6 animate-spin mr-3" /> Загрузка ленты...
+        </div>
+      )}
+      {error && !loading && (
+        <div className="bg-red-900/20 border border-red-800/40 rounded-xl p-6 text-center">
+          <p className="text-red-400 mb-3">Не удалось загрузить ленту: {error}</p>
+          <Button variant="outline" onClick={fetchPosts}>Повторить</Button>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && !error && posts.length === 0 && (
+        <div className="bg-[#161616] border border-gray-800 rounded-xl p-12 text-center">
+          <p className="text-gray-500 text-lg">Лента пуста.</p>
+          <p className="text-gray-600 text-sm mt-2">Подписывайтесь на стримеров — их публикации появятся здесь.</p>
+        </div>
+      )}
+
+      {/* Posts */}
+      {!loading && (
+        <div className="space-y-4">
+          {posts.map(post => (
+            <Card key={post.id} className="bg-[#161616] border-gray-800">
+              <CardHeader className="flex flex-row items-center gap-4 pb-2">
+                <Avatar src={post.author.avatarUrl ?? undefined} fallback={post.author.displayName[0]} />
+                <div>
+                  <CardTitle className="text-base">{post.author.displayName}</CardTitle>
+                  <p className="text-xs text-gray-400">
+                    @{post.author.twitchLogin} • {new Date(post.createdAt).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-300 whitespace-pre-wrap">{post.content}</p>
+              </CardContent>
+              <CardFooter className="pt-0 border-t border-gray-800/50 mt-4 pt-4 flex gap-6 text-gray-400">
+                <button onClick={() => handleLike(post.id)} className="flex items-center gap-2 hover:text-pink-500 transition-colors">
+                  <Heart className="w-5 h-5" />
+                  <span className="text-sm">{post.likesCount}</span>
+                </button>
+                <button className="flex items-center gap-2 hover:text-blue-500 transition-colors">
+                  <MessageCircle className="w-5 h-5" />
+                  <span className="text-sm">{post.commentsCount}</span>
+                </button>
+                <button className="flex items-center gap-2 hover:text-green-500 transition-colors ml-auto">
+                  <Share2 className="w-5 h-5" />
+                </button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

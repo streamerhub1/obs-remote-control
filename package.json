@@ -16,7 +16,8 @@
     "dev:desktop": "pnpm --filter @obs-remote/desktop dev",
     "build:website": "pnpm --filter @obs-remote/website build",
     "build:desktop": "pnpm --filter @obs-remote/desktop build",
-    "dist:desktop:win": "pnpm --filter @obs-remote/desktop dist:win"
+    "dist:desktop:win": "pnpm --filter @obs-remote/desktop dist:win",
+    "db:seed:demo": "pnpm --filter @obs-remote/database seed"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

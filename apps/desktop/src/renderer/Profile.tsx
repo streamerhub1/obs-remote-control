@@ -1,89 +1,193 @@
+import React from 'react';
 import { Card, CardHeader, CardContent, Button, Avatar, Badge } from '@obs-remote/ui';
-import { Edit2, Link as LinkIcon, MapPin, Video } from 'lucide-react';
+import { Edit2, Link as LinkIcon, MapPin, Video, Loader2, Save, X } from 'lucide-react';
+
+interface UserProfile {
+  id: string;
+  displayName: string;
+  twitchLogin: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  languages: string[];
+  categories: string[];
+  timezone: string | null;
+  twitchUrl: string | null;
+}
+
+async function apiFetch(path: string, opts?: RequestInit) {
+  const token = await window.desktop?.auth?.getToken?.();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`http://localhost:3000${path}`, { ...opts, headers: { ...headers, ...(opts?.headers as Record<string, string> || {}) } });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
 
 export function Profile() {
+  const [profile, setProfile] = React.useState<UserProfile | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [editing, setEditing] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+
+  // Edit form state
+  const [bio, setBio] = React.useState('');
+  const [languages, setLanguages] = React.useState('');
+  const [categories, setCategories] = React.useState('');
+  const [timezone, setTimezone] = React.useState('');
+
+  const fetchProfile = React.useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await apiFetch('/api/v1/profile/me');
+      setProfile(data);
+      setBio(data.bio ?? '');
+      setLanguages((data.languages ?? []).join(', '));
+      setCategories((data.categories ?? []).join(', '));
+      setTimezone(data.timezone ?? '');
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => { fetchProfile(); }, [fetchProfile]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const updated = await apiFetch('/api/v1/profile/me', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          bio: bio.trim() || null,
+          languages: languages.split(',').map(s => s.trim()).filter(Boolean),
+          categories: categories.split(',').map(s => s.trim()).filter(Boolean),
+          timezone: timezone.trim() || null,
+        }),
+      });
+      setProfile(updated);
+      setEditing(false);
+    } catch (e: any) {
+      alert('Не удалось сохранить: ' + e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-24 text-gray-500">
+      <Loader2 className="w-6 h-6 animate-spin mr-3" /> Загрузка профиля...
+    </div>
+  );
+
+  if (error) return (
+    <div className="bg-red-900/20 border border-red-800/40 rounded-xl p-8 text-center">
+      <p className="text-red-400 mb-4">Ошибка загрузки профиля: {error}</p>
+      <p className="text-gray-500 text-sm mb-4">Убедитесь, что вы вошли через Twitch и backend запущен.</p>
+      <Button variant="outline" onClick={fetchProfile}>Повторить</Button>
+    </div>
+  );
+
+  if (!profile) return null;
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <header>
-        <h2 className="text-3xl font-semibold text-gray-100">Мой профиль</h2>
-      </header>
+      <header><h2 className="text-3xl font-semibold text-gray-100">Мой профиль</h2></header>
 
+      {/* Banner + Avatar */}
       <div className="relative">
-        <div className="h-48 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 w-full overflow-hidden">
-          {/* Banner Image could go here */}
-        </div>
-        
-        <div className="absolute -bottom-16 left-8 flex items-end gap-6">
-          <Avatar className="w-32 h-32 border-4 border-[#0A0A0A] bg-[#161616]" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Me" fallback="ME" />
+        <div className="h-48 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 w-full overflow-hidden" />
+        <div className="absolute -bottom-16 left-8">
+          <Avatar className="w-32 h-32 border-4 border-[#0A0A0A] bg-[#161616]"
+            src={profile.avatarUrl ?? undefined} fallback={profile.displayName[0]} />
         </div>
         <div className="absolute top-4 right-4">
-          <Button variant="secondary" className="bg-black/50 hover:bg-black/70 border-none backdrop-blur-md">
-            <Edit2 className="w-4 h-4 mr-2" />
-            Редактировать
-          </Button>
+          {!editing ? (
+            <Button variant="secondary" className="bg-black/50 hover:bg-black/70 border-none backdrop-blur-md"
+              onClick={() => setEditing(true)}>
+              <Edit2 className="w-4 h-4 mr-2" />Редактировать
+            </Button>
+          ) : (
+            <div className="flex gap-2">
+              <Button variant="secondary" className="bg-black/50 border-none backdrop-blur-md" onClick={() => setEditing(false)}>
+                <X className="w-4 h-4 mr-2" />Отмена
+              </Button>
+              <Button onClick={handleSave} disabled={saving}>
+                {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                Сохранить
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="pt-20 px-8">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-2xl font-bold">Мой Никнейм</h1>
-            <p className="text-gray-400">@my_twitch_login</p>
-          </div>
-          <div className="flex gap-4 text-center">
+      {/* Info */}
+      <div className="pt-20 px-8 space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">{profile.displayName}</h1>
+          <p className="text-gray-400">@{profile.twitchLogin}</p>
+        </div>
+
+        {/* Bio */}
+        {editing ? (
+          <div className="space-y-4">
             <div>
-              <div className="text-xl font-bold">12.5K</div>
-              <div className="text-xs text-gray-500 uppercase tracking-wider">Фолловеров</div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Bio</label>
+              <textarea rows={3} value={bio} onChange={e => setBio(e.target.value)}
+                className="w-full bg-black border border-gray-800 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none resize-none"
+                placeholder="Расскажи о себе..." />
             </div>
-            <div>
-              <div className="text-xl font-bold">142</div>
-              <div className="text-xs text-gray-500 uppercase tracking-wider">Подписок</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-6 text-gray-300 max-w-2xl">
-          <p>Привет! Я стример, играю в различные игры и общаюсь с чатом. Всегда открыт для новых коллабораций и интересных проектов.</p>
-        </div>
-
-        <div className="mt-6 flex flex-wrap gap-2">
-          <Badge variant="secondary">Gaming</Badge>
-          <Badge variant="secondary">Just Chatting</Badge>
-          <Badge variant="secondary">Russian</Badge>
-          <Badge variant="secondary">English</Badge>
-        </div>
-
-        <div className="mt-6 flex gap-4 text-gray-400">
-          <a href="#" className="flex items-center gap-2 hover:text-white transition-colors">
-            <Video className="w-5 h-5" />
-            <span>twitch.tv/my_twitch_login</span>
-          </a>
-          <a href="#" className="flex items-center gap-2 hover:text-white transition-colors">
-            <LinkIcon className="w-5 h-5" />
-            <span>youtube.com/mychannel</span>
-          </a>
-        </div>
-      </div>
-
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="bg-[#161616] border-gray-800">
-          <CardHeader>
-            <h3 className="text-lg font-medium">Предпочтения для коллабораций</h3>
-          </CardHeader>
-          <CardContent className="space-y-4 text-gray-400">
-            <div>
-              <strong className="block text-gray-300">Доступность</strong>
-              <span>Открыт для предложений (Пт, Сб, Вс)</span>
-            </div>
-            <div>
-              <strong className="block text-gray-300">Часовой пояс</strong>
-              <div className="flex items-center gap-2 mt-1">
-                <MapPin className="w-4 h-4" />
-                <span>UTC+3 (MSK)</span>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Языки (через запятую)</label>
+                <input type="text" value={languages} onChange={e => setLanguages(e.target.value)}
+                  className="w-full bg-black border border-gray-800 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"
+                  placeholder="Russian, English" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Категории (через запятую)</label>
+                <input type="text" value={categories} onChange={e => setCategories(e.target.value)}
+                  className="w-full bg-black border border-gray-800 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"
+                  placeholder="Gaming, Just Chatting" />
               </div>
             </div>
-          </CardContent>
-        </Card>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Часовой пояс</label>
+              <input type="text" value={timezone} onChange={e => setTimezone(e.target.value)}
+                className="w-full bg-black border border-gray-800 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"
+                placeholder="UTC+3" />
+            </div>
+          </div>
+        ) : (
+          <>
+            {profile.bio && <p className="text-gray-300 max-w-2xl">{profile.bio}</p>}
+            {!profile.bio && (
+              <p className="text-gray-600 italic text-sm">
+                Bio не заполнено. Нажмите «Редактировать», чтобы добавить описание.
+              </p>
+            )}
+            {(profile.languages?.length > 0 || profile.categories?.length > 0) && (
+              <div className="flex flex-wrap gap-2">
+                {profile.categories?.map(c => <Badge key={c} variant="secondary">{c}</Badge>)}
+                {profile.languages?.map(l => <Badge key={l} variant="outline">{l}</Badge>)}
+              </div>
+            )}
+            {profile.twitchUrl && (
+              <div className="flex gap-4 text-gray-400">
+                <a href={profile.twitchUrl} className="flex items-center gap-2 hover:text-white transition-colors">
+                  <Video className="w-5 h-5" /><span>twitch.tv/{profile.twitchLogin}</span>
+                </a>
+              </div>
+            )}
+            {profile.timezone && (
+              <div className="flex items-center gap-2 text-gray-400">
+                <MapPin className="w-4 h-4" /><span>{profile.timezone}</span>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
