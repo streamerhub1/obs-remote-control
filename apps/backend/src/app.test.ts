@@ -1,9 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { buildApp } from './app.js';
+import { FastifyInstance } from 'fastify';
 
 describe('App', () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    process.env.JWT_SECRET = 'test-secret';
+    app = await buildApp();
+  });
+
   it('health route works', async () => {
-    const app = await buildApp();
     const response = await app.inject({
       method: 'GET',
       url: '/health',

@@ -60,6 +60,10 @@ export const sessions = pgTable('sessions', {
   deviceId: uuid('device_id')
     .references(() => devices.id, { onDelete: 'cascade' }),
   tokenHash: text('token_hash').unique().notNull(),
+  familyId: uuid('family_id').notNull(), // all tokens in the same refresh chain
+  replacedBySessionId: uuid('replaced_by_session_id'), // detecting reuse
+  lastUsedAt: timestamp('last_used_at').defaultNow().notNull(),
+  revokedAt: timestamp('revoked_at'),
   expiresAt: timestamp('expires_at').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });

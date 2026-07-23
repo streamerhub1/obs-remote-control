@@ -103,8 +103,8 @@ if (!gotTheLock) {
     createWindow();
     
     if (mainWindow) {
-      setupAuthHandlers();
-      setupObsHandlers();
+      setupAuthHandlers(mainWindow);
+      setupObsHandlers(mainWindow);
     }
 
     app.on('activate', function () {
@@ -125,8 +125,8 @@ if (!gotTheLock) {
       mainWindow.focus();
     }
     const url = commandLine.pop();
-    if (url && url.startsWith('obsremote://') && mainWindow) {
-      handleDeepLink(url, mainWindow);
+    if (url && url.startsWith('obsremote://')) {
+      handleDeepLink(url);
     }
   });
 }

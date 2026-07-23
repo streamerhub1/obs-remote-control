@@ -1,27 +1,46 @@
 import { FastifyInstance } from 'fastify';
 import { getDb } from '../db.js';
 import { users, devices, sessions } from '@obs-remote/database';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { generateInviteCode } from '../utils/crypto.js';
 
+interface JwtPayload {
+  sub: string;
+  deviceId?: string;
+}
+
 export default async function apiRoutes(app: FastifyInstance) {
   const server = app.withTypeProvider<ZodTypeProvider>();
 
-  // Middleware to check authentication
   server.decorateRequest('user', null);
   
   server.addHook('preHandler', async (request, reply) => {
     try {
-      await request.jwtVerify();
+      const decoded = await request.jwtVerify<JwtPayload>();
+      request.user = decoded;
     } catch (err) {
       reply.status(401).send({ error: 'Unauthorized' });
+      return reply; // stop handler execution
     }
   });
 
-  server.get('/api/users/me', async (request, reply) => {
-    const userId = (request.user as any).sub;
+  server.get('/users/me', {
+    schema: {
+      response: {
+        200: z.object({
+          id: z.string(),
+          displayName: z.string(),
+          twitchLogin: z.string(),
+          avatarUrl: z.string().nullable(),
+          inviteCode: z.string(),
+        }),
+        404: z.object({ error: z.string() })
+      }
+    }
+  }, async (request, reply) => {
+    const userId = (request.user as JwtPayload).sub;
     const db = getDb();
     
     const [user] = await db
@@ -40,8 +59,20 @@ export default async function apiRoutes(app: FastifyInstance) {
     return user;
   });
 
-  server.get('/api/users/me/devices', async (request, reply) => {
-    const userId = (request.user as any).sub;
+  server.get('/users/me/devices', {
+    schema: {
+      response: {
+        200: z.array(z.object({
+          id: z.string(),
+          name: z.string(),
+          platform: z.string(),
+          createdAt: z.date(),
+          lastSeenAt: z.date(),
+        }))
+      }
+    }
+  }, async (request, reply) => {
+    const userId = (request.user as JwtPayload).sub;
     const db = getDb();
     
     const userDevices = await db
@@ -58,42 +89,79 @@ export default async function apiRoutes(app: FastifyInstance) {
     return userDevices;
   });
 
-  server.delete('/api/users/me/devices/:deviceId', {
+  server.delete('/users/me/devices/:deviceId', {
     schema: {
       params: z.object({
         deviceId: z.string().uuid()
-      })
+      }),
+      response: {
+        200: z.object({ success: z.boolean() }),
+        403: z.object({ error: z.string() }),
+        404: z.object({ error: z.string() })
+      }
     }
   }, async (request, reply) => {
-    const userId = (request.user as any).sub;
+    const userId = (request.user as JwtPayload).sub;
     const { deviceId } = request.params;
     const db = getDb();
     
-    // Check ownership
-    const [device] = await db.select({ id: devices.id, userId: devices.userId }).from(devices).where(eq(devices.id, deviceId));
+    return await db.transaction(async (tx) => {
+      // Check ownership
+      const [device] = await tx.select({ id: devices.id, userId: devices.userId }).from(devices).where(eq(devices.id, deviceId));
 
-    if (!device) return reply.status(404).send({ error: 'Device not found' });
-    if (device.userId !== userId) return reply.status(403).send({ error: 'Forbidden' });
+      if (!device) return reply.status(404).send({ error: 'Device not found' });
+      if (device.userId !== userId) return reply.status(403).send({ error: 'Forbidden' });
 
-    // Revoke sessions
-    await db.delete(sessions).where(eq(sessions.deviceId, deviceId));
-    
-    // Set revokedAt
-    await db.update(devices).set({ revokedAt: new Date() }).where(eq(devices.id, deviceId));
+      // Revoke sessions
+      await tx.delete(sessions).where(eq(sessions.deviceId, deviceId));
+      
+      // Set revokedAt
+      await tx.update(devices).set({ revokedAt: new Date() }).where(eq(devices.id, deviceId));
 
-    return { success: true };
+      return { success: true };
+    });
   });
 
-  server.post('/api/users/me/invite-code', async (request, reply) => {
-    const userId = (request.user as any).sub;
+  server.post('/users/me/invite-code', {
+    config: {
+      rateLimit: {
+        max: 5,
+        timeWindow: '1 hour'
+      }
+    },
+    schema: {
+      response: {
+        200: z.object({ inviteCode: z.string() })
+      }
+    }
+  }, async (request, reply) => {
+    const userId = (request.user as JwtPayload).sub;
     const db = getDb();
     
-    const newCode = generateInviteCode();
+    let newCode = '';
+    let success = false;
+    let attempts = 0;
+
+    while (!success && attempts < 5) {
+      newCode = generateInviteCode();
+      try {
+        await db.update(users).set({
+          inviteCode: newCode,
+          inviteCodeNormalized: newCode.toLowerCase(),
+        }).where(eq(users.id, userId));
+        success = true;
+      } catch (e: any) {
+        if (e.code === '23505') { // unique violation
+          attempts++;
+        } else {
+          throw e;
+        }
+      }
+    }
     
-    await db.update(users).set({
-      inviteCode: newCode,
-      inviteCodeNormalized: newCode.toLowerCase(),
-    }).where(eq(users.id, userId));
+    if (!success) {
+      return reply.status(500).send({ error: 'Could not generate unique invite code' } as any);
+    }
 
     return { inviteCode: newCode };
   });

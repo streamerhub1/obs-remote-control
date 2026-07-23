@@ -1,70 +1,198 @@
-import OBSWebSocket from 'obs-websocket-js';
+import OBSWebSocket, { OBSWebSocketError } from 'obs-websocket-js';
 import {
   ObsConnectionConfig,
   ObsConnectionState,
   ObsSnapshot,
   ObsCommand,
   ObsCommandResult,
+  ObsEvent,
 } from '@obs-remote/obs-contracts';
 
 export class ObsAdapter {
   private obs: OBSWebSocket;
   private state: ObsConnectionState = 'disconnected';
+  private snapshot: ObsSnapshot | null = null;
   private revision: number = 0;
+  
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 10;
+  private reconnectTimeout: NodeJS.Timeout | null = null;
+  private config: ObsConnectionConfig | null = null;
+  private shouldReconnect = false;
+
+  private listeners: Array<(state: ObsConnectionState, snapshot: ObsSnapshot | null, event?: ObsEvent) => void> = [];
 
   constructor() {
     this.obs = new OBSWebSocket();
     
     this.obs.on('ConnectionClosed', () => {
-      this.state = 'disconnected';
+      this.handleDisconnect();
     });
     
-    this.obs.on('ConnectionError', () => {
-      this.state = 'error';
+    this.obs.on('ConnectionError', (err) => {
+      console.error('OBS Connection Error', err.message); // hide full err to avoid password leak
+      this.handleDisconnect();
     });
+
+    // Handle OBS Events for normalize state
+    this.obs.on('CurrentProgramSceneChanged', (data) => this.handleEvent({ type: 'CurrentProgramSceneChanged', eventData: data }));
+    this.obs.on('SceneItemEnableStateChanged', (data) => this.handleEvent({ type: 'SceneItemEnableStateChanged', eventData: data }));
+    this.obs.on('InputMuteStateChanged', (data) => this.handleEvent({ type: 'InputMuteStateChanged', eventData: data }));
+    this.obs.on('InputVolumeChanged', (data) => this.handleEvent({ type: 'InputVolumeChanged', eventData: data }));
+    this.obs.on('StreamStateChanged', (data) => this.handleEvent({ type: 'StreamStateChanged', eventData: data }));
+    this.obs.on('RecordStateChanged', (data) => this.handleEvent({ type: 'RecordStateChanged', eventData: data }));
+  }
+
+  public subscribe(callback: (state: ObsConnectionState, snapshot: ObsSnapshot | null, event?: ObsEvent) => void) {
+    this.listeners.push(callback);
+    callback(this.state, this.snapshot);
+    return () => {
+      this.listeners = this.listeners.filter(l => l !== callback);
+    };
+  }
+
+  private notify(event?: ObsEvent) {
+    this.listeners.forEach(cb => cb(this.state, this.snapshot, event));
+  }
+
+  private changeState(newState: ObsConnectionState) {
+    this.state = newState;
+    this.notify();
+  }
+
+  private handleDisconnect() {
+    if (this.state !== 'disconnected') {
+      this.changeState('disconnected');
+    }
+    this.snapshot = null;
+
+    if (this.shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
+      const backoff = Math.min(1000 * Math.pow(2, this.reconnectAttempts) + Math.random() * 1000, 30000);
+      this.changeState('connecting');
+      this.reconnectTimeout = setTimeout(() => {
+        if (this.config) {
+          this.connect(this.config).catch(() => {});
+        }
+      }, backoff);
+    }
   }
 
   public getState(): ObsConnectionState {
     return this.state;
   }
 
+  public getSnapshotData(): ObsSnapshot | null {
+    return this.snapshot;
+  }
+
   public async connect(config: ObsConnectionConfig): Promise<boolean> {
+    this.config = config;
+    this.shouldReconnect = true;
+    
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
     try {
-      this.state = 'connecting';
+      this.changeState('connecting');
       const url = `ws://${config.host}:${config.port}`;
-      await this.obs.connect(url, config.password);
-      this.state = 'connected';
+      
+      const connectPromise = this.obs.connect(url, config.password);
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000));
+      
+      await Promise.race([connectPromise, timeoutPromise]);
+      
+      this.reconnectAttempts = 0;
+      this.changeState('connected');
+      
+      await this.fullResync();
+      
       return true;
-    } catch (e) {
-      this.state = 'error';
+    } catch (e: any) {
+      this.changeState('error');
+      this.handleDisconnect();
       return false;
     }
   }
 
   public async disconnect(): Promise<void> {
-    await this.obs.disconnect();
-    this.state = 'disconnected';
+    this.shouldReconnect = false;
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+    }
+    try {
+      await this.obs.disconnect();
+    } catch(e) {}
+    this.changeState('disconnected');
+    this.snapshot = null;
   }
 
-  public async getSnapshot(): Promise<ObsSnapshot | null> {
-    if (this.state !== 'connected') return null;
-    
+  private async fullResync() {
+    if (this.state !== 'connected') return;
+
     try {
       const version = await this.obs.call('GetVersion');
       const scenes = await this.obs.call('GetSceneList');
       const studioMode = await this.obs.call('GetStudioModeEnabled');
       const streamStatus = await this.obs.call('GetStreamStatus');
       const recordStatus = await this.obs.call('GetRecordStatus');
+      const inputsList = await this.obs.call('GetInputList');
+
+      const sceneItems: Record<string, any[]> = {};
+      for (const scene of scenes.scenes) {
+        const sceneName = (scene as any).sceneName;
+        const items = await this.obs.call('GetSceneItemList', { sceneName });
+        sceneItems[sceneName] = items.sceneItems.map((i: any) => ({
+          sceneItemId: i.sceneItemId,
+          sourceName: i.sourceName,
+          sceneItemEnabled: i.sceneItemEnabled,
+        }));
+      }
+
+      const audioMixer: Record<string, any> = {};
+      const filters: Record<string, any[]> = {};
+      
+      for (const input of inputsList.inputs) {
+        const inputName = (input as any).inputName;
+        const mute = await this.obs.call('GetInputMute', { inputName });
+        const volume = await this.obs.call('GetInputVolume', { inputName });
+        audioMixer[inputName] = {
+          volumeDb: volume.inputVolumeDb,
+          volumeMul: volume.inputVolumeMul,
+          muted: mute.inputMuted,
+        };
+        
+        try {
+          const filterList = await this.obs.call('GetSourceFilterList', { sourceName: inputName });
+          filters[inputName] = filterList.filters.map((f: any) => ({
+            filterName: f.filterName,
+            filterEnabled: f.filterEnabled,
+            filterKind: f.filterKind,
+          }));
+        } catch(e) {
+          filters[inputName] = [];
+        }
+      }
 
       this.revision++;
 
-      return {
+      this.snapshot = {
         revision: this.revision,
         obsVersion: version.obsVersion,
         websocketVersion: version.obsWebSocketVersion,
         currentProgramScene: scenes.currentProgramSceneName,
-        currentPreviewScene: scenes.currentPreviewSceneName,
+        currentPreviewScene: scenes.currentPreviewSceneName || null,
         scenes: scenes.scenes.map((s: any) => s.sceneName),
+        sceneItems,
+        filters,
+        inputs: inputsList.inputs.map((i: any) => ({
+          inputName: i.inputName,
+          inputKind: i.inputKind,
+          unversionedInputKind: i.unversionedInputKind,
+        })),
+        audioMixer,
         studioMode: studioMode.studioModeEnabled,
         streamStatus: {
           active: streamStatus.outputActive,
@@ -76,11 +204,54 @@ export class ObsAdapter {
           paused: recordStatus.outputPaused,
           timecode: recordStatus.outputTimecode,
         },
+        virtualCameraStatus: false, // simplified for now
       };
+
+      this.notify();
     } catch (e) {
-      console.error('Failed to get snapshot', e);
-      return null;
+      console.error('Failed full resync', e); // Do not log password
+      this.snapshot = null;
+      this.notify();
     }
+  }
+
+  private handleEvent(event: ObsEvent) {
+    if (!this.snapshot) return;
+
+    this.revision++;
+    this.snapshot.revision = this.revision;
+
+    switch (event.type) {
+      case 'CurrentProgramSceneChanged':
+        this.snapshot.currentProgramScene = event.eventData.sceneName;
+        break;
+      case 'SceneItemEnableStateChanged':
+        const { sceneName, sceneItemId, sceneItemEnabled } = event.eventData;
+        if (this.snapshot.sceneItems[sceneName]) {
+          const item = this.snapshot.sceneItems[sceneName].find(i => i.sceneItemId === sceneItemId);
+          if (item) item.sceneItemEnabled = sceneItemEnabled;
+        }
+        break;
+      case 'InputMuteStateChanged':
+        if (this.snapshot.audioMixer[event.eventData.inputName]) {
+          this.snapshot.audioMixer[event.eventData.inputName].muted = event.eventData.inputMuted;
+        }
+        break;
+      case 'InputVolumeChanged':
+        if (this.snapshot.audioMixer[event.eventData.inputName]) {
+          this.snapshot.audioMixer[event.eventData.inputName].volumeDb = event.eventData.inputVolumeDb;
+          this.snapshot.audioMixer[event.eventData.inputName].volumeMul = event.eventData.inputVolumeMul;
+        }
+        break;
+      case 'StreamStateChanged':
+        this.snapshot.streamStatus.active = event.eventData.outputActive;
+        break;
+      case 'RecordStateChanged':
+        this.snapshot.recordStatus.active = event.eventData.outputActive;
+        break;
+    }
+
+    this.notify(event);
   }
 
   public async executeCommand(command: ObsCommand): Promise<ObsCommandResult> {
@@ -89,34 +260,43 @@ export class ObsAdapter {
     }
 
     try {
-      let data: any;
       switch (command.type) {
-        case 'SetCurrentProgramScene':
+        case 'scene.setCurrentProgram':
           await this.obs.call('SetCurrentProgramScene', { sceneName: command.payload.sceneName });
           break;
-        case 'SetInputMute':
+        case 'sceneItem.setEnabled':
+          await this.obs.call('SetSceneItemEnabled', { 
+            sceneName: command.payload.sceneName, 
+            sceneItemId: command.payload.sceneItemId, 
+            sceneItemEnabled: command.payload.enabled 
+          });
+          break;
+        case 'input.setMute':
           await this.obs.call('SetInputMute', { inputName: command.payload.inputName, inputMuted: command.payload.muted });
           break;
-        case 'SetInputVolume':
+        case 'input.setVolume':
           await this.obs.call('SetInputVolume', { inputName: command.payload.inputName, inputVolumeDb: command.payload.volumeDb });
           break;
-        case 'StartStream':
+        case 'stream.start':
           await this.obs.call('StartStream');
           break;
-        case 'StopStream':
+        case 'stream.stop':
           await this.obs.call('StopStream');
           break;
-        case 'StartRecord':
+        case 'record.start':
           await this.obs.call('StartRecord');
           break;
-        case 'StopRecord':
+        case 'record.stop':
           await this.obs.call('StopRecord');
           break;
         default:
           return { success: false, error: 'Unknown command' };
       }
-      return { success: true, data };
+      return { success: true };
     } catch (e: any) {
+      if (e instanceof OBSWebSocketError) {
+        return { success: false, error: `OBS Error: ${e.code}` };
+      }
       return { success: false, error: e?.message || 'Command failed' };
     }
   }

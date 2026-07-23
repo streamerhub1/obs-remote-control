@@ -64,8 +64,8 @@ export async function buildApp(): Promise<any> {
     return { status: 'ok', timestamp: new Date().toISOString() };
   });
 
-  await app.register(authRoutes);
-  await app.register(apiRoutes);
+  await app.register(authRoutes, { prefix: '/api/v1/auth' });
+  await app.register(apiRoutes, { prefix: '/api/v1' });
 
   return app;
 }

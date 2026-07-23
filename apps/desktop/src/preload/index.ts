@@ -8,11 +8,18 @@ const API = {
   },
   auth: {
     login: () => ipcRenderer.invoke('auth:login'),
-    getKeys: () => ipcRenderer.invoke('auth:get-keys'),
-    storeRefreshToken: (token: string) => ipcRenderer.invoke('auth:store-refresh-token', token),
-    onCallback: (callback: (code: string) => void) => {
-      ipcRenderer.on('auth:callback', (_, code) => callback(code));
-      return () => ipcRenderer.removeAllListeners('auth:callback');
+    logout: () => ipcRenderer.invoke('auth:logout'),
+    getState: () => ipcRenderer.invoke('auth:getState'),
+    getProfile: () => ipcRenderer.invoke('auth:getProfile'),
+    subscribe: (callback: (state: any) => void) => {
+      ipcRenderer.on('auth:state-changed', (_, state) => callback(state));
+      ipcRenderer.on('auth:error', (_, error) => callback({ error }));
+      ipcRenderer.on('auth:loading', (_, loading) => callback({ loading }));
+      return () => {
+        ipcRenderer.removeAllListeners('auth:state-changed');
+        ipcRenderer.removeAllListeners('auth:error');
+        ipcRenderer.removeAllListeners('auth:loading');
+      };
     }
   },
   obs: {
@@ -21,15 +28,21 @@ const API = {
     disconnect: () => ipcRenderer.invoke('obs:disconnect'),
     getSnapshot: () => ipcRenderer.invoke('obs:getSnapshot'),
     execute: (command: any) => ipcRenderer.invoke('obs:execute', command),
+    subscribe: (callback: (event: any) => void) => {
+      ipcRenderer.on('obs:event', (_, event) => callback(event));
+      return () => ipcRenderer.removeAllListeners('obs:event');
+    },
+    saveSettings: (settings: any) => ipcRenderer.invoke('obs:saveSettings', settings)
   }
 };
 
 if (process.contextIsolated) {
   try {
-    contextBridge.exposeInMainWorld('electron', API);
+    contextBridge.exposeInMainWorld('desktop', API);
   } catch (error) {
     console.error(error);
   }
 } else {
-    window.electron = API;
+    // @ts-ignore
+    window.desktop = API;
 }
