@@ -65,11 +65,11 @@ export default function App() {
 
   React.useEffect(() => {
     if (!window.desktop?.auth) return;
-    window.desktop.auth.getState().then((state) => {
+    window.desktop.auth.getState().then((state: any) => {
       setAuthenticated(state.authenticated);
       setAuthLoading(false);
     });
-    return window.desktop.auth.subscribe((state) => {
+    return window.desktop.auth.subscribe((state: any) => {
       if (state.loading !== undefined) setAuthLoading(state.loading);
       if (state.authenticated !== undefined) setAuthenticated(state.authenticated);
     });
@@ -77,7 +77,7 @@ export default function App() {
 
   React.useEffect(() => {
     if (!window.desktop?.obs) return;
-    const cleanup = window.desktop.obs.subscribe((event) => {
+    const cleanup = window.desktop.obs.subscribe((event: any) => {
       setObsState(event.state);
     });
     window.desktop.obs.getStatus().then(setObsState);
@@ -92,7 +92,7 @@ export default function App() {
       window.desktop.signaling.connect();
     }
 
-    const cleanupIncoming = window.desktop.remoteSessions.onIncoming((session) => {
+    const cleanupIncoming = window.desktop.remoteSessions.onIncoming((session: any) => {
       console.log('Incoming session', session);
       setIncomingSession(session);
     });
@@ -315,7 +315,7 @@ export default function App() {
           )}
 
           {currentRoute === 'home' && (
-             <HomeView obsState={obsState} navigate={setCurrentRoute} />
+             <HomeView obsState={obsState} navigate={setCurrentRoute as any} />
           )}
 
           {currentRoute === 'feed' && <Feed />}

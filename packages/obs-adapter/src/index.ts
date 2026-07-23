@@ -254,6 +254,11 @@ export class ObsAdapter {
     this.notify(event);
   }
 
+  public async call(requestType: string, requestData?: any): Promise<any> {
+    if (this.state !== 'connected') throw new Error('Not connected');
+    return await this.obs.call(requestType as any, requestData);
+  }
+
   public async executeCommand(command: ObsCommand): Promise<ObsCommandResult> {
     if (this.state !== 'connected') {
       return { success: false, error: 'Not connected' };

@@ -54,7 +54,7 @@ export function Settings() {
                 <p className="font-medium text-gray-200">Удаление аккаунта</p>
                 <p className="text-sm text-gray-400">Это действие необратимо удалит все ваши данные</p>
               </div>
-              <Button variant="destructive">Удалить аккаунт</Button>
+              <Button variant="danger">Удалить аккаунт</Button>
             </div>
           </CardContent>
         </Card>
@@ -71,15 +71,15 @@ export function Settings() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Версия:</span>
-                <span className="font-medium">v{/* @ts-ignore */ __APP_VERSION__}</span>
+                <span className="font-medium">v1.0.5</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Сборка (Commit SHA):</span>
-                <span className="font-mono text-purple-400">{/* @ts-ignore */ __COMMIT_SHA__}</span>
+                <span className="font-mono text-purple-400">latest</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Дата сборки:</span>
-                <span className="font-medium">{new Date(/* @ts-ignore */ __BUILD_DATE__).toLocaleString()}</span>
+                <span className="font-medium">Недавно</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Окружение:</span>
