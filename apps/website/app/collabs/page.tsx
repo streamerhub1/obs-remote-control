@@ -1,3 +1,5 @@
+"use client";
+
 import Link from 'next/link';
 import { Button, Card, CardHeader, CardTitle, CardContent, CardFooter, Badge, Avatar } from '@obs-remote/ui';
 import { Calendar, Clock, Search, Filter } from 'lucide-react';

@@ -1,7 +1,7 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'OBS Remote Control',
+  title: 'Streamly',
   description: 'Remote control for OBS Studio',
 };
 

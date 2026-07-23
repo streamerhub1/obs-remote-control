@@ -58,6 +58,36 @@ export function Settings() {
             </div>
           </CardContent>
         </Card>
+
+        <Card className="bg-[#161616] border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-xl">О приложении (About)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2 text-sm text-gray-300">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Название:</span>
+                <span className="font-medium">Streamly (StreamerHub Desktop)</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Версия:</span>
+                <span className="font-medium">v{/* @ts-ignore */ __APP_VERSION__}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Сборка (Commit SHA):</span>
+                <span className="font-mono text-purple-400">{/* @ts-ignore */ __COMMIT_SHA__}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Дата сборки:</span>
+                <span className="font-medium">{new Date(/* @ts-ignore */ __BUILD_DATE__).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Окружение:</span>
+                <span className="font-medium">{import.meta.env.MODE === 'development' ? 'Development' : 'Production'}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

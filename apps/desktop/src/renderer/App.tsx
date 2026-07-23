@@ -12,6 +12,7 @@ import { Calendar } from './Calendar';
 import { Profile } from './Profile';
 import { Notifications } from './Notifications';
 import { Settings } from './Settings';
+import { Home as HomeView } from './Home';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -42,7 +43,7 @@ export default function App() {
   const [obsPort, setObsPort] = React.useState(4455);
   const [obsPassword, setObsPassword] = React.useState('');
   
-  const [currentRoute, setCurrentRoute] = React.useState<'home'|'feed'|'collabs'|'calendar'|'my_obs'|'remote_obs'|'moderators'|'notifications'|'profile'|'settings'>('my_obs');
+  const [currentRoute, setCurrentRoute] = React.useState<'home'|'feed'|'collabs'|'calendar'|'my_obs'|'remote_obs'|'moderators'|'notifications'|'profile'|'settings'>('home');
 
   const [localObsDataSource] = React.useState(() => new LocalObsDataSource());
   const [remoteObsDataSource, setRemoteObsDataSource] = React.useState<RemoteObsDataSource | null>(null);
@@ -159,8 +160,8 @@ export default function App() {
   };
 
   const startRemoteSession = async (directToken?: string) => {
-    // In a real app, this is called from the Moderators UI with a token
-    const token = directToken || prompt("Enter RemoteSessionAuthorization Token from Backend:");
+    // Session is started via Moderators UI which always provides a token
+    const token = directToken;
     if (!token) return;
     
     try {
@@ -185,7 +186,7 @@ export default function App() {
       <aside className="w-64 bg-[#111111] border-r border-gray-800 flex flex-col">
         <div className="p-6">
           <h1 className="text-xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
-            OBS Remote Control
+            Streamly
           </h1>
         </div>
         
@@ -292,9 +293,7 @@ export default function App() {
               {!remoteObsDataSource ? (
                 <div className="bg-[#161616] border border-gray-800 rounded-xl p-6 shadow-lg text-center">
                    <p className="text-gray-400 mb-4">Вы не подключены к удаленному сеансу.</p>
-                   <button onClick={() => startRemoteSession()} className="py-2 px-6 bg-blue-600 hover:bg-blue-500 rounded-lg text-white font-medium transition-colors border border-blue-500/50">
-                     Подключиться по токену (Dev)
-                   </button>
+                   <p className="text-sm text-gray-500">Удаленная сессия создается через раздел "Модераторы".</p>
                 </div>
               ) : (
                 <ObsDashboard dataSource={remoteObsDataSource} />
@@ -303,10 +302,7 @@ export default function App() {
           )}
 
           {currentRoute === 'home' && (
-             <div className="bg-[#161616] border border-gray-800 rounded-xl p-6 shadow-lg">
-                <h3 className="text-lg font-medium mb-4">Главная</h3>
-                <p className="text-gray-400">Добро пожаловать в OBS Remote Control.</p>
-             </div>
+             <HomeView obsState={obsState} navigate={setCurrentRoute} />
           )}
 
           {currentRoute === 'feed' && <Feed />}

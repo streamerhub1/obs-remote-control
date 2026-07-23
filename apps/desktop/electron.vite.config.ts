@@ -1,6 +1,11 @@
 import { resolve } from 'path';
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
+import { execSync } from 'child_process';
+
+const commitSha = execSync('git rev-parse HEAD').toString().trim().substring(0, 7);
+const buildDate = new Date().toISOString();
+const appVersion = process.env.npm_package_version || '1.0.0';
 
 export default defineConfig({
   main: {
@@ -32,6 +37,11 @@ export default defineConfig({
   renderer: {
     root: 'src/renderer',
     plugins: [react()],
+    define: {
+      __COMMIT_SHA__: JSON.stringify(commitSha),
+      __BUILD_DATE__: JSON.stringify(buildDate),
+      __APP_VERSION__: JSON.stringify(appVersion),
+    },
     build: {
       outDir: 'dist/renderer',
       rollupOptions: {

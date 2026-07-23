@@ -28,6 +28,7 @@ export function ObsDashboard({ dataSource }: { dataSource: ObsDataSource }) {
     }
 
     return cleanup;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataSource]);
 
   const execute = (cmd: any) => dataSource.execute(cmd);

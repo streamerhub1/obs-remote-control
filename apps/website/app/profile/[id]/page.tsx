@@ -1,5 +1,7 @@
+"use client";
+
 import Link from 'next/link';
-import { Button, Avatar, Badge, Card, CardHeader, CardContent } from '@obs-remote/ui';
+import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Avatar } from '@obs-remote/ui';
 import { Video, Link as LinkIcon, MapPin } from 'lucide-react';
 
 export default function ProfilePage({ params }: { params: { id: string } }) {

@@ -1,4 +1,4 @@
-# OBS Remote Control - Phase 2 (Security & OBS Adapter)
+# Streamly - Phase 2 (Security & OBS Adapter)
 
 ## Найденные проблемы безопасности и их решения
 
