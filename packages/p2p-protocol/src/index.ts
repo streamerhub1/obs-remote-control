@@ -133,25 +133,18 @@ export const P2PPayloadSchema = z.discriminatedUnion('type', [
 
 export type P2PPayload = z.infer<typeof P2PPayloadSchema>;
 
-export const P2PEnvelopeSchema = z.object({
+// We will not define P2PEnvelopeSchema explicitly if we use P2PMessageSchema as intersection.
+// But we can define the base envelope
+export const P2PEnvelopeBaseSchema = z.object({
   protocolVersion: z.literal('1.0'),
   sessionId: z.string(),
   messageId: z.string(),
   sequence: z.number(),
   sentAt: z.number(),
-  type: P2PPayloadSchema.shape.type,
-  payload: P2PPayloadSchema.shape.payload,
-}); // Note: This doesn't strictly tie `type` to `payload` shape in Zod easily without intersection/union on the envelope.
-// Let's do it properly as a discriminated union on the envelope level.
+});
 
 export const P2PMessageSchema = z.intersection(
-  z.object({
-    protocolVersion: z.literal('1.0'),
-    sessionId: z.string(),
-    messageId: z.string(),
-    sequence: z.number(),
-    sentAt: z.number(),
-  }),
+  P2PEnvelopeBaseSchema,
   P2PPayloadSchema
 );
 

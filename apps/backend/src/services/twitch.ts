@@ -1,16 +1,16 @@
-import { Twitch } from 'arctic';
+import { OAuth2Client } from 'arctic';
 
-let _twitch: Twitch | null = null;
+let _oauthClient: OAuth2Client | null = null;
 
-export function getTwitch(
+export function getTwitchOAuth(
   clientId: string,
   clientSecret: string,
   redirectUri: string,
 ) {
-  if (!_twitch) {
-    _twitch = new Twitch(clientId, clientSecret, redirectUri);
+  if (!_oauthClient) {
+    _oauthClient = new OAuth2Client(clientId, clientSecret, redirectUri);
   }
-  return _twitch;
+  return _oauthClient;
 }
 
 export async function fetchTwitchUser(accessToken: string) {

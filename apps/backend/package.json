@@ -29,6 +29,7 @@
     "fastify-plugin": "^4.5.1",
     "fastify-type-provider-zod": "^1.1.9",
     "ioredis": "^5.11.1",
+    "jose": "^6.2.4",
     "zod": "^3.0.0"
   },
   "devDependencies": {

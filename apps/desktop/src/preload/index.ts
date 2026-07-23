@@ -24,7 +24,6 @@ const API = {
   },
   signaling: {
     connect: () => ipcRenderer.invoke('signaling:connect'),
-    send: (msg: unknown) => ipcRenderer.send('signaling:send', msg),
     subscribe: (callback: (msg: unknown) => void) => {
       const handler = (_event: Electron.IpcRendererEvent, msg: unknown) => callback(msg);
       ipcRenderer.on('signaling:message', handler);
@@ -39,6 +38,28 @@ const API = {
     onDisconnected: (callback: () => void) => {
       ipcRenderer.on('signaling:disconnected', callback);
       return () => ipcRenderer.removeListener('signaling:disconnected', callback);
+    }
+  },
+  remoteSessions: {
+    connect: (authorizationToken: string) => ipcRenderer.invoke('remoteSessions:connect', authorizationToken),
+    disconnect: (remoteSessionId: string) => ipcRenderer.invoke('remoteSessions:disconnect', remoteSessionId),
+    sendSignal: (remoteSessionId: string, msg: unknown) => ipcRenderer.send('remoteSessions:sendSignal', remoteSessionId, msg),
+    signChallenge: (remoteSessionId: string, challengeHex: string) => ipcRenderer.invoke('remoteSessions:signChallenge', remoteSessionId, challengeHex),
+    verifyProof: (remoteSessionId: string, challengeHex: string, signatureHex: string, peerPublicKeyPem: string) => ipcRenderer.invoke('remoteSessions:verifyProof', remoteSessionId, challengeHex, signatureHex, peerPublicKeyPem),
+    executeCommand: (remoteSessionId: string, command: unknown) => ipcRenderer.invoke('remoteSessions:executeCommand', remoteSessionId, command),
+    onMessage: (remoteSessionId: string, callback: (msg: unknown) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, msg: unknown) => callback(msg);
+      ipcRenderer.on(`remoteSessions:message:${remoteSessionId}`, handler);
+      return () => ipcRenderer.removeListener(`remoteSessions:message:${remoteSessionId}`, handler);
+    },
+    onDisconnected: (remoteSessionId: string, callback: () => void) => {
+      ipcRenderer.on(`remoteSessions:disconnected:${remoteSessionId}`, callback);
+      return () => ipcRenderer.removeListener(`remoteSessions:disconnected:${remoteSessionId}`, callback);
+    },
+    onIncoming: (callback: (session: unknown) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, session: unknown) => callback(session);
+      ipcRenderer.on('remoteSessions:incoming', handler);
+      return () => ipcRenderer.removeListener('remoteSessions:incoming', handler);
     }
   },
   obs: {

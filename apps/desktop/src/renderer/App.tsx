@@ -40,6 +40,8 @@ export default function App() {
   const [localObsDataSource] = React.useState(() => new LocalObsDataSource());
   const [remoteObsDataSource, setRemoteObsDataSource] = React.useState<RemoteObsDataSource | null>(null);
 
+  const [incomingSession, setIncomingSession] = React.useState<any>(null);
+
   React.useEffect(() => {
     if (!window.desktop?.auth) return;
     window.desktop.auth.getState().then((state) => {
@@ -62,34 +64,54 @@ export default function App() {
   }, []);
 
   React.useEffect(() => {
-    // When streamer is authenticated and local OBS is connected, establish WebRTC manager in receiver mode
-    if (authenticated && obsState === 'connected' && window.desktop?.signaling) {
+    if (!window.desktop?.remoteSessions) return;
+    
+    // Connect to global signaling for presence when authenticated
+    if (authenticated) {
       window.desktop.signaling.connect();
+    }
+
+    const cleanupIncoming = window.desktop.remoteSessions.onIncoming((session) => {
+      console.log('Incoming session', session);
+      setIncomingSession(session);
+    });
+
+    return () => {
+      cleanupIncoming();
+    };
+  }, [authenticated]);
+
+  const acceptSession = async () => {
+    if (!incomingSession) return;
+    const sessionInfo = incomingSession;
+    setIncomingSession(null);
+    
+    try {
+      // 1. Authenticate with backend and verify token in Main
+      const ctx = await window.desktop.remoteSessions.connect(sessionInfo.streamerAuthorization);
       
+      // 2. Start WebRTC
       const webrtc = new WebRTCManager(
         'streamer',
-        null, // Streamer gets authorization dynamically or via signaling
-        (cmd) => window.desktop.obs.execute(cmd),
-        () => window.desktop.obs.getSnapshot(),
-        (msg) => window.desktop.signaling.send(msg),
-        (cb) => window.desktop.signaling.subscribe(cb)
+        ctx.remoteSessionId,
+        ctx.peerDeviceId
       );
       
       webrtc.connect();
 
-      const cleanupObsEvent = window.desktop.obs.subscribe((event) => {
+      // Broadcast OBS snapshot when connected
+      const cleanupObsEvent = window.desktop.obs.subscribe((event: any) => {
         if (event.state === 'connected' && event.snapshot) {
-           // event is not sent as patch here currently, full logic would sync it
            webrtc.broadcastEvent({ type: 'snapshot', payload: event.snapshot });
         }
       });
 
-      return () => {
-        webrtc.destroy();
-        cleanupObsEvent();
-      };
+      // Cleanup logic should be stored if we want to cancel the session later
+    } catch (e: any) {
+      console.error('Failed to accept session', e);
+      alert('Failed to connect: ' + e.message);
     }
-  }, [authenticated, obsState]);
+  };
 
   const handleTwitchLogin = () => window.desktop?.auth?.login();
   const handleLogout = () => window.desktop?.auth?.logout();
@@ -100,23 +122,27 @@ export default function App() {
     await window.desktop.obs.connect({ host: obsHost, port: obsPort, password: obsPassword });
   };
 
-  const startRemoteSession = () => {
-    // For demo/manual test, moderator clicks this and inputs a mock auth token
+  const startRemoteSession = async () => {
+    // In a real app, this calls POST /api/v1/remote-sessions with the relationship ID
+    // For now we will mock the API call assuming standard local dev
+    // but actually we need the user to input the token if we don't have the relationship ID here
     const token = prompt("Enter RemoteSessionAuthorization Token from Backend:");
     if (!token) return;
     
-    window.desktop.signaling.connect();
-    const webrtc = new WebRTCManager(
-      'moderator',
-      token,
-      async () => {}, // unused for moderator
-      async () => {}, // unused
-      (msg) => window.desktop.signaling.send(msg),
-      (cb) => window.desktop.signaling.subscribe(cb)
-    );
-    webrtc.connect();
-    setRemoteObsDataSource(new RemoteObsDataSource(webrtc));
-    setCurrentRoute('remote_obs');
+    try {
+      const ctx = await window.desktop.remoteSessions.connect(token);
+      
+      const webrtc = new WebRTCManager(
+        'moderator',
+        ctx.remoteSessionId,
+        ctx.peerDeviceId
+      );
+      webrtc.connect();
+      setRemoteObsDataSource(new RemoteObsDataSource(webrtc));
+      setCurrentRoute('remote_obs');
+    } catch (e: any) {
+      alert('Failed to connect to session: ' + e.message);
+    }
   };
 
   return (
@@ -139,6 +165,20 @@ export default function App() {
           <span>v{version}</span>
         </div>
       </aside>
+
+      {/* Incoming Session Overlay */}
+      {incomingSession && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#161616] border border-gray-700 rounded-xl p-8 max-w-md w-full shadow-2xl">
+            <h3 className="text-xl font-bold mb-4">Входящий запрос на управление</h3>
+            <p className="text-gray-400 mb-6">Модератор пытается подключиться к вашему OBS.</p>
+            <div className="flex justify-end gap-4">
+              <button onClick={() => setIncomingSession(null)} className="px-4 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800 transition-colors">Отклонить</button>
+              <button onClick={acceptSession} className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium shadow-lg shadow-blue-500/20 transition-all">Разрешить</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 overflow-y-auto p-8">
         <div className="max-w-5xl mx-auto space-y-8">

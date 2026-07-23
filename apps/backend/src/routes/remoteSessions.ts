@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import crypto from 'crypto';
 import { getRedis } from '../redis.js';
+import { signSessionToken } from '../utils/sessionToken.js';
 
 interface JwtPayload {
   sub: string;
@@ -108,9 +109,8 @@ export default async function remoteSessionsRoutes(app: FastifyInstance) {
         expiresAt,
       }).returning();
 
-      const nonce = crypto.randomUUID();
-      
-      const payload = {
+      const basePayload = {
+        tokenType: 'remote-session',
         remoteSessionId: session.id,
         streamerUserId,
         moderatorUserId,
@@ -120,18 +120,45 @@ export default async function remoteSessionsRoutes(app: FastifyInstance) {
         permissions: permissionsList,
         permissionsVersion: rel.permissionsVersion,
         protocolVersion: '1.0',
-        nonce,
-        issuedAt: Date.now(),
-        expiresAt: expiresAt.getTime()
+        nonce: crypto.randomUUID(),
+        exp: Math.floor(expiresAt.getTime() / 1000),
       };
 
-      const authorizationToken = app.jwt.sign(payload, { expiresIn: '12h' });
+      const moderatorAuthorization = await signSessionToken({
+        ...basePayload,
+        role: 'moderator',
+        userId: moderatorUserId,
+        deviceId: moderatorDeviceId,
+      });
+
+      const streamerAuthorization = await signSessionToken({
+        ...basePayload,
+        role: 'streamer',
+        userId: streamerUserId,
+        deviceId: streamerDeviceId,
+      });
 
       await logAudit(tx, 'remote_session.create', streamerUserId, moderatorUserId, true, { sessionId: session.id }, relationshipId, session.id);
 
+      // Notify streamer device via Global Signaling Connection
+      // Just write to Redis PubSub or directly notify if same instance
+      // But since we use Redis, we can publish a message that signaling nodes subscribe to.
+      // Wait, we don't have Redis pubsub hooked up in signaling.ts right now.
+      // For now, I can just publish a generic presence event or use the `ws` rooms directly if in same node.
+      // Let's add a Redis pubsub publish for now. The signaling node can listen.
+      await redis.publish('signaling:global:notifications', JSON.stringify({
+        deviceId: streamerDeviceId,
+        type: 'remoteSession.incoming',
+        payload: {
+          remoteSessionId: session.id,
+          streamerAuthorization,
+          moderatorId: moderatorUserId,
+        }
+      }));
+
       return {
         remoteSessionId: session.id,
-        authorizationToken,
+        authorizationToken: moderatorAuthorization,
       };
     });
   });

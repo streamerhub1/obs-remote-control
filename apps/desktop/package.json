@@ -17,6 +17,8 @@
     "@obs-remote/obs-contracts": "workspace:*",
     "@obs-remote/p2p-protocol": "workspace:*",
     "clsx": "^2.1.1",
+    "jose": "^6.2.4",
+    "lru-cache": "^11.5.2",
     "lucide-react": "^1.25.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

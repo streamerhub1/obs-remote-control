@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { generateState, generateCodeVerifier } from 'arctic';
-import { getTwitch, fetchTwitchUser } from '../services/twitch.js';
+import { getTwitchOAuth, fetchTwitchUser } from '../services/twitch.js';
 import { getDb } from '../db.js';
 import { getRedis } from '../redis.js';
 import { users, oauthAccounts, devices, sessions } from '@obs-remote/database';
@@ -10,20 +10,31 @@ import { encryptToken } from '../utils/encryption.js';
 import { generateInviteCode } from '../utils/crypto.js';
 import { z } from 'zod';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
+import { getSessionPublicKey } from '../utils/sessionToken.js';
 
 export default async function authRoutes(app: FastifyInstance) {
   const server = app.withTypeProvider<ZodTypeProvider>();
 
+  server.get('/desktop/public-key', async (request, reply) => {
+    return { publicKey: getSessionPublicKey() };
+  });
+
   server.get('/desktop/login', async (request, reply) => {
-    const twitch = getTwitch(
+    const oauthClient = getTwitchOAuth(
       process.env.TWITCH_CLIENT_ID!,
       process.env.TWITCH_CLIENT_SECRET!,
       process.env.TWITCH_REDIRECT_URI!
     );
     const state = generateState();
     const codeVerifier = generateCodeVerifier();
-    // No email scope unless needed
-    const url = twitch.createAuthorizationURL(state, []);
+    // Twitch uses S256 for code_challenge_method (value 0 in arctic CodeChallengeMethod enum)
+    const url = oauthClient.createAuthorizationURLWithPKCE(
+      'https://id.twitch.tv/oauth2/authorize',
+      state,
+      0, // S256
+      codeVerifier,
+      []
+    );
 
     const redis = getRedis();
     await redis.set(`auth:state:${state}`, JSON.stringify({
@@ -71,7 +82,7 @@ export default async function authRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'No code provided' });
     }
 
-    const twitch = getTwitch(
+    const oauthClient = getTwitchOAuth(
       process.env.TWITCH_CLIENT_ID!,
       process.env.TWITCH_CLIENT_SECRET!,
       process.env.TWITCH_REDIRECT_URI!
@@ -79,7 +90,11 @@ export default async function authRoutes(app: FastifyInstance) {
 
     let tokens;
     try {
-      tokens = await twitch.validateAuthorizationCode(code);
+      tokens = await oauthClient.validateAuthorizationCode(
+        'https://id.twitch.tv/oauth2/token',
+        code,
+        stateData.codeVerifier
+      );
     } catch (err) {
       return reply.status(400).send({ error: 'Failed to validate authorization code' });
     }

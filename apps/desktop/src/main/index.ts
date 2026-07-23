@@ -3,6 +3,7 @@ import path, { join } from 'path';
 import { setupAuthHandlers, handleDeepLink } from './auth';
 import { setupObsHandlers } from './obs';
 import { setupSignaling } from './signaling';
+import { setupRemoteSessions } from './remote-sessions';
 
 // Prevent multiple instances
 const gotTheLock = app.requestSingleInstanceLock();
@@ -109,6 +110,7 @@ if (!gotTheLock) {
       setupAuthHandlers(mainWindow);
       setupObsHandlers(mainWindow);
       setupSignaling();
+      setupRemoteSessions();
     }
 
     app.on('activate', function () {

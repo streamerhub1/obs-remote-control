@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs';
 
 const obs = new ObsAdapter();
+export function getObsAdapter() { return obs; }
 
 function getObsSettingsPath() {
   return path.join(app.getPath('userData'), 'obs_settings.json');

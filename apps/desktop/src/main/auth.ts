@@ -8,6 +8,9 @@ let mainWindowRef: Electron.BrowserWindow | null = null;
 let accessToken: string | null = null;
 let deviceId: string | null = null;
 
+export function getAccessToken() { return accessToken; }
+export function getDeviceId() { return deviceId; }
+
 function getStorePath() {
   return path.join(app.getPath('userData'), 'device_identity.json');
 }
@@ -28,7 +31,7 @@ function loadDeviceIdentity() {
   return null;
 }
 
-function saveDeviceIdentity(data: { publicKey: string; privateKey: string; deviceId?: string }) {
+function saveDeviceIdentity(data: { publicKey: string; privateKey: string; deviceId?: string; refreshToken?: string }) {
   const storePath = getStorePath();
   const json = JSON.stringify(data);
   const buffer = safeStorage.isEncryptionAvailable() 
