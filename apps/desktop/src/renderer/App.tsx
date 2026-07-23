@@ -6,6 +6,12 @@ import { ObsDashboard } from './ObsDashboard';
 import { LocalObsDataSource, RemoteObsDataSource } from './data-sources';
 import { WebSocketRelayTransport } from './transports/WebSocketRelayTransport';
 import { Moderators } from './Moderators';
+import { Feed } from './Feed';
+import { Collabs } from './Collabs';
+import { Calendar } from './Calendar';
+import { Profile } from './Profile';
+import { Notifications } from './Notifications';
+import { Settings } from './Settings';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -302,6 +308,13 @@ export default function App() {
                 <p className="text-gray-400">Добро пожаловать в OBS Remote Control.</p>
              </div>
           )}
+
+          {currentRoute === 'feed' && <Feed />}
+          {currentRoute === 'collabs' && <Collabs />}
+          {currentRoute === 'calendar' && <Calendar />}
+          {currentRoute === 'profile' && <Profile />}
+          {currentRoute === 'notifications' && <Notifications />}
+          {currentRoute === 'settings' && <Settings />}
 
           {currentRoute === 'moderators' && <Moderators onConnectRemote={startRemoteSession} />}
 
