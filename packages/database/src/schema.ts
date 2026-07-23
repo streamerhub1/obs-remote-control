@@ -164,6 +164,10 @@ export const posts = pgTable('posts', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
   deletedAt: timestamp('deleted_at'),
+}, (table) => {
+  return {
+    authorCreatedAtIdx: uniqueIndex('posts_author_created_at_idx').on(table.authorId, table.createdAt),
+  };
 });
 
 export const comments = pgTable('comments', {
@@ -219,6 +223,10 @@ export const collaborations = pgTable('collaborations', {
   status: varchar('status', { length: 20 }).default('open').notNull(), // open, closed, cancelled, completed
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    ownerStatusIdx: uniqueIndex('collab_owner_status_idx').on(table.ownerId, table.status),
+  };
 });
 
 export const collaborationParticipants = pgTable('collaboration_participants', {
@@ -278,4 +286,8 @@ export const calendarEvents = pgTable('calendar_events', {
   sourceId: uuid('source_id'), // e.g. collaboration ID
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    ownerStartEndIdx: uniqueIndex('calendar_owner_start_end_idx').on(table.ownerId, table.startAt, table.endAt),
+  };
 });

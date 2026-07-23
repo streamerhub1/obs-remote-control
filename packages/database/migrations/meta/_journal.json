@@ -43,6 +43,13 @@
       "when": 1784802436576,
       "tag": "0005_zippy_jack_flag",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784802898467,
+      "tag": "0006_cool_groot",
+      "breakpoints": true
     }
   ]
 }
