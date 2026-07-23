@@ -22,6 +22,7 @@ export const users = pgTable('users', {
   status: varchar('status', { length: 50 }).default('active').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  lastActiveAt: timestamp('last_active_at').defaultNow().notNull(),
   deletedAt: timestamp('deleted_at'),
 });
 
@@ -135,6 +136,7 @@ export const profiles = pgTable('profiles', {
   languages: jsonb('languages').default([]).notNull(), // array of strings
   categories: jsonb('categories').default([]).notNull(), // array of strings
   socialLinks: jsonb('social_links').default([]).notNull(), // array of objects
+  timezone: text('timezone').default('UTC').notNull(),
   collaborationAvailability: boolean('collaboration_availability').default(true).notNull(),
   followersCount: integer('followers_count').default(0).notNull(),
   followingCount: integer('following_count').default(0).notNull(),

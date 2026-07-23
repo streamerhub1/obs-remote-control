@@ -59,25 +59,87 @@ class RemoteCommandGuard {
     }
     this.dedupCache.set(dedupKey, true);
 
-    // Permission checking
-    // Simplified for now: just check if they have 'obs.manage'
-    if (!session.permissions.includes('obs.manage') && !session.permissions.includes('obs.view')) {
-        throw new Error('Insufficient permissions');
-    }
-
     const obs = getObsAdapter();
     if (!obs) throw new Error('OBS not connected');
 
     try {
+      const p = session.permissions;
+
+      // Define permission requirements for OBS commands
+      const cmdAuth = (reqs: string[]) => {
+        if (!reqs.some(req => p.includes(req))) {
+           throw new Error(`Permission denied: requires one of [${reqs.join(', ')}]`);
+        }
+      };
+
       // Map commands securely
       switch (command) {
-        case 'SetCurrentProgramScene':
-          if (!session.permissions.includes('obs.manage')) throw new Error('Permission denied');
-          await obs.call('SetCurrentProgramScene', args);
-          return { status: 'success' };
+        // Scenes
         case 'GetSceneList':
-          return { status: 'success', data: await obs.call('GetSceneList') };
-        // Add more explicitly allowed commands here...
+        case 'GetCurrentProgramScene':
+        case 'GetCurrentPreviewScene':
+          cmdAuth(['scenes.read', 'obs.manage']);
+          return { status: 'success', data: await obs.call(command as any, args) };
+        case 'SetCurrentProgramScene':
+        case 'SetCurrentPreviewScene':
+          cmdAuth(['scenes.switch', 'obs.manage']);
+          await obs.call(command as any, args);
+          return { status: 'success' };
+        
+        // Scene Items
+        case 'GetSceneItemList':
+        case 'GetSceneItemId':
+          cmdAuth(['sceneItems.read', 'obs.manage']);
+          return { status: 'success', data: await obs.call(command as any, args) };
+        case 'SetSceneItemEnabled':
+          cmdAuth(['sceneItems.visibility', 'obs.manage']);
+          await obs.call(command as any, args);
+          return { status: 'success' };
+        
+        // Audio
+        case 'GetInputList':
+        case 'GetInputMute':
+        case 'GetInputVolume':
+          cmdAuth(['audio.read', 'obs.manage']);
+          return { status: 'success', data: await obs.call(command as any, args) };
+        case 'SetInputMute':
+        case 'ToggleInputMute':
+          cmdAuth(['audio.mute', 'obs.manage']);
+          await obs.call(command as any, args);
+          return { status: 'success' };
+        case 'SetInputVolume':
+          cmdAuth(['audio.volume', 'obs.manage']);
+          await obs.call(command as any, args);
+          return { status: 'success' };
+        
+        // Streaming
+        case 'GetStreamStatus':
+          cmdAuth(['stream.read', 'obs.manage']);
+          return { status: 'success', data: await obs.call(command as any, args) };
+        case 'StartStream':
+          cmdAuth(['stream.start', 'obs.manage']);
+          await obs.call(command as any, args);
+          return { status: 'success' };
+        case 'StopStream':
+          cmdAuth(['stream.stop', 'obs.manage']);
+          await obs.call(command as any, args);
+          return { status: 'success' };
+          
+        // Recording
+        case 'GetRecordStatus':
+          cmdAuth(['record.read', 'obs.manage']);
+          return { status: 'success', data: await obs.call(command as any, args) };
+        case 'StartRecord':
+          cmdAuth(['record.start', 'obs.manage']);
+          await obs.call(command as any, args);
+          return { status: 'success' };
+        case 'StopRecord':
+        case 'PauseRecord':
+        case 'ResumeRecord':
+          cmdAuth(['record.stop', 'obs.manage']);
+          await obs.call(command as any, args);
+          return { status: 'success' };
+
         default:
           throw new Error('Command not allowed or unknown');
       }

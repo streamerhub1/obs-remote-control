@@ -5,7 +5,9 @@ export function Moderators({ onConnectRemote }: { onConnectRemote: (token: strin
   const [asStreamer, setAsStreamer] = useState<any[]>([]);
   const [asModerator, setAsModerator] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [inviteLogin, setInviteLogin] = useState('');
+  const [inviteIdentifier, setInviteIdentifier] = useState('');
+  const [managingPermsFor, setManagingPermsFor] = useState<string | null>(null);
+  const [currentPerms, setCurrentPerms] = useState<Record<string, boolean>>({});
 
   const fetchRelationships = async () => {
     try {
@@ -30,19 +32,23 @@ export function Moderators({ onConnectRemote }: { onConnectRemote: (token: strin
   }, []);
 
   const handleInvite = async () => {
-    if (!inviteLogin) return;
+    if (!inviteIdentifier) return;
     try {
       const token = await window.desktop.auth.getToken();
+      
+      const isCode = inviteIdentifier.toUpperCase().startsWith('PH-');
+      const body = isCode ? { inviteCode: inviteIdentifier } : { twitchLogin: inviteIdentifier };
+
       const response = await fetch('http://localhost:3000/api/v1/relationships/invite', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}` 
         },
-        body: JSON.stringify({ twitchLogin: inviteLogin })
+        body: JSON.stringify(body)
       });
       if (response.ok) {
-        setInviteLogin('');
+        setInviteIdentifier('');
         fetchRelationships();
       } else {
         const err = await response.json();
@@ -83,18 +89,36 @@ export function Moderators({ onConnectRemote }: { onConnectRemote: (token: strin
     }
   };
 
-  const grantManagePermission = async (id: string, allowed: boolean) => {
+  const openPermissionsModal = async (id: string) => {
     try {
       const token = await window.desktop.auth.getToken();
-      await fetch(`http://localhost:3000/api/v1/relationships/${id}/permissions`, {
+      const response = await fetch(`http://localhost:3000/api/v1/relationships/${id}/permissions`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const perms = await response.json();
+      const map: Record<string, boolean> = {};
+      perms.forEach((p: any) => map[p.permissionKey] = p.allowed);
+      setCurrentPerms(map);
+      setManagingPermsFor(id);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const savePermissions = async () => {
+    if (!managingPermsFor) return;
+    try {
+      const token = await window.desktop.auth.getToken();
+      await fetch(`http://localhost:3000/api/v1/relationships/${managingPermsFor}/permissions`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}` 
         },
-        body: JSON.stringify({ permissions: { 'obs.manage': allowed } })
+        body: JSON.stringify({ permissions: currentPerms })
       });
       alert('Permissions updated');
+      setManagingPermsFor(null);
     } catch (e) {
       console.error(e);
     }
@@ -124,9 +148,9 @@ export function Moderators({ onConnectRemote }: { onConnectRemote: (token: strin
           <div className="flex gap-3 mb-6">
             <input 
               type="text" 
-              value={inviteLogin} 
-              onChange={e => setInviteLogin(e.target.value)}
-              placeholder="Twitch логин модератора" 
+              value={inviteIdentifier} 
+              onChange={e => setInviteIdentifier(e.target.value)}
+              placeholder="Twitch логин или Invite Code (PH-...)" 
               className="flex-1 bg-black border border-gray-800 rounded-lg px-4 py-2 text-sm focus:border-purple-500 outline-none" 
             />
             <button 
@@ -149,10 +173,7 @@ export function Moderators({ onConnectRemote }: { onConnectRemote: (token: strin
                 </div>
                 <div className="flex gap-2">
                   {rel.status === 'active' && (
-                     <>
-                       <button onClick={() => grantManagePermission(rel.id, true)} className="px-3 py-1 bg-blue-600/20 text-blue-400 rounded hover:bg-blue-600/30 text-xs border border-blue-500/20">Выдать доступ (obs.manage)</button>
-                       <button onClick={() => grantManagePermission(rel.id, false)} className="px-3 py-1 bg-gray-600/20 text-gray-400 rounded hover:bg-gray-600/30 text-xs border border-gray-500/20">Забрать доступ</button>
-                     </>
+                     <button onClick={() => openPermissionsModal(rel.id)} className="px-3 py-1 bg-blue-600/20 text-blue-400 rounded hover:bg-blue-600/30 text-xs border border-blue-500/20">Настроить доступ</button>
                   )}
                   <button onClick={() => handleRevoke(rel.id)} className="p-2 text-red-400 hover:bg-red-900/30 rounded-lg transition-colors">
                     <Trash size={16} />
@@ -221,8 +242,43 @@ export function Moderators({ onConnectRemote }: { onConnectRemote: (token: strin
             ))}
           </div>
         </section>
-
       </div>
+
+      {managingPermsFor && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="bg-[#161616] border border-gray-800 rounded-xl p-6 shadow-2xl max-w-lg w-full">
+            <h3 className="text-xl font-medium mb-4">Настройка прав доступа</h3>
+            <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 mb-6 text-sm">
+              {[
+                'scenes.read', 'scenes.switch',
+                'sceneItems.read', 'sceneItems.visibility',
+                'audio.read', 'audio.mute', 'audio.volume',
+                'stream.read', 'stream.start', 'stream.stop',
+                'record.read', 'record.start', 'record.stop',
+                'obs.manage'
+              ].map(perm => (
+                <label key={perm} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-white/5">
+                  <input 
+                    type="checkbox" 
+                    checked={!!currentPerms[perm]} 
+                    onChange={e => setCurrentPerms({ ...currentPerms, [perm]: e.target.checked })} 
+                    className="rounded border-gray-700 text-purple-600 focus:ring-purple-500 bg-black"
+                  />
+                  <span>{perm}</span>
+                </label>
+              ))}
+            </div>
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-800">
+              <button onClick={() => setManagingPermsFor(null)} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors">
+                Отмена
+              </button>
+              <button onClick={savePermissions} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-medium transition-colors">
+                Сохранить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -16,6 +16,7 @@
     "@obs-remote/obs-adapter": "workspace:*",
     "@obs-remote/obs-contracts": "workspace:*",
     "@obs-remote/remote-protocol": "workspace:*",
+    "@obs-remote/ui": "workspace:^",
     "clsx": "^2.1.1",
     "jose": "^6.2.4",
     "lru-cache": "^11.5.2",

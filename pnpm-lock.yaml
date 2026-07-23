@@ -132,6 +132,9 @@ importers:
       '@obs-remote/remote-protocol':
         specifier: workspace:*
         version: link:../../packages/remote-protocol
+      '@obs-remote/ui':
+        specifier: workspace:^
+        version: link:../../packages/ui
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -202,6 +205,9 @@ importers:
 
   apps/website:
     dependencies:
+      '@obs-remote/ui':
+        specifier: workspace:^
+        version: link:../../packages/ui
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -384,6 +390,27 @@ importers:
 
   packages/ui:
     devDependencies:
+      '@types/react':
+        specifier: ^18.2.0
+        version: 18.3.31
+      '@types/react-dom':
+        specifier: ^18.2.0
+        version: 18.3.7(@types/react@18.3.31)
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      lucide-react:
+        specifier: ^1.25.0
+        version: 1.25.0(react@18.3.1)
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      tailwind-merge:
+        specifier: ^3.6.0
+        version: 3.6.0
       typescript:
         specifier: ^5.0.0
         version: 5.9.3

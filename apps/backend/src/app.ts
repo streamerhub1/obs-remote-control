@@ -12,6 +12,12 @@ import moderatorsRoutes from './routes/moderators.js';
 import signalingRoutes from './routes/signaling.js';
 import remoteSessionsRoutes from './routes/remoteSessions.js';
 import { relationshipsRoutes } from './routes/relationships.js';
+import { profilesRoutes } from './routes/profiles.js';
+import { collaborationsRoutes } from './routes/collaborations.js';
+import { calendarRoutes } from './routes/calendar.js';
+import { feedRoutes } from './routes/feed.js';
+import { searchRoutes } from './routes/search.js';
+import { notificationsRoutes } from './routes/notifications.js';
 import fastifyWebsocket from '@fastify/websocket';
 import { initDb } from './db.js';
 import { initRedis } from './redis.js';
@@ -76,6 +82,12 @@ export async function buildApp(): Promise<any> {
   await app.register(moderatorsRoutes, { prefix: '/api/v1' });
   await app.register(remoteSessionsRoutes, { prefix: '/api/v1' });
   await app.register(relationshipsRoutes, { prefix: '/api/v1' });
+  await app.register(profilesRoutes, { prefix: '/api/v1' });
+  await app.register(collaborationsRoutes, { prefix: '/api/v1' });
+  await app.register(calendarRoutes, { prefix: '/api/v1' });
+  await app.register(feedRoutes, { prefix: '/api/v1' });
+  await app.register(searchRoutes, { prefix: '/api/v1' });
+  await app.register(notificationsRoutes, { prefix: '/api/v1' });
   await app.register(signalingRoutes, { prefix: '/api/v1' });
 
   return app;

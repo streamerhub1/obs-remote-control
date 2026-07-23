@@ -4,6 +4,7 @@ import { getDb } from '../db.js';
 import { moderatorRelationships, moderatorPermissions, users } from '@obs-remote/database';
 import { eq, and, or } from 'drizzle-orm';
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
+import crypto from 'crypto';
 
 export const relationshipsRoutes: FastifyPluginAsyncZod = async (app) => {
   // Get all relationships for the current user
@@ -38,21 +39,31 @@ export const relationshipsRoutes: FastifyPluginAsyncZod = async (app) => {
     return reply.send({ asStreamer, asModerator });
   });
 
-  // Create an invitation (Streamer invites Moderator via Twitch Login or ID)
+  // Create an invitation (Streamer invites Moderator via Twitch Login or inviteCode)
   app.post('/relationships/invite', {
     schema: {
       body: z.object({
-        twitchLogin: z.string(),
+        twitchLogin: z.string().optional(),
+        inviteCode: z.string().optional(),
+      }).refine(data => data.twitchLogin || data.inviteCode, {
+        message: "Either twitchLogin or inviteCode must be provided"
       })
     }
   }, async (request, reply) => {
     const streamerId = request.user.sub;
-    const { twitchLogin } = request.body;
+    const { twitchLogin, inviteCode } = request.body;
 
     const db = getDb();
     
     // Find the user to invite
-    const [moderator] = await db.select().from(users).where(eq(users.twitchLogin, twitchLogin.toLowerCase()));
+    let moderator;
+    if (inviteCode) {
+      const normalized = inviteCode.toUpperCase().trim();
+      [moderator] = await db.select().from(users).where(eq(users.inviteCodeNormalized, normalized));
+    } else if (twitchLogin) {
+      [moderator] = await db.select().from(users).where(eq(users.twitchLogin, twitchLogin.toLowerCase()));
+    }
+
     if (!moderator) {
       return reply.status(404).send({ error: 'User not found' });
     }
@@ -78,11 +89,22 @@ export const relationshipsRoutes: FastifyPluginAsyncZod = async (app) => {
     }).returning();
 
     // Setup default permissions (none)
-    await db.insert(moderatorPermissions).values({
-      relationshipId: relationship.id,
-      permissionKey: 'obs.manage',
-      allowed: false,
-    });
+    const granularPerms = [
+      'scenes.read', 'scenes.switch',
+      'sceneItems.read', 'sceneItems.visibility',
+      'audio.read', 'audio.mute', 'audio.volume',
+      'stream.read', 'stream.start', 'stream.stop',
+      'record.read', 'record.start', 'record.stop',
+      'obs.manage'
+    ];
+    
+    await db.insert(moderatorPermissions).values(
+      granularPerms.map(perm => ({
+        relationshipId: relationship.id,
+        permissionKey: perm,
+        allowed: false,
+      }))
+    );
 
     return reply.status(201).send(relationship);
   });
@@ -175,11 +197,22 @@ export const relationshipsRoutes: FastifyPluginAsyncZod = async (app) => {
     const [relationship] = await db.select().from(moderatorRelationships).where(eq(moderatorRelationships.id, id));
     if (!relationship || relationship.streamerId !== userId) return reply.status(403).send({ error: 'Unauthorized' });
 
-    // Update each permission
+    // Handle permissions upsert
     for (const [key, allowed] of Object.entries(permissions)) {
-      await db.update(moderatorPermissions)
-        .set({ allowed, updatedAt: new Date() })
+      const existing = await db.select().from(moderatorPermissions)
         .where(and(eq(moderatorPermissions.relationshipId, id), eq(moderatorPermissions.permissionKey, key)));
+        
+      if (existing.length > 0) {
+        await db.update(moderatorPermissions)
+          .set({ allowed, updatedAt: new Date() })
+          .where(and(eq(moderatorPermissions.relationshipId, id), eq(moderatorPermissions.permissionKey, key)));
+      } else {
+        await db.insert(moderatorPermissions).values({
+          relationshipId: id,
+          permissionKey: key,
+          allowed,
+        });
+      }
     }
     
     // Bump permissions version to invalidate active sessions
