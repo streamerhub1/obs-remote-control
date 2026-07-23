@@ -1,17 +1,19 @@
 {
   "name": "@obs-remote/permissions",
   "version": "1.0.0",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "private": true,
-  "type": "module",
   "scripts": {
     "build": "tsc",
-    "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests"
   },
+  "dependencies": {
+    "@obs-remote/obs-contracts": "workspace:*",
+    "zod": "^3.22.4"
+  },
   "devDependencies": {
-    "typescript": "^5.0.0",
-    "vitest": "^2.0.0"
+    "typescript": "^5.3.3",
+    "vitest": "^2.1.9"
   }
 }

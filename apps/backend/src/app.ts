@@ -8,10 +8,13 @@ import fastifyCors from '@fastify/cors';
 import fastifyJwt from '@fastify/jwt';
 import authRoutes from './routes/auth.js';
 import apiRoutes from './routes/api.js';
+import moderatorsRoutes from './routes/moderators.js';
+import signalingRoutes from './routes/signaling.js';
+import fastifyWebsocket from '@fastify/websocket';
 import { initDb } from './db.js';
 import { initRedis } from './redis.js';
 
-export async function buildApp(): Promise<any> {
+export async function buildApp(): Promise<FastifyInstance> {
   const logger = createLogger({
     env: (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development',
     name: 'backend',
@@ -36,6 +39,8 @@ export async function buildApp(): Promise<any> {
   await app.register(fastifyJwt, {
     secret: process.env.JWT_SECRET!,
   });
+
+  await app.register(fastifyWebsocket);
 
   // Rate Limiting
   const fastifyRateLimit = (await import('@fastify/rate-limit')).default;
@@ -66,6 +71,8 @@ export async function buildApp(): Promise<any> {
 
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
   await app.register(apiRoutes, { prefix: '/api/v1' });
+  await app.register(moderatorsRoutes, { prefix: '/api/v1' });
+  await app.register(signalingRoutes, { prefix: '/api/v1' });
 
   return app;
 }

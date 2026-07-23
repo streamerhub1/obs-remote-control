@@ -2,16 +2,19 @@ import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import path, { join } from 'path';
 import { setupAuthHandlers, handleDeepLink } from './auth';
 import { setupObsHandlers } from './obs';
+import { setupSignaling } from './signaling';
 
 // Prevent multiple instances
 const gotTheLock = app.requestSingleInstanceLock();
 
 const isDev = process.env.NODE_ENV === 'development' || !!process.env.ELECTRON_RENDERER_URL;
 
+let mainWindow: BrowserWindow | null = null;
+export function getMainWindow() { return mainWindow; }
+
 if (!gotTheLock) {
   app.quit();
 } else {
-  let mainWindow: BrowserWindow | null = null;
 
   function createWindow() {
     mainWindow = new BrowserWindow({
@@ -105,6 +108,7 @@ if (!gotTheLock) {
     if (mainWindow) {
       setupAuthHandlers(mainWindow);
       setupObsHandlers(mainWindow);
+      setupSignaling();
     }
 
     app.on('activate', function () {

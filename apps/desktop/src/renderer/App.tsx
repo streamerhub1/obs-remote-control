@@ -2,6 +2,7 @@ import React from 'react';
 import { Home, Shield, Activity, Tv, MonitorPlay, Video, Volume2, VolumeX, Mic, Layers, PlaySquare, Eye, EyeOff, Pause, Square } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { WebRTCManager } from './webrtc';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -18,7 +19,7 @@ function App() {
   const [obsPort, setObsPort] = React.useState(4455);
   const [obsPassword, setObsPassword] = React.useState('');
   
-  const [snapshot, setSnapshot] = React.useState<any>(null);
+  const [snapshot, setSnapshot] = React.useState<import('@obs-remote/obs-contracts').ObsSnapshot | null>(null);
   const [obsError, setObsError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -65,6 +66,30 @@ function App() {
     return cleanup;
   }, []);
 
+  React.useEffect(() => {
+    if (authenticated && obsState === 'connected' && window.desktop?.signaling) {
+      // Connect signaling to backend
+      window.desktop.signaling.connect();
+      
+      const webrtc = new WebRTCManager(
+        (cmd) => window.desktop.obs.execute(cmd),
+        () => window.desktop.obs.getSnapshot()
+      );
+      
+      const cleanupObsEvent = window.desktop.obs.subscribe((event) => {
+        if (event.state === 'connected' && event.snapshot) {
+           // We could broadcast events, but for now just pass to webrtc if we implement event broadcasting.
+           // if (event.type === 'obsEvent') webrtc.broadcastEvent(event.payload);
+        }
+      });
+
+      return () => {
+        webrtc.destroy();
+        cleanupObsEvent();
+      };
+    }
+  }, [authenticated, obsState]);
+
   const handleTwitchLogin = () => {
     window.desktop?.auth?.login();
   };
@@ -93,7 +118,7 @@ function App() {
     await window.desktop.obs.disconnect();
   };
 
-  const execute = (command: any) => {
+  const execute = (command: import('@obs-remote/obs-contracts').ObsCommand) => {
     window.desktop?.obs?.execute(command);
   };
 
@@ -238,7 +263,7 @@ function App() {
                   <h3 className="text-lg font-medium flex items-center gap-2 mb-4"><Layers size={20} className="text-purple-400"/> Источники ({snapshot.currentProgramScene})</h3>
                   <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                     {snapshot.sceneItems?.[snapshot.currentProgramScene]?.length > 0 ? 
-                      snapshot.sceneItems[snapshot.currentProgramScene].map((item: any) => (
+                      snapshot.sceneItems[snapshot.currentProgramScene].map((item: { sceneItemId: number; sourceName: string; sceneItemEnabled: boolean }) => (
                         <div key={item.sceneItemId} className="flex items-center justify-between p-3 bg-black border border-gray-800 rounded-lg">
                           <span className="text-sm truncate mr-2" title={item.sourceName}>{item.sourceName}</span>
                           <button 
@@ -286,7 +311,7 @@ function App() {
                               <div className="mt-3 pt-2 border-t border-gray-800">
                                 <p className="text-[10px] text-gray-500 mb-1 uppercase tracking-wider">Фильтры</p>
                                 <div className="flex flex-wrap gap-1">
-                                  {filters.map((f: any) => (
+                                  {filters.map((f: { filterName: string; filterEnabled: boolean }) => (
                                     <span key={f.filterName} className={cn("text-[10px] px-1.5 py-0.5 rounded", f.filterEnabled ? "bg-gray-800 text-gray-300" : "bg-gray-900 text-gray-600 line-through")}>
                                       {f.filterName}
                                     </span>

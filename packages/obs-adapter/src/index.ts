@@ -110,7 +110,7 @@ export class ObsAdapter {
       await this.fullResync();
       
       return true;
-    } catch (e: any) {
+    } catch (e: unknown) {
       this.changeState('error');
       this.handleDisconnect();
       return false;
@@ -140,22 +140,22 @@ export class ObsAdapter {
       const recordStatus = await this.obs.call('GetRecordStatus');
       const inputsList = await this.obs.call('GetInputList');
 
-      const sceneItems: Record<string, any[]> = {};
-      for (const scene of scenes.scenes) {
-        const sceneName = (scene as any).sceneName;
+      const sceneItems: Record<string, { sceneItemId: number; sourceName: string; sceneItemEnabled: boolean }[]> = {};
+      for (const scene of scenes.scenes as { sceneName: string }[]) {
+        const sceneName = scene.sceneName;
         const items = await this.obs.call('GetSceneItemList', { sceneName });
-        sceneItems[sceneName] = items.sceneItems.map((i: any) => ({
+        sceneItems[sceneName] = (items.sceneItems as { sceneItemId: number; sourceName: string; sceneItemEnabled: boolean }[]).map(i => ({
           sceneItemId: i.sceneItemId,
           sourceName: i.sourceName,
           sceneItemEnabled: i.sceneItemEnabled,
         }));
       }
 
-      const audioMixer: Record<string, any> = {};
-      const filters: Record<string, any[]> = {};
+      const audioMixer: Record<string, { volumeDb: number; volumeMul: number; muted: boolean }> = {};
+      const filters: Record<string, { filterName: string; filterEnabled: boolean; filterKind: string }[]> = {};
       
-      for (const input of inputsList.inputs) {
-        const inputName = (input as any).inputName;
+      for (const input of inputsList.inputs as { inputName: string }[]) {
+        const inputName = input.inputName;
         const mute = await this.obs.call('GetInputMute', { inputName });
         const volume = await this.obs.call('GetInputVolume', { inputName });
         audioMixer[inputName] = {
@@ -166,7 +166,7 @@ export class ObsAdapter {
         
         try {
           const filterList = await this.obs.call('GetSourceFilterList', { sourceName: inputName });
-          filters[inputName] = filterList.filters.map((f: any) => ({
+          filters[inputName] = (filterList.filters as { filterName: string; filterEnabled: boolean; filterKind: string }[]).map(f => ({
             filterName: f.filterName,
             filterEnabled: f.filterEnabled,
             filterKind: f.filterKind,
@@ -184,10 +184,10 @@ export class ObsAdapter {
         websocketVersion: version.obsWebSocketVersion,
         currentProgramScene: scenes.currentProgramSceneName,
         currentPreviewScene: scenes.currentPreviewSceneName || null,
-        scenes: scenes.scenes.map((s: any) => s.sceneName),
+        scenes: (scenes.scenes as { sceneName: string }[]).map(s => s.sceneName),
         sceneItems,
         filters,
-        inputs: inputsList.inputs.map((i: any) => ({
+        inputs: (inputsList.inputs as { inputName: string; inputKind: string; unversionedInputKind: string }[]).map(i => ({
           inputName: i.inputName,
           inputKind: i.inputKind,
           unversionedInputKind: i.unversionedInputKind,
@@ -293,11 +293,11 @@ export class ObsAdapter {
           return { success: false, error: 'Unknown command' };
       }
       return { success: true };
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (e instanceof OBSWebSocketError) {
         return { success: false, error: `OBS Error: ${e.code}` };
       }
-      return { success: false, error: e?.message || 'Command failed' };
+      return { success: false, error: (e instanceof Error) ? e.message : 'Command failed' };
     }
   }
 }

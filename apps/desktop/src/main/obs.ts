@@ -26,7 +26,7 @@ function loadObsSettings() {
   return null;
 }
 
-function saveObsSettings(data: any) {
+function saveObsSettings(data: unknown) {
   const storePath = getObsSettingsPath();
   const json = JSON.stringify(data);
   const buffer = safeStorage.isEncryptionAvailable() 
@@ -47,7 +47,7 @@ export function setupObsHandlers(mainWindow: Electron.BrowserWindow) {
     return obs.getState();
   });
 
-  ipcMain.handle('obs:connect', async (_, configRaw: any) => {
+  ipcMain.handle('obs:connect', async (_, configRaw: unknown) => {
     const parsed = ObsConnectionConfigSchema.safeParse(configRaw);
     if (!parsed.success) {
       return false; // Validation failed
@@ -68,7 +68,7 @@ export function setupObsHandlers(mainWindow: Electron.BrowserWindow) {
     return obs.getSnapshotData();
   });
 
-  ipcMain.handle('obs:execute', async (_, commandRaw: any) => {
+  ipcMain.handle('obs:execute', async (_, commandRaw: unknown) => {
     const parsed = ObsCommandSchema.safeParse(commandRaw);
     if (!parsed.success) {
       return { success: false, error: 'Invalid command schema' };

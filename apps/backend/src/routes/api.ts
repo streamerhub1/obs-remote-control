@@ -150,8 +150,8 @@ export default async function apiRoutes(app: FastifyInstance) {
           inviteCodeNormalized: newCode.toLowerCase(),
         }).where(eq(users.id, userId));
         success = true;
-      } catch (e: any) {
-        if (e.code === '23505') { // unique violation
+      } catch (e: unknown) {
+        if (e && typeof e === 'object' && 'code' in e && e.code === '23505') { // unique violation
           attempts++;
         } else {
           throw e;
@@ -160,7 +160,7 @@ export default async function apiRoutes(app: FastifyInstance) {
     }
     
     if (!success) {
-      return reply.status(500).send({ error: 'Could not generate unique invite code' } as any);
+      return reply.status(500).send({ error: 'Could not generate unique invite code' });
     }
 
     return { inviteCode: newCode };

@@ -15,6 +15,13 @@
       "when": 1784782091326,
       "tag": "0001_concerned_the_enforcers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784796040137,
+      "tag": "0002_omniscient_sway",
+      "breakpoints": true
     }
   ]
 }

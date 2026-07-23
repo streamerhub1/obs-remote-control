@@ -67,3 +67,65 @@ export const sessions = pgTable('sessions', {
   expiresAt: timestamp('expires_at').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+export const moderatorRelationships = pgTable('moderator_relationships', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  streamerId: uuid('streamer_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  moderatorId: uuid('moderator_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  status: varchar('status', { length: 20 }).default('pending').notNull(), // pending, active, paused, rejected, revoked
+  createdBy: uuid('created_by').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  acceptedAt: timestamp('accepted_at'),
+  rejectedAt: timestamp('rejected_at'),
+  pausedAt: timestamp('paused_at'),
+  revokedAt: timestamp('revoked_at'),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    streamerModeratorIndex: uniqueIndex('streamer_moderator_idx').on(table.streamerId, table.moderatorId),
+  };
+});
+
+export const moderatorPermissions = pgTable('moderator_permissions', {
+  relationshipId: uuid('relationship_id').references(() => moderatorRelationships.id, { onDelete: 'cascade' }).notNull(),
+  permissionKey: text('permission_key').notNull(),
+  allowed: boolean('allowed').default(false).notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    relationshipPermissionIndex: uniqueIndex('relationship_permission_idx').on(table.relationshipId, table.permissionKey),
+  };
+});
+
+export const remoteSessions = pgTable('remote_sessions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  publicId: text('public_id').unique().notNull(),
+  streamerId: uuid('streamer_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  moderatorId: uuid('moderator_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  streamerDeviceId: uuid('streamer_device_id').references(() => devices.id),
+  moderatorDeviceId: uuid('moderator_device_id').references(() => devices.id),
+  relationshipId: uuid('relationship_id').references(() => moderatorRelationships.id).notNull(),
+  status: varchar('status', { length: 20 }).default('creating').notNull(), // creating, signaling, connecting, active, reconnecting, closed, failed, revoked
+  transport: varchar('transport', { length: 20 }).default('unknown').notNull(), // direct, relay, unknown
+  permissionsVersion: text('permissions_version').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  connectedAt: timestamp('connected_at'),
+  endedAt: timestamp('ended_at'),
+  expiresAt: timestamp('expires_at').notNull(),
+  closeReason: text('close_reason'),
+});
+
+export const auditLogs = pgTable('audit_logs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  actorUserId: uuid('actor_user_id').references(() => users.id),
+  targetUserId: uuid('target_user_id').references(() => users.id),
+  relationshipId: uuid('relationship_id').references(() => moderatorRelationships.id),
+  remoteSessionId: uuid('remote_session_id').references(() => remoteSessions.id),
+  action: text('action').notNull(),
+  resourceType: text('resource_type'),
+  resourceId: text('resource_id'),
+  success: boolean('success').notNull(),
+  metadataJson: json('metadata_json'),
+  requestId: text('request_id'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});

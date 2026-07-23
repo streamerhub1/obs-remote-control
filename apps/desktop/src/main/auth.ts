@@ -28,7 +28,7 @@ function loadDeviceIdentity() {
   return null;
 }
 
-function saveDeviceIdentity(data: any) {
+function saveDeviceIdentity(data: { publicKey: string; privateKey: string; deviceId?: string }) {
   const storePath = getStorePath();
   const json = JSON.stringify(data);
   const buffer = safeStorage.isEncryptionAvailable() 

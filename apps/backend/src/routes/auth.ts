@@ -43,7 +43,7 @@ export default async function authRoutes(app: FastifyInstance) {
   });
 
   server.get('/twitch/callback', async (request, reply) => {
-    const query = request.query as any;
+    const query = request.query as { code?: string, state?: string, error?: string };
     const { code, state, error } = query;
 
     if (error) {
@@ -107,8 +107,8 @@ export default async function authRoutes(app: FastifyInstance) {
             }).returning({ id: users.id });
             userId = newUser.id;
             codeSuccess = true;
-          } catch(e: any) {
-            if (e.code !== '23505') throw e;
+          } catch(e: unknown) {
+            if (e && typeof e === 'object' && 'code' in e && e.code !== '23505') throw e;
           }
         }
       } else {

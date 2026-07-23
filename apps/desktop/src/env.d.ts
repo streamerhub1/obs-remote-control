@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 
+import { ObsCommand, ObsCommandResult, ObsConnectionConfig, ObsConnectionState, ObsEvent, ObsSnapshot } from '@obs-remote/obs-contracts';
+
 interface Window {
   desktop: {
     platform: string;
@@ -8,18 +10,25 @@ interface Window {
     auth: {
       login: () => Promise<void>;
       logout: () => Promise<void>;
-      getState: () => Promise<{ authenticated: boolean }>;
+      getState: () => Promise<{ loading: boolean; authenticated: boolean; error?: string }>;
       getProfile: () => Promise<any>;
-      subscribe: (callback: (state: any) => void) => () => void;
+      subscribe: (callback: (state: { loading?: boolean; authenticated?: boolean; error?: string }) => void) => () => void;
+    };
+    signaling: {
+      connect: () => Promise<void>;
+      send: (msg: any) => void;
+      subscribe: (callback: (msg: any) => void) => () => void;
+      onConnected: (callback: () => void) => () => void;
+      onDisconnected: (callback: () => void) => () => void;
     };
     obs: {
-      getStatus: () => Promise<any>;
-      connect: (config: any) => Promise<boolean>;
+      getStatus: () => Promise<ObsConnectionState>;
+      connect: (config: ObsConnectionConfig) => Promise<boolean>;
       disconnect: () => Promise<void>;
-      getSnapshot: () => Promise<any>;
-      execute: (command: any) => Promise<any>;
-      subscribe: (callback: (event: any) => void) => () => void;
-      saveSettings: (settings: any) => Promise<void>;
+      getSnapshot: () => Promise<ObsSnapshot | null>;
+      execute: (command: ObsCommand) => Promise<ObsCommandResult>;
+      subscribe: (callback: (event: ObsEvent) => void) => () => void;
+      saveSettings: (settings: ObsConnectionConfig) => Promise<void>;
     };
   };
 }

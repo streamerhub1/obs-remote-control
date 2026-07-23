@@ -13,18 +13,21 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@obs-remote/obs-adapter": "workspace:^",
-    "@obs-remote/obs-contracts": "workspace:^",
+    "@obs-remote/obs-adapter": "workspace:*",
+    "@obs-remote/obs-contracts": "workspace:*",
+    "@obs-remote/p2p-protocol": "workspace:*",
     "clsx": "^2.1.1",
     "lucide-react": "^1.25.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "tailwind-merge": "^3.6.0"
+    "tailwind-merge": "^3.6.0",
+    "ws": "^8.21.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.2.0",
     "autoprefixer": "^10.5.4",
     "electron": "^30.0.0",
