@@ -3,6 +3,14 @@ import { createLogger } from '@obs-remote/logger';
 import { AppError } from '@obs-remote/shared-types';
 import crypto from 'crypto';
 
+import fastifyCookie from '@fastify/cookie';
+import fastifyCors from '@fastify/cors';
+import fastifyJwt from '@fastify/jwt';
+import authRoutes from './routes/auth.js';
+import apiRoutes from './routes/api.js';
+import { initDb } from './db.js';
+import { initRedis } from './redis.js';
+
 export async function buildApp(): Promise<any> {
   const logger = createLogger({
     env: (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development',
@@ -12,6 +20,21 @@ export async function buildApp(): Promise<any> {
   const app = fastify({
     logger,
     genReqId: () => crypto.randomUUID(),
+  });
+
+  // Init DB and Redis
+  initDb(process.env.DATABASE_URL!);
+  initRedis(process.env.REDIS_URL!);
+
+  await app.register(fastifyCors, {
+    origin: ['http://localhost:3001', 'http://localhost:5173'], // Frontend & Electron dev server
+    credentials: true,
+  });
+
+  await app.register(fastifyCookie);
+  
+  await app.register(fastifyJwt, {
+    secret: process.env.JWT_SECRET!,
   });
 
   app.setErrorHandler((error, request, reply) => {
@@ -25,10 +48,12 @@ export async function buildApp(): Promise<any> {
     }
   });
 
-  // Health route
   app.get('/health', async (_request, _reply) => {
     return { status: 'ok', timestamp: new Date().toISOString() };
   });
+
+  await app.register(authRoutes);
+  await app.register(apiRoutes);
 
   return app;
 }

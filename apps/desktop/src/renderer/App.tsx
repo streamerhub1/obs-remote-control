@@ -17,6 +17,49 @@ function App() {
     }
   };
 
+  const [isLoggingIn, setIsLoggingIn] = React.useState(false);
+  const [token, setToken] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!window.electron?.auth) return;
+
+    const cleanup = window.electron.auth.onCallback(async (code) => {
+      try {
+        setIsLoggingIn(true);
+        const publicKey = await window.electron.auth.getKeys();
+        
+        // Use a backend URL config in a real app
+        const response = await fetch('http://localhost:3000/api/auth/desktop/exchange', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code,
+            publicKey,
+            deviceName: window.electron.platform + ' Device',
+            platform: window.electron.platform,
+            appVersion: window.electron.appVersion,
+          })
+        });
+
+        if (!response.ok) throw new Error('Failed to exchange code');
+        const data = await response.json();
+        
+        await window.electron.auth.storeRefreshToken(data.refreshToken);
+        setToken(data.accessToken);
+      } catch (err) {
+        console.error('Login error:', err);
+      } finally {
+        setIsLoggingIn(false);
+      }
+    });
+
+    return cleanup;
+  }, []);
+
+  const handleTwitchLogin = () => {
+    window.electron?.auth?.login();
+  };
+
   return (
     <div className="flex h-screen w-screen bg-[#0A0A0A] text-white font-sans overflow-hidden">
       {/* Sidebar Navigation */}
@@ -26,8 +69,10 @@ function App() {
             OBS Remote Control
           </h1>
           <div className="flex items-center gap-2 mt-2">
-            <span className="flex h-2 w-2 rounded-full bg-red-500"></span>
-            <span className="text-xs text-gray-400 font-medium tracking-wide uppercase">Не подключено</span>
+            <span className={cn("flex h-2 w-2 rounded-full", token ? "bg-green-500" : "bg-red-500")}></span>
+            <span className="text-xs text-gray-400 font-medium tracking-wide uppercase">
+              {token ? 'Подключено' : 'Не подключено'}
+            </span>
           </div>
         </div>
         
@@ -70,12 +115,19 @@ function App() {
                   Для работы P2P-подключений и выдачи прав модераторам необходима авторизация через ваш Twitch-аккаунт.
                 </p>
               </div>
-              <button 
-                disabled
-                className="mt-6 w-full py-2.5 px-4 bg-purple-600/50 text-purple-200/50 rounded-lg font-medium cursor-not-allowed border border-purple-500/20 transition-all"
-              >
-                Будет подключено на следующем этапе
-              </button>
+              {token ? (
+                <div className="mt-6 w-full py-2.5 px-4 bg-green-500/10 text-green-400 rounded-lg font-medium border border-green-500/20 text-center">
+                  Авторизован
+                </div>
+              ) : (
+                <button 
+                  onClick={handleTwitchLogin}
+                  disabled={isLoggingIn}
+                  className="mt-6 w-full py-2.5 px-4 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-medium border border-purple-500/50 transition-all disabled:opacity-50"
+                >
+                  {isLoggingIn ? 'Авторизация...' : 'Войти через Twitch'}
+                </button>
+              )}
             </div>
 
             {/* Status Cards */}

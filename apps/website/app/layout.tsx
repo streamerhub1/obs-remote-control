@@ -1,3 +1,5 @@
+import './globals.css';
+
 export const metadata = {
   title: 'OBS Remote Control',
   description: 'Remote control for OBS Studio',

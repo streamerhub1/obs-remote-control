@@ -1,5 +1,6 @@
 import { app, BrowserWindow, shell, ipcMain } from 'electron';
-import { join } from 'path';
+import path, { join } from 'path';
+import { setupAuthHandlers, handleDeepLink } from './auth';
 
 // Prevent multiple instances
 const gotTheLock = app.requestSingleInstanceLock();
@@ -72,6 +73,15 @@ if (!gotTheLock) {
   }
 
   app.whenReady().then(() => {
+    // Register Deep Link
+    if (process.defaultApp) {
+      if (process.argv.length >= 2) {
+        app.setAsDefaultProtocolClient('obsremote', process.execPath, [path.resolve(process.argv[1])])
+      }
+    } else {
+      app.setAsDefaultProtocolClient('obsremote')
+    }
+
     // Register IPC handlers
     ipcMain.handle('shell:openExternal', (event, url: string) => {
       const allowlist = ['github.com', 'twitch.tv'];
@@ -90,6 +100,10 @@ if (!gotTheLock) {
     });
 
     createWindow();
+    
+    if (mainWindow) {
+      setupAuthHandlers(mainWindow);
+    }
 
     app.on('activate', function () {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -102,11 +116,15 @@ if (!gotTheLock) {
     }
   });
 
-  app.on('second-instance', () => {
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
     // Someone tried to run a second instance, we should focus our window.
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
+    }
+    const url = commandLine.pop();
+    if (url && url.startsWith('obsremote://') && mainWindow) {
+      handleDeepLink(url, mainWindow);
     }
   });
 }
