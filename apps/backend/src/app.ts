@@ -1,11 +1,11 @@
-import fastify, { FastifyInstance } from 'fastify';
+import fastify from 'fastify';
 import { createLogger } from '@obs-remote/logger';
 import { AppError } from '@obs-remote/shared-types';
 import crypto from 'crypto';
 
 export async function buildApp(): Promise<any> {
   const logger = createLogger({
-    env: (process.env.NODE_ENV as any) || 'development',
+    env: (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development',
     name: 'backend',
   });
 

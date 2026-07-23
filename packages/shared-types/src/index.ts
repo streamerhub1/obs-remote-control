@@ -2,9 +2,9 @@ export type RequestId = string;
 
 export class AppError extends Error {
   public code: string;
-  public details?: any;
+  public details?: unknown;
 
-  constructor(code: string, message: string, details?: any) {
+  constructor(code: string, message: string, details?: unknown) {
     super(message);
     this.name = 'AppError';
     this.code = code;

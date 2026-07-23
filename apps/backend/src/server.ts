@@ -2,7 +2,7 @@ import { buildApp } from './app.js';
 import { parseEnv, envSchemas } from '@obs-remote/env';
 
 async function start() {
-  const env = parseEnv(envSchemas.backend, process.env as any);
+  const env = parseEnv(envSchemas.backend, process.env as Record<string, string | undefined>);
   const app = await buildApp();
 
   // Graceful shutdown

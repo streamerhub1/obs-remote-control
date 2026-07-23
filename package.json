@@ -10,7 +10,12 @@
     "test": "turbo run test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "dev": "turbo run dev"
+    "dev": "turbo run dev",
+    "dev:website": "pnpm --filter @obs-remote/website dev",
+    "dev:desktop": "pnpm --filter @obs-remote/desktop dev",
+    "build:website": "pnpm --filter @obs-remote/website build",
+    "build:desktop": "pnpm --filter @obs-remote/desktop build",
+    "dist:desktop:win": "pnpm --filter @obs-remote/desktop dist:win"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
