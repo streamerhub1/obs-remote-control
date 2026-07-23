@@ -1,5 +1,5 @@
 appId: com.streamerhub.obsremote
-productName: Streamly
+productName: StreamerHub
 directories:
   buildResources: build
   output: release

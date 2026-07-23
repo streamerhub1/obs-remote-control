@@ -1,5 +1,18 @@
 import React from 'react';
-import { Home, Shield, Activity, Tv, MonitorPlay, Globe, Rss, Users, Calendar, Bell, User, Settings } from 'lucide-react';
+import {
+  Home as HomeIcon,
+  Shield,
+  Activity,
+  Tv,
+  MonitorPlay,
+  Globe,
+  Rss,
+  Users,
+  Calendar as CalendarIcon,
+  Bell,
+  User,
+  Settings as SettingsIcon,
+} from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { ObsDashboard } from './ObsDashboard';
@@ -186,16 +199,16 @@ export default function App() {
       <aside className="w-64 bg-[#111111] border-r border-gray-800 flex flex-col">
         <div className="p-6">
           <h1 className="text-xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
-            Streamly
+            StreamerHub
           </h1>
         </div>
         
         <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto custom-scrollbar">
           <div className="text-xs font-semibold text-gray-500 mb-2 mt-4 px-3 uppercase tracking-wider">Социальное</div>
-          <NavItem icon={<Home size={20} />} label="Главная" active={currentRoute === 'home'} onClick={() => setCurrentRoute('home')} />
+          <NavItem icon={<HomeIcon size={20} />} label="Главная" active={currentRoute === 'home'} onClick={() => setCurrentRoute('home')} />
           <NavItem icon={<Rss size={20} />} label="Лента" active={currentRoute === 'feed'} onClick={() => setCurrentRoute('feed')} />
           <NavItem icon={<Users size={20} />} label="Коллаборации" active={currentRoute === 'collabs'} onClick={() => setCurrentRoute('collabs')} />
-          <NavItem icon={<Calendar size={20} />} label="Календарь" active={currentRoute === 'calendar'} onClick={() => setCurrentRoute('calendar')} />
+          <NavItem icon={<CalendarIcon size={20} />} label="Календарь" active={currentRoute === 'calendar'} onClick={() => setCurrentRoute('calendar')} />
 
           <div className="text-xs font-semibold text-gray-500 mb-2 mt-6 px-3 uppercase tracking-wider">Студия</div>
           <NavItem icon={<MonitorPlay size={20} />} label="Мой OBS" active={currentRoute === 'my_obs'} onClick={() => setCurrentRoute('my_obs')} />
@@ -205,7 +218,7 @@ export default function App() {
           <div className="text-xs font-semibold text-gray-500 mb-2 mt-6 px-3 uppercase tracking-wider">Аккаунт</div>
           <NavItem icon={<Bell size={20} />} label="Уведомления" active={currentRoute === 'notifications'} onClick={() => setCurrentRoute('notifications')} />
           <NavItem icon={<User size={20} />} label="Профиль" active={currentRoute === 'profile'} onClick={() => setCurrentRoute('profile')} />
-          <NavItem icon={<Settings size={20} />} label="Настройки" active={currentRoute === 'settings'} onClick={() => setCurrentRoute('settings')} />
+          <NavItem icon={<SettingsIcon size={20} />} label="Настройки" active={currentRoute === 'settings'} onClick={() => setCurrentRoute('settings')} />
         </nav>
 
         <div className="p-4 border-t border-gray-800 text-xs text-gray-500">
@@ -240,7 +253,7 @@ export default function App() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-[#161616] border border-gray-800 rounded-xl p-6 shadow-lg">
                   <h3 className="text-lg font-medium flex items-center gap-2 mb-2"><Tv size={20} className="text-purple-400"/> Аккаунт Twitch</h3>
-                  <p className="text-gray-400 text-sm mb-4">Авторизация для P2P-координатора.</p>
+                  <p className="text-gray-400 text-sm mb-4">Авторизация для стриминга и управления OBS.</p>
                   
                   {authLoading ? (
                     <div className="animate-pulse h-10 bg-gray-800 rounded-lg"></div>

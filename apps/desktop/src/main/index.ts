@@ -19,12 +19,13 @@ if (!gotTheLock) {
 
   function createWindow() {
     mainWindow = new BrowserWindow({
-      width: 1000,
-      height: 700,
-      minWidth: 800,
+      width: 1280,
+      height: 800,
+      minWidth: 900,
       minHeight: 600,
       show: false,
       autoHideMenuBar: true,
+      title: 'StreamerHub',
       webPreferences: {
         preload: join(__dirname, '../preload/index.cjs'),
         sandbox: true,
