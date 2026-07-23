@@ -1,112 +1,90 @@
 import Link from 'next/link';
-import { Tv, Shield, Zap, ArrowRight, Play } from 'lucide-react';
+import { Button } from '@obs-remote/ui';
+import { ArrowRight, Globe, Users, Tv } from 'lucide-react';
 
-export default function LandingPage() {
+export default function Home() {
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white font-sans selection:bg-purple-500/30">
-      <nav className="flex justify-between items-center px-8 py-6 max-w-7xl mx-auto border-b border-white/5">
-        <div className="text-xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-purple-600 bg-clip-text text-transparent">
-          StreamerHub
-        </div>
-        <div className="flex gap-6 items-center">
-          <Link href="#features" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Возможности</Link>
-          <Link href="#security" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Безопасность</Link>
-          <a href="http://localhost:3000/auth/twitch/login" className="text-sm font-semibold bg-white text-black px-5 py-2.5 rounded-full hover:bg-gray-200 transition-all transform hover:scale-105">
-            Войти через Twitch
-          </a>
+    <div className="min-h-screen bg-[#0A0A0A] text-white selection:bg-blue-500/30">
+      <nav className="border-b border-gray-800 bg-[#0A0A0A]/80 backdrop-blur-md sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-bold">
+              SH
+            </div>
+            <span className="font-semibold text-lg tracking-tight">StreamerHub</span>
+          </div>
+          <div className="flex items-center gap-6 text-sm font-medium text-gray-300">
+            <Link href="/collabs" className="hover:text-white transition-colors">Коллаборации</Link>
+            <Link href="/features" className="hover:text-white transition-colors">Возможности</Link>
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-500 text-white">Скачать для Desktop</Button>
+          </div>
         </div>
       </nav>
 
       <main>
         {/* Hero Section */}
-        <section className="relative pt-32 pb-40 overflow-hidden">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-purple-600/20 blur-[120px] rounded-full pointer-events-none" />
+        <section className="relative pt-32 pb-20 px-6 overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-[#0A0A0A] to-[#0A0A0A] -z-10" />
           
-          <div className="max-w-7xl mx-auto px-8 relative z-10 flex flex-col items-center text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-purple-300 mb-8 backdrop-blur-sm">
-              <span className="flex w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
-              Версия 1.0 уже доступна
-            </div>
-            
-            <h1 className="text-6xl md:text-8xl font-extrabold tracking-tight mb-8 leading-[1.1]">
-              Управляй стримом <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600">
-                из любой точки
-              </span>
+          <div className="max-w-4xl mx-auto text-center space-y-8">
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-500">
+              Единое пространство <br /> для стримеров
             </h1>
-            
-            <p className="text-xl text-gray-400 max-w-2xl mb-12">
-              Безопасное удаленное управление OBS Studio для вас и ваших модераторов. 
-              Работает через зашифрованную P2P сеть без проброса портов.
+            <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
+              Находите партнеров для коллабораций, обменивайтесь аудиторией, и управляйте своим OBS из любой точки мира вместе с модераторами.
             </p>
-            
-            <div className="flex gap-4">
-              <a href="http://localhost:3000/auth/twitch/login" className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-8 py-4 rounded-full font-semibold text-lg transition-all hover:scale-105 hover:shadow-[0_0_40px_-10px_rgba(147,51,234,0.5)]">
-                <Tv size={20} />
-                Начать работу
-              </a>
-              <button className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white px-8 py-4 rounded-full font-semibold text-lg transition-all">
-                <Play size={20} />
-                Смотреть демо
-              </button>
+            <div className="flex items-center justify-center gap-4 pt-4">
+              <Button size="lg" className="bg-white text-black hover:bg-gray-200">
+                Создать профиль
+              </Button>
+              <Button size="lg" variant="outline" className="border-gray-700 text-gray-300 hover:bg-gray-800">
+                Искать коллаборации
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
             </div>
           </div>
         </section>
 
-        {/* Features Grid */}
-        <section id="features" className="py-32 bg-[#0d0d0d] border-y border-white/5">
-          <div className="max-w-7xl mx-auto px-8">
-            <h2 className="text-3xl md:text-5xl font-bold text-center mb-20">Всё необходимое для <span className="text-purple-400">идеального стрима</span></h2>
-            
-            <div className="grid md:grid-cols-3 gap-8">
-              <div className="bg-[#111] p-8 rounded-3xl border border-white/5 hover:border-purple-500/30 transition-colors group">
-                <div className="bg-purple-500/10 w-14 h-14 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <Tv className="text-purple-400" size={28} />
+        {/* Features Section */}
+        <section className="py-24 px-6 border-t border-gray-800/50 bg-[#111111]/30">
+          <div className="max-w-7xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+                  <Users className="w-6 h-6 text-blue-400" />
                 </div>
-                <h3 className="text-xl font-bold mb-3">Десктопное приложение</h3>
+                <h3 className="text-xl font-semibold">Социальная сеть</h3>
                 <p className="text-gray-400 leading-relaxed">
-                  Легкий клиент на базе Electron, который автоматически подключается к вашему OBS через WebSockets.
+                  Первая социальная сеть специально для стримеров. Лента новостей, профили, поиск партнеров по категориям и языкам.
                 </p>
               </div>
 
-              <div className="bg-[#111] p-8 rounded-3xl border border-white/5 hover:border-blue-500/30 transition-colors group">
-                <div className="bg-blue-500/10 w-14 h-14 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <Shield className="text-blue-400" size={28} />
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
+                  <Globe className="w-6 h-6 text-purple-400" />
                 </div>
-                <h3 className="text-xl font-bold mb-3">Делегирование прав</h3>
+                <h3 className="text-xl font-semibold">Биржа коллабораций</h3>
                 <p className="text-gray-400 leading-relaxed">
-                  Выдавайте доступ модераторам к определенным сценам или источникам без передачи паролей.
+                  Создавайте открытые коллаборации, подавайте заявки и растите вместе. Удобный календарь интегрирован в приложение.
                 </p>
               </div>
 
-              <div className="bg-[#111] p-8 rounded-3xl border border-white/5 hover:border-green-500/30 transition-colors group">
-                <div className="bg-green-500/10 w-14 h-14 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <Zap className="text-green-400" size={28} />
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center border border-green-500/20">
+                  <Tv className="w-6 h-6 text-green-400" />
                 </div>
-                <h3 className="text-xl font-bold mb-3">Мгновенный отклик</h3>
+                <h3 className="text-xl font-semibold">Удаленный OBS</h3>
                 <p className="text-gray-400 leading-relaxed">
-                  Прямое P2P соединение обеспечивает минимальную задержку при переключении сцен и управлении звуком.
+                  Дайте модераторам безопасный доступ к вашему OBS через WebRTC. Переключение сцен, звука и управление стримом без передачи паролей.
                 </p>
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* CTA Section */}
-        <section className="py-32 relative overflow-hidden">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[500px] bg-blue-600/10 blur-[100px] rounded-full pointer-events-none" />
-          <div className="max-w-4xl mx-auto px-8 text-center relative z-10">
-            <h2 className="text-4xl md:text-6xl font-bold mb-8">Готовы прокачать свой стрим?</h2>
-            <p className="text-xl text-gray-400 mb-10">Присоединяйтесь к тысячам стримеров, которые уже автоматизировали свою работу.</p>
-            <a href="http://localhost:3000/auth/twitch/login" className="inline-flex items-center gap-2 bg-white text-black px-10 py-5 rounded-full font-bold text-lg hover:bg-gray-200 hover:scale-105 transition-all">
-              Начать бесплатно <ArrowRight size={20} />
-            </a>
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-white/10 py-12 text-center text-gray-500">
-        <p>© 2026 StreamerHub. В рамках проекта OBS Remote Control.</p>
+      <footer className="border-t border-gray-800 py-12 px-6 text-center text-gray-500">
+        <p>© 2026 StreamerHub. All rights reserved.</p>
       </footer>
     </div>
   );
