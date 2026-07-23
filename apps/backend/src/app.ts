@@ -11,6 +11,7 @@ import apiRoutes from './routes/api.js';
 import moderatorsRoutes from './routes/moderators.js';
 import signalingRoutes from './routes/signaling.js';
 import remoteSessionsRoutes from './routes/remoteSessions.js';
+import { relationshipsRoutes } from './routes/relationships.js';
 import fastifyWebsocket from '@fastify/websocket';
 import { initDb } from './db.js';
 import { initRedis } from './redis.js';
@@ -74,6 +75,7 @@ export async function buildApp(): Promise<any> {
   await app.register(apiRoutes, { prefix: '/api/v1' });
   await app.register(moderatorsRoutes, { prefix: '/api/v1' });
   await app.register(remoteSessionsRoutes, { prefix: '/api/v1' });
+  await app.register(relationshipsRoutes, { prefix: '/api/v1' });
   await app.register(signalingRoutes, { prefix: '/api/v1' });
 
   return app;

@@ -15,7 +15,7 @@
   "dependencies": {
     "@obs-remote/obs-adapter": "workspace:*",
     "@obs-remote/obs-contracts": "workspace:*",
-    "@obs-remote/p2p-protocol": "workspace:*",
+    "@obs-remote/remote-protocol": "workspace:*",
     "clsx": "^2.1.1",
     "jose": "^6.2.4",
     "lru-cache": "^11.5.2",

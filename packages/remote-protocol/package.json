@@ -1,5 +1,5 @@
 {
-  "name": "@obs-remote/p2p-protocol",
+  "name": "@obs-remote/remote-protocol",
   "version": "1.0.0",
   "type": "module",
   "main": "dist/index.js",

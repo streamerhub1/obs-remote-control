@@ -129,9 +129,9 @@ importers:
       '@obs-remote/obs-contracts':
         specifier: workspace:*
         version: link:../../packages/obs-contracts
-      '@obs-remote/p2p-protocol':
+      '@obs-remote/remote-protocol':
         specifier: workspace:*
-        version: link:../../packages/p2p-protocol
+        version: link:../../packages/remote-protocol
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -338,14 +338,11 @@ importers:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@20.19.43)(lightningcss@1.32.0)
 
-  packages/p2p-protocol:
+  packages/permissions:
     dependencies:
       '@obs-remote/obs-contracts':
         specifier: workspace:*
         version: link:../obs-contracts
-      '@obs-remote/permissions':
-        specifier: workspace:*
-        version: link:../permissions
       zod:
         specifier: ^3.22.4
         version: 3.25.76
@@ -357,11 +354,14 @@ importers:
         specifier: ^2.1.9
         version: 2.1.9(@types/node@20.19.43)(lightningcss@1.32.0)
 
-  packages/permissions:
+  packages/remote-protocol:
     dependencies:
       '@obs-remote/obs-contracts':
         specifier: workspace:*
         version: link:../obs-contracts
+      '@obs-remote/permissions':
+        specifier: workspace:*
+        version: link:../permissions
       zod:
         specifier: ^3.22.4
         version: 3.25.76

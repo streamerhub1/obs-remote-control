@@ -7,6 +7,8 @@ import {
   json,
   boolean,
   varchar,
+  integer,
+  jsonb,
 } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
@@ -24,9 +26,7 @@ export const users = pgTable('users', {
 });
 
 export const oauthAccounts = pgTable('oauth_accounts', {
-  userId: uuid('user_id')
-    .references(() => users.id, { onDelete: 'cascade' })
-    .notNull(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
   provider: text('provider').notNull(),
   providerAccountId: text('provider_account_id').notNull(),
   encryptedAccessToken: text('encrypted_access_token').notNull(),
@@ -41,9 +41,7 @@ export const oauthAccounts = pgTable('oauth_accounts', {
 
 export const devices = pgTable('devices', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id')
-    .references(() => users.id, { onDelete: 'cascade' })
-    .notNull(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
   name: text('name').notNull(),
   platform: text('platform').notNull(),
   publicKey: text('public_key').notNull(),
@@ -54,14 +52,11 @@ export const devices = pgTable('devices', {
 
 export const sessions = pgTable('sessions', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id')
-    .references(() => users.id, { onDelete: 'cascade' })
-    .notNull(),
-  deviceId: uuid('device_id')
-    .references(() => devices.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  deviceId: uuid('device_id').references(() => devices.id, { onDelete: 'cascade' }),
   tokenHash: text('token_hash').unique().notNull(),
-  familyId: uuid('family_id').notNull(), // all tokens in the same refresh chain
-  replacedBySessionId: uuid('replaced_by_session_id'), // detecting reuse
+  familyId: uuid('family_id').notNull(),
+  replacedBySessionId: uuid('replaced_by_session_id'),
   lastUsedAt: timestamp('last_used_at').defaultNow().notNull(),
   revokedAt: timestamp('revoked_at'),
   expiresAt: timestamp('expires_at').notNull(),
@@ -72,7 +67,7 @@ export const moderatorRelationships = pgTable('moderator_relationships', {
   id: uuid('id').defaultRandom().primaryKey(),
   streamerId: uuid('streamer_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
   moderatorId: uuid('moderator_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  status: varchar('status', { length: 20 }).default('pending').notNull(), // pending, active, paused, rejected, revoked
+  status: varchar('status', { length: 20 }).default('pending').notNull(),
   createdBy: uuid('created_by').references(() => users.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   acceptedAt: timestamp('accepted_at'),
@@ -106,8 +101,8 @@ export const remoteSessions = pgTable('remote_sessions', {
   streamerDeviceId: uuid('streamer_device_id').references(() => devices.id),
   moderatorDeviceId: uuid('moderator_device_id').references(() => devices.id),
   relationshipId: uuid('relationship_id').references(() => moderatorRelationships.id).notNull(),
-  status: varchar('status', { length: 20 }).default('creating').notNull(), // creating, signaling, connecting, active, reconnecting, closed, failed, revoked
-  transport: varchar('transport', { length: 20 }).default('unknown').notNull(), // direct, relay, unknown
+  status: varchar('status', { length: 20 }).default('creating').notNull(),
+  transport: varchar('transport', { length: 20 }).default('relay').notNull(),
   permissionsVersion: text('permissions_version').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   connectedAt: timestamp('connected_at'),
@@ -129,4 +124,156 @@ export const auditLogs = pgTable('audit_logs', {
   metadataJson: json('metadata_json'),
   requestId: text('request_id'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// --- SOCIAL NETWORK MODELS ---
+
+export const profiles = pgTable('profiles', {
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).primaryKey(),
+  bannerUrl: text('banner_url'),
+  bio: text('bio'),
+  languages: jsonb('languages').default([]).notNull(), // array of strings
+  categories: jsonb('categories').default([]).notNull(), // array of strings
+  socialLinks: jsonb('social_links').default([]).notNull(), // array of objects
+  collaborationAvailability: boolean('collaboration_availability').default(true).notNull(),
+  followersCount: integer('followers_count').default(0).notNull(),
+  followingCount: integer('following_count').default(0).notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const follows = pgTable('follows', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  followerId: uuid('follower_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  followingId: uuid('following_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    followerFollowingIdx: uniqueIndex('follower_following_idx').on(table.followerId, table.followingId),
+  };
+});
+
+export const posts = pgTable('posts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  authorId: uuid('author_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  content: text('content').notNull(),
+  mediaUrls: jsonb('media_urls').default([]).notNull(),
+  likesCount: integer('likes_count').default(0).notNull(),
+  commentsCount: integer('comments_count').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  deletedAt: timestamp('deleted_at'),
+});
+
+export const comments = pgTable('comments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  postId: uuid('post_id').references(() => posts.id, { onDelete: 'cascade' }).notNull(),
+  authorId: uuid('author_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  content: text('content').notNull(),
+  likesCount: integer('likes_count').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  deletedAt: timestamp('deleted_at'),
+});
+
+export const reactions = pgTable('reactions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  targetType: varchar('target_type', { length: 20 }).notNull(), // post, comment
+  targetId: uuid('target_id').notNull(),
+  reactionType: varchar('reaction_type', { length: 20 }).default('like').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    userReactionTargetIdx: uniqueIndex('user_reaction_target_idx').on(table.userId, table.targetType, table.targetId, table.reactionType),
+  };
+});
+
+export const notifications = pgTable('notifications', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  actorId: uuid('actor_id').references(() => users.id, { onDelete: 'cascade' }),
+  type: varchar('type', { length: 50 }).notNull(), // follow, like, comment, mention, collab_invite, session_request
+  targetType: varchar('target_type', { length: 50 }),
+  targetId: uuid('target_id'),
+  readAt: timestamp('read_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// --- COLLABORATIONS ---
+
+export const collaborations = pgTable('collaborations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ownerId: uuid('owner_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  category: text('category'),
+  language: text('language'),
+  startAt: timestamp('start_at').notNull(),
+  expectedDurationMinutes: integer('expected_duration_minutes').notNull(),
+  timezone: text('timezone').notNull(),
+  maximumParticipants: integer('maximum_participants').notNull(),
+  requirementsJson: jsonb('requirements_json').default({}).notNull(),
+  visibility: varchar('visibility', { length: 20 }).default('public').notNull(), // public, private, invite_only
+  status: varchar('status', { length: 20 }).default('open').notNull(), // open, closed, cancelled, completed
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const collaborationParticipants = pgTable('collaboration_participants', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  collaborationId: uuid('collaboration_id').references(() => collaborations.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  role: varchar('role', { length: 20 }).default('participant').notNull(), // owner, participant
+  joinedAt: timestamp('joined_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    collaborationUserIdx: uniqueIndex('collaboration_user_idx').on(table.collaborationId, table.userId),
+  };
+});
+
+export const collaborationApplications = pgTable('collaboration_applications', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  collaborationId: uuid('collaboration_id').references(() => collaborations.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  message: text('message'),
+  status: varchar('status', { length: 20 }).default('pending').notNull(), // pending, accepted, rejected
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    collabAppUserIdx: uniqueIndex('collab_app_user_idx').on(table.collaborationId, table.userId),
+  };
+});
+
+export const collaborationInvitations = pgTable('collaboration_invitations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  collaborationId: uuid('collaboration_id').references(() => collaborations.id, { onDelete: 'cascade' }).notNull(),
+  inviterId: uuid('inviter_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  inviteeId: uuid('invitee_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  status: varchar('status', { length: 20 }).default('pending').notNull(), // pending, accepted, declined
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    collabInviteUserIdx: uniqueIndex('collab_invite_user_idx').on(table.collaborationId, table.inviteeId),
+  };
+});
+
+// --- CALENDAR ---
+
+export const calendarEvents = pgTable('calendar_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ownerId: uuid('owner_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  startAt: timestamp('start_at').notNull(),
+  endAt: timestamp('end_at').notNull(),
+  timezone: text('timezone').notNull(),
+  recurrenceRule: text('recurrence_rule'), // optional RRULE string
+  status: varchar('status', { length: 20 }).default('scheduled').notNull(), // scheduled, cancelled, completed
+  visibility: varchar('visibility', { length: 20 }).default('private').notNull(), // private, public
+  sourceType: varchar('source_type', { length: 50 }).notNull(), // collaboration, stream, personalPlan, reminder
+  sourceId: uuid('source_id'), // e.g. collaboration ID
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

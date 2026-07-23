@@ -1,4 +1,4 @@
-import { P2PMessage, P2PMessageSchema, createP2PMessage, P2PPayload } from '@obs-remote/p2p-protocol';
+import { P2PMessage, P2PMessageSchema, createP2PMessage, P2PPayload } from '@obs-remote/remote-protocol';
 
 export class WebRTCManager {
   private pc: RTCPeerConnection | null = null;

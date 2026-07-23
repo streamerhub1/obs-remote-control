@@ -76,10 +76,13 @@ export function setupAuthHandlers(mainWindow: Electron.BrowserWindow) {
 
   ipcMain.handle('auth:getState', async () => {
     if (!accessToken) {
-      // try to restore from refresh token
       await refreshAccessToken();
     }
     return { authenticated: !!accessToken };
+  });
+
+  ipcMain.handle('auth:getToken', async () => {
+    return accessToken;
   });
 
   ipcMain.handle('auth:getProfile', async () => {

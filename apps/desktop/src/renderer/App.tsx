@@ -1,10 +1,11 @@
 import React from 'react';
-import { Home, Shield, Activity, Tv, MonitorPlay, Layers, Globe } from 'lucide-react';
+import { Home, Shield, Activity, Tv, MonitorPlay, Globe, Rss, Users, Calendar, Bell, User, Settings } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { ObsDashboard } from './ObsDashboard';
 import { LocalObsDataSource, RemoteObsDataSource } from './data-sources';
-import { WebRTCManager } from './webrtc';
+import { WebSocketRelayTransport } from './transports/WebSocketRelayTransport';
+import { Moderators } from './Moderators';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -35,7 +36,7 @@ export default function App() {
   const [obsPort, setObsPort] = React.useState(4455);
   const [obsPassword, setObsPassword] = React.useState('');
   
-  const [currentRoute, setCurrentRoute] = React.useState<'home'|'my_obs'|'remote_obs'>('my_obs');
+  const [currentRoute, setCurrentRoute] = React.useState<'home'|'feed'|'collabs'|'calendar'|'my_obs'|'remote_obs'|'moderators'|'notifications'|'profile'|'settings'>('my_obs');
 
   const [localObsDataSource] = React.useState(() => new LocalObsDataSource());
   const [remoteObsDataSource, setRemoteObsDataSource] = React.useState<RemoteObsDataSource | null>(null);
@@ -90,19 +91,48 @@ export default function App() {
       // 1. Authenticate with backend and verify token in Main
       const ctx = await window.desktop.remoteSessions.connect(sessionInfo.streamerAuthorization);
       
-      // 2. Start WebRTC
-      const webrtc = new WebRTCManager(
-        'streamer',
-        ctx.remoteSessionId,
-        ctx.peerDeviceId
-      );
-      
-      webrtc.connect();
+      // 2. Start WebSocket Relay Transport
+      const transport = new WebSocketRelayTransport('ws://localhost:3000/api/v1/signaling/session');
+      await transport.connect({
+        remoteSessionId: ctx.remoteSessionId,
+        role: 'streamer',
+        streamerAuthorization: sessionInfo.streamerAuthorization
+      });
 
       // Broadcast OBS snapshot when connected
       const cleanupObsEvent = window.desktop.obs.subscribe((event: any) => {
         if (event.state === 'connected' && event.snapshot) {
-           webrtc.broadcastEvent({ type: 'snapshot', payload: event.snapshot });
+           transport.send({ type: 'snapshot', payload: event.snapshot });
+        }
+      });
+
+      // Handle incoming commands from the transport and pass them to the secure Main guard
+      const unsubTransport = transport.subscribe(async (msg: any) => {
+        if (msg.type === 'command.request') {
+          try {
+            const result = await window.desktop.remoteSessions.executeCommand(ctx.remoteSessionId, {
+              command: msg.payload.command.commandName,
+              args: msg.payload.command.commandData,
+              seq: 0 // Mock sequence for now
+            });
+            transport.send({
+              type: 'command.response',
+              payload: {
+                commandId: msg.payload.commandId,
+                status: result.status,
+                data: result.data,
+              }
+            });
+          } catch (e: any) {
+             transport.send({
+              type: 'command.response',
+              payload: {
+                commandId: msg.payload.commandId,
+                status: 'error',
+                error: e.message,
+              }
+            });
+          }
         }
       });
 
@@ -122,23 +152,22 @@ export default function App() {
     await window.desktop.obs.connect({ host: obsHost, port: obsPort, password: obsPassword });
   };
 
-  const startRemoteSession = async () => {
-    // In a real app, this calls POST /api/v1/remote-sessions with the relationship ID
-    // For now we will mock the API call assuming standard local dev
-    // but actually we need the user to input the token if we don't have the relationship ID here
-    const token = prompt("Enter RemoteSessionAuthorization Token from Backend:");
+  const startRemoteSession = async (directToken?: string) => {
+    // In a real app, this is called from the Moderators UI with a token
+    const token = directToken || prompt("Enter RemoteSessionAuthorization Token from Backend:");
     if (!token) return;
     
     try {
       const ctx = await window.desktop.remoteSessions.connect(token);
       
-      const webrtc = new WebRTCManager(
-        'moderator',
-        ctx.remoteSessionId,
-        ctx.peerDeviceId
-      );
-      webrtc.connect();
-      setRemoteObsDataSource(new RemoteObsDataSource(webrtc));
+      const transport = new WebSocketRelayTransport('ws://localhost:3000/api/v1/signaling/session');
+      await transport.connect({
+        remoteSessionId: ctx.remoteSessionId,
+        role: 'moderator',
+        moderatorAuthorization: token
+      });
+      
+      setRemoteObsDataSource(new RemoteObsDataSource(transport));
       setCurrentRoute('remote_obs');
     } catch (e: any) {
       alert('Failed to connect to session: ' + e.message);
@@ -154,11 +183,22 @@ export default function App() {
           </h1>
         </div>
         
-        <nav className="flex-1 px-4 space-y-2 mt-4">
+        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto custom-scrollbar">
+          <div className="text-xs font-semibold text-gray-500 mb-2 mt-4 px-3 uppercase tracking-wider">Социальное</div>
           <NavItem icon={<Home size={20} />} label="Главная" active={currentRoute === 'home'} onClick={() => setCurrentRoute('home')} />
+          <NavItem icon={<Rss size={20} />} label="Лента" active={currentRoute === 'feed'} onClick={() => setCurrentRoute('feed')} />
+          <NavItem icon={<Users size={20} />} label="Коллаборации" active={currentRoute === 'collabs'} onClick={() => setCurrentRoute('collabs')} />
+          <NavItem icon={<Calendar size={20} />} label="Календарь" active={currentRoute === 'calendar'} onClick={() => setCurrentRoute('calendar')} />
+
+          <div className="text-xs font-semibold text-gray-500 mb-2 mt-6 px-3 uppercase tracking-wider">Студия</div>
           <NavItem icon={<MonitorPlay size={20} />} label="Мой OBS" active={currentRoute === 'my_obs'} onClick={() => setCurrentRoute('my_obs')} />
-          <NavItem icon={<Globe size={20} />} label="Удаленный OBS" active={currentRoute === 'remote_obs'} onClick={() => setCurrentRoute('remote_obs')} />
-          <NavItem icon={<Shield size={20} />} label="Доступ" active={false} onClick={() => {}} />
+          <NavItem icon={<Globe size={20} />} label="Доступные OBS" active={currentRoute === 'remote_obs'} onClick={() => setCurrentRoute('remote_obs')} />
+          <NavItem icon={<Shield size={20} />} label="Модераторы" active={currentRoute === 'moderators'} onClick={() => setCurrentRoute('moderators')} />
+          
+          <div className="text-xs font-semibold text-gray-500 mb-2 mt-6 px-3 uppercase tracking-wider">Аккаунт</div>
+          <NavItem icon={<Bell size={20} />} label="Уведомления" active={currentRoute === 'notifications'} onClick={() => setCurrentRoute('notifications')} />
+          <NavItem icon={<User size={20} />} label="Профиль" active={currentRoute === 'profile'} onClick={() => setCurrentRoute('profile')} />
+          <NavItem icon={<Settings size={20} />} label="Настройки" active={currentRoute === 'settings'} onClick={() => setCurrentRoute('settings')} />
         </nav>
 
         <div className="p-4 border-t border-gray-800 text-xs text-gray-500">
@@ -240,14 +280,14 @@ export default function App() {
             <>
               <header>
                 <h2 className="text-3xl font-semibold text-gray-100">Удаленный OBS</h2>
-                <p className="text-gray-400 mt-2">Управление OBS стримера через P2P соединение.</p>
+                <p className="text-gray-400 mt-2">Управление OBS стримера через WebSocket Relay.</p>
               </header>
 
               {!remoteObsDataSource ? (
                 <div className="bg-[#161616] border border-gray-800 rounded-xl p-6 shadow-lg text-center">
                    <p className="text-gray-400 mb-4">Вы не подключены к удаленному сеансу.</p>
-                   <button onClick={startRemoteSession} className="py-2 px-6 bg-blue-600 hover:bg-blue-500 rounded-lg text-white font-medium transition-colors border border-blue-500/50">
-                     Установить P2P Сессию
+                   <button onClick={() => startRemoteSession()} className="py-2 px-6 bg-blue-600 hover:bg-blue-500 rounded-lg text-white font-medium transition-colors border border-blue-500/50">
+                     Подключиться по токену (Dev)
                    </button>
                 </div>
               ) : (
@@ -262,6 +302,8 @@ export default function App() {
                 <p className="text-gray-400">Добро пожаловать в OBS Remote Control.</p>
              </div>
           )}
+
+          {currentRoute === 'moderators' && <Moderators onConnectRemote={startRemoteSession} />}
 
         </div>
       </main>

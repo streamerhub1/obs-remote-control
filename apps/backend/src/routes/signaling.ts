@@ -35,8 +35,8 @@ export default async function signalingRoutes(app: FastifyInstance) {
   const sessionRooms = new Map<string, Set<SessionClient>>(); // Keyed by remoteSessionId
 
   // Setup Redis PubSub for cross-node notifications
-  const pubSubClient = getRedis().duplicate();
   pubSubClient.subscribe('signaling:global:notifications');
+  pubSubClient.subscribe('signaling:session:messages');
   pubSubClient.on('message', (channel, message) => {
     if (channel === 'signaling:global:notifications') {
       try {
@@ -48,9 +48,19 @@ export default async function signalingRoutes(app: FastifyInstance) {
             payload: data.payload
           }));
         }
-      } catch (err) {
-        app.log.error(err, 'Failed to process pubsub notification');
-      }
+      } catch (err) {}
+    } else if (channel === 'signaling:session:messages') {
+      try {
+        const data = JSON.parse(message);
+        const room = sessionRooms.get(data.remoteSessionId);
+        if (room) {
+          for (const client of room) {
+             if (client.deviceId !== data.senderDeviceId) {
+               client.socket.send(JSON.stringify({ type: data.type, payload: data.payload }));
+             }
+          }
+        }
+      } catch (err) {}
     }
   });
 
@@ -185,15 +195,14 @@ export default async function signalingRoutes(app: FastifyInstance) {
         return;
       }
 
-      const room = sessionRooms.get(clientCtx.remoteSessionId);
-      if (room) {
-        for (const client of room) {
-          if (client !== clientCtx) {
-            app.log.info({ type: parsed.type, fromRole: clientCtx.role, session: clientCtx.remoteSessionId }, 'Forwarding signal');
-            client.socket.send(JSON.stringify({ type: parsed.type, payload: parsed.payload }));
-          }
-        }
-      }
+      app.log.info({ type: parsed.type, fromRole: clientCtx.role, session: clientCtx.remoteSessionId }, 'Forwarding message to Redis');
+      // Broadcast via Redis
+      getRedis().publish('signaling:session:messages', JSON.stringify({
+         remoteSessionId: clientCtx.remoteSessionId,
+         senderDeviceId: clientCtx.deviceId,
+         type: parsed.type,
+         payload: parsed.payload
+      }));
     });
 
     socket.on('close', () => {

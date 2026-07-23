@@ -1,5 +1,5 @@
-import { WebRTCManager } from './webrtc';
 import { ObsCommand, ObsSnapshot } from '@obs-remote/obs-contracts';
+import { RemoteTransport } from './transports/RemoteTransport';
 
 export interface ObsDataSource {
   execute(command: ObsCommand): void;
@@ -33,38 +33,48 @@ export class LocalObsDataSource implements ObsDataSource {
 
 export class RemoteObsDataSource implements ObsDataSource {
   type = 'remote' as const;
-  private webrtc: WebRTCManager;
+  private transport: RemoteTransport;
+  private unsubTransport: (() => void) | null = null;
+  private snapshotCallback: ((snapshot: ObsSnapshot) => void) | null = null;
 
-  constructor(webrtc: WebRTCManager) {
-    this.webrtc = webrtc;
+  constructor(transport: RemoteTransport) {
+    this.transport = transport;
   }
 
   execute(command: ObsCommand) {
-    this.webrtc.sendP2PMessage('command.request', {
-      commandId: crypto.randomUUID(),
-      command
+    this.transport.send({
+      type: 'command.request',
+      payload: {
+        commandId: crypto.randomUUID(),
+        command
+      }
     });
   }
 
   subscribe(callback: (event: any) => void) {
-    const handleEvent = (e: any) => callback({ state: 'connected', event: e.detail });
-    const handleSnapshot = (e: any) => callback({ state: 'connected', snapshot: e.detail });
-    
-    window.addEventListener('obs:remoteEvent', handleEvent);
-    window.addEventListener('obs:remoteSnapshot', handleSnapshot);
+    if (!this.unsubTransport) {
+      this.unsubTransport = this.transport.subscribe((msg: any) => {
+        if (msg.type === 'snapshot') {
+          callback({ state: 'connected', snapshot: msg.payload });
+        } else if (msg.type === 'event') {
+          callback({ state: 'connected', event: msg.payload });
+        }
+      });
+    }
 
     return () => {
-      window.removeEventListener('obs:remoteEvent', handleEvent);
-      window.removeEventListener('obs:remoteSnapshot', handleSnapshot);
+      if (this.unsubTransport) {
+        this.unsubTransport();
+        this.unsubTransport = null;
+      }
     };
   }
 
   async getSnapshot(): Promise<ObsSnapshot> {
-    // Usually snapshot is received via event for remote. We can return an empty or cached one.
-    return {} as any; // Better to wait for snapshot event
+    return {} as any;
   }
 
   disconnect() {
-    this.webrtc.destroy();
+    this.transport.disconnect();
   }
 }

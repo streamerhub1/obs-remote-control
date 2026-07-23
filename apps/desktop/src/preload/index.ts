@@ -10,6 +10,7 @@ const API = {
     login: () => ipcRenderer.invoke('auth:login'),
     logout: () => ipcRenderer.invoke('auth:logout'),
     getState: () => ipcRenderer.invoke('auth:getState'),
+    getToken: () => ipcRenderer.invoke('auth:getToken'),
     getProfile: () => ipcRenderer.invoke('auth:getProfile'),
     subscribe: (callback: (state: unknown) => void) => {
       ipcRenderer.on('auth:state-changed', (_, state) => callback(state));
