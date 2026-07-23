@@ -11,7 +11,7 @@ export function setupSignaling() {
     connectSignaling();
   });
 
-  ipcMain.on('signaling:send', (_, msg: any) => {
+  ipcMain.on('signaling:send', (_, msg: unknown) => {
     if (ws?.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(msg));
     }
@@ -32,18 +32,34 @@ export function connectSignaling() {
   const token = getAccessToken();
   if (!token) return;
 
-  const url = `ws://localhost:3000/api/v1/signaling?token=${token}`;
+  // Don't pass token in URL
+  const url = `ws://localhost:3000/api/v1/signaling`;
   ws = new WebSocket(url);
 
   ws.on('open', () => {
     console.log('Signaling WebSocket connected');
     getMainWindow()?.webContents.send('signaling:connected');
+    
+    // Send authenticate message
+    ws?.send(JSON.stringify({
+      type: 'signaling.authenticate',
+      appToken: token,
+      // authorizationToken will be handled by the renderer which creates specific sessions
+      // Wait, if renderer initiates, how does renderer authenticate?
+      // Actually, renderer calls `signaling.send` for `signaling.authenticate` right?
+      // Yes, renderer can send `signaling.authenticate` directly.
+      // But the main process also connects to the WebSocket globally?
+      // No, we can just send the appToken here for presence.
+    }));
   });
 
   ws.on('message', (data) => {
     try {
       const msg = JSON.parse(data.toString());
-      if (msg.type === 'pong') return;
+      if (msg.type === 'heartbeat.ping') {
+         ws?.send(JSON.stringify({ type: 'heartbeat.pong', timestamp: Date.now() }));
+         return;
+      }
       getMainWindow()?.webContents.send('signaling:message', msg);
     } catch(e) {}
   });

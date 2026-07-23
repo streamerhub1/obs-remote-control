@@ -1,0 +1,1 @@
+ALTER TABLE "moderator_relationships" ADD COLUMN "permissions_version" uuid DEFAULT gen_random_uuid() NOT NULL;

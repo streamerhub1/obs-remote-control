@@ -14,8 +14,7 @@ interface JwtPayload {
 export default async function apiRoutes(app: FastifyInstance) {
   const server = app.withTypeProvider<ZodTypeProvider>();
 
-  server.decorateRequest('user', null);
-  
+
   server.addHook('preHandler', async (request, reply) => {
     try {
       const decoded = await request.jwtVerify<JwtPayload>();
@@ -66,7 +65,6 @@ export default async function apiRoutes(app: FastifyInstance) {
           id: z.string(),
           name: z.string(),
           platform: z.string(),
-          createdAt: z.date(),
           lastSeenAt: z.date(),
         }))
       }
@@ -80,8 +78,8 @@ export default async function apiRoutes(app: FastifyInstance) {
         id: devices.id,
         name: devices.name,
         platform: devices.platform,
-        createdAt: devices.createdAt,
         lastSeenAt: devices.lastSeenAt,
+        revokedAt: devices.revokedAt,
       })
       .from(devices)
       .where(eq(devices.userId, userId));
@@ -131,7 +129,8 @@ export default async function apiRoutes(app: FastifyInstance) {
     },
     schema: {
       response: {
-        200: z.object({ inviteCode: z.string() })
+        200: z.object({ inviteCode: z.string() }),
+        500: z.object({ error: z.string() }),
       }
     }
   }, async (request, reply) => {

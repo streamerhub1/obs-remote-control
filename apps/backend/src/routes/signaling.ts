@@ -1,113 +1,220 @@
 import { FastifyInstance } from 'fastify';
 import { getRedis } from '../redis.js';
+import { z } from 'zod';
 import { getDb } from '../db.js';
-import { moderatorRelationships, remoteSessions } from '@obs-remote/database';
-import { eq, and, or } from 'drizzle-orm';
-import crypto from 'crypto';
+import { remoteSessions, devices, moderatorRelationships } from '@obs-remote/database';
+import { eq, and } from 'drizzle-orm';
+import WebSocket from 'ws';
 
-interface JwtPayload {
-  sub: string;
-  deviceId?: string;
+const MAX_MESSAGE_SIZE = 64 * 1024; // 64KB
+const HEARTBEAT_INTERVAL = 15000;
+const PRESENCE_TTL = 45;
+
+const AuthenticateMessageSchema = z.object({
+  type: z.literal('signaling.authenticate'),
+  appToken: z.string(),
+  authorizationToken: z.string().optional(),  // Streamer and moderator both need to connect to the session room. 
+});
+
+const SignalMessageSchema = z.object({
+  type: z.enum(['signaling.offer', 'signaling.answer', 'signaling.ice', 'signaling.ready', 'signaling.leave', 'heartbeat']),
+  payload: z.any().optional(),
+});
+
+interface SessionClient {
+  socket: WebSocket;
+  userId: string;
+  deviceId: string;
+  role: 'streamer' | 'moderator';
+  remoteSessionId: string;
+  isAlive: boolean;
 }
 
 export default async function signalingRoutes(app: FastifyInstance) {
-  // We use WebSockets for signaling and presence.
-  
-  app.get('/signaling', { websocket: true }, async (socket, req) => {
-    // Authenticate from query param or header
-    let token = (req.query as any).token;
-    if (!token && req.headers.authorization?.startsWith('Bearer ')) {
-      token = req.headers.authorization.split(' ')[1];
-    }
+  const server = app as any;
+  const rooms = new Map<string, Set<SessionClient>>();
 
-    if (!token) {
-      socket.close(1008, 'Token required');
-      return;
-    }
+  server.get('/signaling', { websocket: true }, (connection: any, request: any) => {
+    const socket = connection.socket as WebSocket;
+    let clientCtx: SessionClient | null = null;
+    let rateLimitTokens = 100;
 
-    let user: JwtPayload;
-    try {
-      user = await app.jwt.verify<JwtPayload>(token);
-    } catch (e) {
-      socket.close(1008, 'Invalid token');
-      return;
-    }
+    // Rate limiting replenisher
+    const rateLimitInterval = setInterval(() => {
+      if (rateLimitTokens < 100) rateLimitTokens += 10;
+    }, 1000);
 
-    const userId = user.sub;
-    const deviceId = user.deviceId || 'unknown';
-    const redis = getRedis();
-
-    // Mark user as online in Redis
-    const presenceKey = `presence:${userId}:${deviceId}`;
-    await redis.set(presenceKey, 'online', 'EX', 60);
-
-    // Keepalive loop
-    const keepaliveInterval = setInterval(async () => {
-      await redis.expire(presenceKey, 60);
-    }, 30000);
-
-    // Subscribe to signaling messages
-    const channelName = `signaling:${userId}:${deviceId}`;
-    const subRedis = redis.duplicate();
-    await subRedis.subscribe(channelName);
-
-    subRedis.on('message', (channel, message) => {
-      if (channel === channelName) {
-        socket.send(message);
-      }
-    });
-
-    socket.on('message', async (messageBuffer) => {
-      try {
-        const msg = JSON.parse(messageBuffer.toString());
-        
-        if (msg.type === 'ping') {
-          socket.send(JSON.stringify({ type: 'pong' }));
+    const heartbeatInterval = setInterval(() => {
+      if (clientCtx) {
+        if (!clientCtx.isAlive) {
+          socket.terminate();
           return;
         }
+        clientCtx.isAlive = false;
+        socket.send(JSON.stringify({ type: 'heartbeat.ping' }));
+      }
+    }, HEARTBEAT_INTERVAL);
 
-        // Handle signaling forwarding
-        if (msg.type === 'offer' || msg.type === 'answer' || msg.type === 'ice-candidate') {
-          const targetUserId = msg.targetUserId;
-          const targetDeviceId = msg.targetDeviceId;
-          
-          if (!targetUserId || !targetDeviceId) return;
+    socket.on('message', async (data: Buffer) => {
+      if (data.length > MAX_MESSAGE_SIZE) {
+        socket.send(JSON.stringify({ type: 'signaling.error', error: 'Message too large' }));
+        return socket.close(1009);
+      }
+      
+      rateLimitTokens--;
+      if (rateLimitTokens < 0) {
+        socket.send(JSON.stringify({ type: 'signaling.error', error: 'Rate limit exceeded' }));
+        return;
+      }
 
-          // Verify relationship exists
-          const db = getDb();
-          const rels = await db.select().from(moderatorRelationships)
-            .where(
-              or(
-                and(eq(moderatorRelationships.streamerId, userId), eq(moderatorRelationships.moderatorId, targetUserId)),
-                and(eq(moderatorRelationships.streamerId, targetUserId), eq(moderatorRelationships.moderatorId, userId))
-              )
-            );
+      let parsed;
+      try {
+        parsed = JSON.parse(data.toString());
+      } catch {
+        return socket.send(JSON.stringify({ type: 'signaling.error', error: 'Invalid JSON' }));
+      }
 
-          if (rels.length === 0 || rels[0].status !== 'active') {
-            socket.send(JSON.stringify({ type: 'error', error: 'No active relationship' }));
-            return;
-          }
-
-          // Forward via Redis
-          const targetChannel = `signaling:${targetUserId}:${targetDeviceId}`;
-          const forwardMsg = {
-            ...msg,
-            fromUserId: userId,
-            fromDeviceId: deviceId,
-          };
-          
-          await redis.publish(targetChannel, JSON.stringify(forwardMsg));
+      if (!clientCtx) {
+        if (parsed.type !== 'signaling.authenticate') {
+          return socket.send(JSON.stringify({ type: 'signaling.error', error: 'Must authenticate first' }));
         }
 
-      } catch (e) {
-        console.error('Signaling error', e);
+        try {
+          const { appToken, authorizationToken } = parsed;
+          
+          // Verify app token
+          const decodedAppToken = server.jwt.verify(appToken) as any;
+          const userId = decodedAppToken.sub;
+          const deviceId = decodedAppToken.deviceId;
+          if (!deviceId) throw new Error('No deviceId in app token');
+
+          // Verify device not revoked
+          const db = getDb();
+          const [device] = await db.select().from(devices).where(eq(devices.id, deviceId));
+          if (!device || device.revokedAt) throw new Error('Device revoked');
+
+          let remoteSessionId: string | null = null;
+          let role: 'streamer' | 'moderator' = 'streamer';
+
+          if (authorizationToken) {
+            // Joining a specific session
+            const decodedAuth = server.jwt.verify(authorizationToken) as any;
+            remoteSessionId = decodedAuth.remoteSessionId;
+            
+            if (decodedAuth.streamerUserId === userId) role = 'streamer';
+            else if (decodedAuth.moderatorUserId === userId) role = 'moderator';
+            else throw new Error('User not part of this session');
+
+            // Verify session exists and status
+            const [rs] = await db.select().from(remoteSessions).where(eq(remoteSessions.id, remoteSessionId!));
+            if (!rs) throw new Error('Session not found');
+            if (rs.status === 'closed' || rs.status === 'revoked' || rs.status === 'failed') throw new Error('Session is closed');
+
+            if (role === 'streamer' && rs.streamerDeviceId !== deviceId) throw new Error('Invalid device for streamer');
+            if (role === 'moderator' && rs.moderatorDeviceId !== deviceId) throw new Error('Invalid device for moderator');
+
+            // Check relationship active
+            const [rel] = await db.select().from(moderatorRelationships).where(eq(moderatorRelationships.id, rs.relationshipId));
+            if (!rel || rel.status !== 'active') throw new Error('Relationship not active');
+          } else {
+             remoteSessionId = `global:${userId}`;
+          }
+
+          clientCtx = {
+            socket,
+            userId,
+            deviceId,
+            role,
+            remoteSessionId: remoteSessionId!,
+            isAlive: true,
+          };
+
+          let room = rooms.get(clientCtx.remoteSessionId);
+          if (!room) {
+            room = new Set();
+            rooms.set(clientCtx.remoteSessionId, room);
+          }
+          room.add(clientCtx);
+
+          // Mark presence in Redis
+          const redis = getRedis();
+          await redis.setex(`presence:${userId}:${deviceId}`, PRESENCE_TTL, JSON.stringify({
+            userId,
+            deviceId,
+            online: true,
+            appVersion: device.appVersion,
+            lastHeartbeatAt: Date.now()
+          }));
+
+          socket.send(JSON.stringify({ type: 'signaling.authenticated' }));
+          
+          if (!clientCtx.remoteSessionId.startsWith('global:')) {
+            // Notify other party
+            for (const client of room) {
+              if (client !== clientCtx) {
+                client.socket.send(JSON.stringify({ type: 'signaling.ready', role: clientCtx.role }));
+              }
+            }
+          }
+        } catch (err: any) {
+          app.log.error({ err }, 'Authentication failed');
+          return socket.send(JSON.stringify({ type: 'signaling.error', error: err.message }));
+        }
+        return;
+      }
+
+      // Handle subsequent messages
+      if (parsed.type === 'heartbeat.pong' || parsed.type === 'heartbeat') {
+        clientCtx.isAlive = true;
+        const redis = getRedis();
+        await redis.expire(`presence:${clientCtx.userId}:${clientCtx.deviceId}`, PRESENCE_TTL);
+        return;
+      }
+
+      const validMsg = SignalMessageSchema.safeParse(parsed);
+      if (!validMsg.success) {
+        return socket.send(JSON.stringify({ type: 'signaling.error', error: 'Invalid message schema' }));
+      }
+
+      if (clientCtx.remoteSessionId.startsWith('global:')) {
+        return socket.send(JSON.stringify({ type: 'signaling.error', error: 'Cannot send signals on global connection' }));
+      }
+
+      // Route message to the other participant in the room
+      const room = rooms.get(clientCtx.remoteSessionId);
+      if (room) {
+        for (const client of room) {
+          if (client !== clientCtx) {
+             // Redact sensitive payload in logs
+             app.log.info({ type: parsed.type, fromRole: clientCtx.role, toRole: client.role, session: clientCtx.remoteSessionId }, 'Forwarding signal');
+             client.socket.send(JSON.stringify({
+               type: parsed.type,
+               payload: parsed.payload
+             }));
+          }
+        }
       }
     });
 
-    socket.on('close', async () => {
-      clearInterval(keepaliveInterval);
-      await redis.del(presenceKey);
-      await subRedis.quit();
+    socket.on('close', () => {
+      clearInterval(rateLimitInterval);
+      clearInterval(heartbeatInterval);
+      if (clientCtx) {
+        const room = rooms.get(clientCtx.remoteSessionId);
+        if (room) {
+          room.delete(clientCtx);
+          if (room.size === 0) rooms.delete(clientCtx.remoteSessionId);
+          else {
+            for (const client of room) {
+              client.socket.send(JSON.stringify({ type: 'signaling.leave', role: clientCtx.role }));
+            }
+          }
+        }
+        
+        // Remove presence
+        const redis = getRedis();
+        redis.del(`presence:${clientCtx.userId}:${clientCtx.deviceId}`).catch(() => {});
+      }
     });
   });
 }

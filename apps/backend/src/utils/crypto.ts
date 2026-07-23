@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-const ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+const ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 
 export function generateInviteCode(): string {
   let code = '';

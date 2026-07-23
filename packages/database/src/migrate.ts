@@ -22,7 +22,4 @@ async function main() {
   await migrationClient.end();
 }
 
-main().catch((err) => {
-  console.error('Migration failed:', err);
-  process.exit(1);
-});
+// Removed auto-execution so it can be imported safely

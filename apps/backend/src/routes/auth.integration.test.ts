@@ -7,13 +7,14 @@ import { sessions, devices, users, moderatorRelationships, moderatorPermissions 
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 
-// Skip if no real DB is configured
-const runIntegration = process.env.DATABASE_URL && process.env.REDIS_URL;
-
-describe.skipIf(!runIntegration)('Real Integration Tests', () => {
+describe('Real Integration Tests', () => {
   let app: any;
 
   beforeAll(async () => {
+    if (!process.env.DATABASE_URL || !process.env.REDIS_URL) {
+      throw new Error("Integration tests require DATABASE_URL and REDIS_URL to be set, otherwise they will fail instead of skipping quietly.");
+    }
+    
     initDb(process.env.DATABASE_URL!);
     initRedis(process.env.REDIS_URL!);
     
@@ -29,7 +30,7 @@ describe.skipIf(!runIntegration)('Real Integration Tests', () => {
   });
 
   afterAll(async () => {
-    if (!runIntegration) return;
+    if (!process.env.DATABASE_URL || !process.env.REDIS_URL) return;
     const redis = getRedis();
     await redis.quit();
   });
@@ -42,8 +43,8 @@ describe.skipIf(!runIntegration)('Real Integration Tests', () => {
       twitchId: '123456',
       twitchLogin: 'integration_test_user',
       displayName: 'Integration Tester',
-      email: 'test@example.com',
       avatarUrl: '',
+      inviteCode: 'integ-test-user',
       inviteCodeNormalized: 'integ-test-user',
     }).returning();
 
@@ -55,7 +56,8 @@ describe.skipIf(!runIntegration)('Real Integration Tests', () => {
       userId: user.id,
       publicKey: pubKeyPem,
       name: 'Integration Test PC',
-      osInfo: 'Windows',
+      platform: 'Windows',
+      appVersion: '1.0.0',
     }).returning();
 
     // 3. Request Challenge

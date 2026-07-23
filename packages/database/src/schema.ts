@@ -79,6 +79,7 @@ export const moderatorRelationships = pgTable('moderator_relationships', {
   rejectedAt: timestamp('rejected_at'),
   pausedAt: timestamp('paused_at'),
   revokedAt: timestamp('revoked_at'),
+  permissionsVersion: uuid('permissions_version').defaultRandom().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => {
   return {

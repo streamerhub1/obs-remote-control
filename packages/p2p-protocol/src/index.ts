@@ -1,49 +1,175 @@
 import { z } from 'zod';
 import { ObsCommandSchema, ObsSnapshotSchema, ObsEventSchema } from '@obs-remote/obs-contracts';
 
-// The P2P DataChannel Envelope ensures every message has a type, requestId (for acks), and payload
-export const P2PEnvelopeSchema = z.object({
-  type: z.enum(['request', 'response', 'event']),
-  channel: z.enum(['control', 'events', 'preview', 'files']),
-  requestId: z.string().optional(),
-  payload: z.any(),
-});
-export type P2PEnvelope = z.infer<typeof P2PEnvelopeSchema>;
+const BasePayloadSchema = z.object({});
 
-// Control Channel Requests (Moderator -> Streamer)
-export const P2PControlRequestSchema = z.discriminatedUnion('action', [
-  z.object({
-    action: z.literal('getSnapshot'),
+const HandshakeHelloSchema = z.object({
+  type: z.literal('handshake.hello'),
+  payload: z.object({
+    appVersion: z.string(),
+    deviceId: z.string(),
   }),
-  z.object({
-    action: z.literal('executeCommand'),
+});
+
+const HandshakeChallengeSchema = z.object({
+  type: z.literal('handshake.challenge'),
+  payload: z.object({
+    challenge: z.string(),
+  }),
+});
+
+const HandshakeProofSchema = z.object({
+  type: z.literal('handshake.proof'),
+  payload: z.object({
+    proof: z.string(),
+  }),
+});
+
+const HandshakeAcceptedSchema = z.object({
+  type: z.literal('handshake.accepted'),
+  payload: z.object({
+    permissionsVersion: z.string(),
+  }),
+});
+
+const StateSnapshotSchema = z.object({
+  type: z.literal('state.snapshot'),
+  payload: z.object({
+    revision: z.number(),
+    snapshot: ObsSnapshotSchema,
+  }),
+});
+
+const StatePatchSchema = z.object({
+  type: z.literal('state.patch'),
+  payload: z.object({
+    revision: z.number(),
+    event: ObsEventSchema,
+  }),
+});
+
+const StateResyncRequestSchema = z.object({
+  type: z.literal('state.resyncRequest'),
+  payload: z.object({
+    lastKnownRevision: z.number(),
+  }),
+});
+
+const CommandRequestSchema = z.object({
+  type: z.literal('command.request'),
+  payload: z.object({
+    commandId: z.string(),
     command: ObsCommandSchema,
+    expectedRevision: z.number().optional(),
   }),
+});
+
+const CommandResultSchema = z.object({
+  type: z.literal('command.result'),
+  payload: z.object({
+    commandId: z.string(),
+    success: z.boolean(),
+    result: z.unknown().optional(), // Obs return data can vary, but we don't use `any`
+    error: z.object({
+      code: z.string(),
+      message: z.string(),
+    }).optional(),
+    revision: z.number().optional(),
+  }),
+});
+
+const HeartbeatPingSchema = z.object({
+  type: z.literal('heartbeat.ping'),
+  payload: z.object({
+    timestamp: z.number(),
+  }),
+});
+
+const HeartbeatPongSchema = z.object({
+  type: z.literal('heartbeat.pong'),
+  payload: z.object({
+    timestamp: z.number(),
+  }),
+});
+
+const PermissionsUpdatedSchema = z.object({
+  type: z.literal('permissions.updated'),
+  payload: z.object({
+    permissionsVersion: z.string(),
+  }),
+});
+
+const SessionCloseSchema = z.object({
+  type: z.literal('session.close'),
+  payload: z.object({
+    reason: z.string(),
+  }),
+});
+
+const ErrorSchema = z.object({
+  type: z.literal('error'),
+  payload: z.object({
+    code: z.string(),
+    message: z.string(),
+  }),
+});
+
+export const P2PPayloadSchema = z.discriminatedUnion('type', [
+  HandshakeHelloSchema,
+  HandshakeChallengeSchema,
+  HandshakeProofSchema,
+  HandshakeAcceptedSchema,
+  StateSnapshotSchema,
+  StatePatchSchema,
+  StateResyncRequestSchema,
+  CommandRequestSchema,
+  CommandResultSchema,
+  HeartbeatPingSchema,
+  HeartbeatPongSchema,
+  PermissionsUpdatedSchema,
+  SessionCloseSchema,
+  ErrorSchema,
 ]);
-export type P2PControlRequest = z.infer<typeof P2PControlRequestSchema>;
 
-// Control Channel Responses (Streamer -> Moderator)
-export const P2PControlResponseSchema = z.object({
-  success: z.boolean(),
-  data: z.any().optional(), // Snapshot or CommandResult
-  error: z.string().optional(),
-});
-export type P2PControlResponse = z.infer<typeof P2PControlResponseSchema>;
+export type P2PPayload = z.infer<typeof P2PPayloadSchema>;
 
-// Events Channel (Streamer -> Moderator)
-export const P2PEventSchema = z.object({
-  event: ObsEventSchema,
-});
+export const P2PEnvelopeSchema = z.object({
+  protocolVersion: z.literal('1.0'),
+  sessionId: z.string(),
+  messageId: z.string(),
+  sequence: z.number(),
+  sentAt: z.number(),
+  type: P2PPayloadSchema.shape.type,
+  payload: P2PPayloadSchema.shape.payload,
+}); // Note: This doesn't strictly tie `type` to `payload` shape in Zod easily without intersection/union on the envelope.
+// Let's do it properly as a discriminated union on the envelope level.
 
-// Wrap payloads into Envelope
-export function createRequest(channel: P2PEnvelope['channel'], payload: any, requestId?: string): P2PEnvelope {
-  return { type: 'request', channel, requestId: requestId || crypto.randomUUID(), payload };
-}
+export const P2PMessageSchema = z.intersection(
+  z.object({
+    protocolVersion: z.literal('1.0'),
+    sessionId: z.string(),
+    messageId: z.string(),
+    sequence: z.number(),
+    sentAt: z.number(),
+  }),
+  P2PPayloadSchema
+);
 
-export function createResponse(channel: P2PEnvelope['channel'], requestId: string, payload: any): P2PEnvelope {
-  return { type: 'response', channel, requestId, payload };
-}
+export type P2PMessage = z.infer<typeof P2PMessageSchema>;
 
-export function createEvent(channel: P2PEnvelope['channel'], payload: any): P2PEnvelope {
-  return { type: 'event', channel, payload };
+export function createP2PMessage<T extends P2PPayload['type']>(
+  sessionId: string,
+  sequence: number,
+  type: T,
+  payload: Extract<P2PPayload, { type: T }>['payload']
+): P2PMessage {
+  return {
+    protocolVersion: '1.0',
+    sessionId,
+    messageId: crypto.randomUUID(),
+    sequence,
+    sentAt: Date.now(),
+    type,
+    payload,
+  } as P2PMessage;
 }

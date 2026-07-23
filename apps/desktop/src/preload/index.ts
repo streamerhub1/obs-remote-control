@@ -24,9 +24,9 @@ const API = {
   },
   signaling: {
     connect: () => ipcRenderer.invoke('signaling:connect'),
-    send: (msg: any) => ipcRenderer.send('signaling:send', msg),
-    subscribe: (callback: (msg: any) => void) => {
-      const handler = (_event: any, msg: any) => callback(msg);
+    send: (msg: unknown) => ipcRenderer.send('signaling:send', msg),
+    subscribe: (callback: (msg: unknown) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, msg: unknown) => callback(msg);
       ipcRenderer.on('signaling:message', handler);
       return () => {
         ipcRenderer.removeListener('signaling:message', handler);

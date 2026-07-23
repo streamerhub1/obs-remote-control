@@ -23,7 +23,7 @@ export default async function authRoutes(app: FastifyInstance) {
     const state = generateState();
     const codeVerifier = generateCodeVerifier();
     // No email scope unless needed
-    const url = twitch.createAuthorizationURL(state, codeVerifier, []);
+    const url = twitch.createAuthorizationURL(state, []);
 
     const redis = getRedis();
     await redis.set(`auth:state:${state}`, JSON.stringify({
@@ -79,7 +79,7 @@ export default async function authRoutes(app: FastifyInstance) {
 
     let tokens;
     try {
-      tokens = await twitch.validateAuthorizationCode(code, stateData.codeVerifier);
+      tokens = await twitch.validateAuthorizationCode(code);
     } catch (err) {
       return reply.status(400).send({ error: 'Failed to validate authorization code' });
     }
