@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, Avatar, AvatarFallback, AvatarImage, Button } from '@obs-remote/ui';
+import { Card, CardContent, Avatar, Button } from '@obs-remote/ui';
 import { UserPlus, Heart, MessageCircle, Calendar as CalendarIcon, Check } from 'lucide-react';
 import { cn } from '@obs-remote/ui/src/utils';
 
@@ -68,10 +68,7 @@ export function Notifications() {
               <div className="p-2 bg-black/30 rounded-full">
                 {getIcon(n.type)}
               </div>
-              <Avatar className="w-10 h-10">
-                <AvatarImage src={n.actor.avatarUrl} />
-                <AvatarFallback>{n.actor.displayName[0]}</AvatarFallback>
-              </Avatar>
+              <Avatar className="w-10 h-10" src={n.actor.avatarUrl} fallback={n.actor.displayName[0]} />
               <div className="flex-1">
                 <p className="text-gray-300 text-sm">{getMessage(n)}</p>
                 <p className="text-xs text-gray-500 mt-1">{new Date(n.createdAt).toLocaleString()}</p>

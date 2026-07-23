@@ -1,4 +1,4 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { getDb } from '../db.js';
 import { users, moderatorRelationships, moderatorPermissions, auditLogs } from '@obs-remote/database';
 import { eq, and, or, sql } from 'drizzle-orm';

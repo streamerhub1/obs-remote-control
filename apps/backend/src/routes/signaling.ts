@@ -1,4 +1,4 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { getRedis } from '../redis.js';
 import { z } from 'zod';
 import { getDb } from '../db.js';
@@ -35,6 +35,7 @@ export default async function signalingRoutes(app: FastifyInstance) {
   const sessionRooms = new Map<string, Set<SessionClient>>(); // Keyed by remoteSessionId
 
   // Setup Redis PubSub for cross-node notifications
+  const pubSubClient = getRedis().duplicate();
   pubSubClient.subscribe('signaling:global:notifications');
   pubSubClient.subscribe('signaling:session:messages');
   pubSubClient.on('message', (channel, message) => {

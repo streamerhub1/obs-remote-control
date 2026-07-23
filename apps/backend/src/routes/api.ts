@@ -1,4 +1,4 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { getDb } from '../db.js';
 import { users, devices, sessions } from '@obs-remote/database';
 import { eq, and } from 'drizzle-orm';

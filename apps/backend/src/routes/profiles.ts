@@ -1,14 +1,15 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { getDb } from '../db.js';
 import { profiles, users } from '@obs-remote/database';
 import { eq } from 'drizzle-orm';
-import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
+import { ZodTypeProvider } from 'fastify-type-provider-zod';
 
-export const profilesRoutes: FastifyPluginAsyncZod = async (app) => {
+export const profilesRoutes: FastifyPluginAsync = async (appOriginal) => {
+  const app = appOriginal.withTypeProvider<ZodTypeProvider>();
   // Get current user profile
   app.get('/profiles/me', async (request, reply) => {
-    const userId = request.user.sub;
+    const userId = (request.user as any).sub;
     const db = getDb();
     
     let [profile] = await db.select().from(profiles).where(eq(profiles.userId, userId));
@@ -39,7 +40,7 @@ export const profilesRoutes: FastifyPluginAsyncZod = async (app) => {
       })
     }
   }, async (request, reply) => {
-    const userId = request.user.sub;
+    const userId = (request.user as any).sub;
     const updates = request.body;
     const db = getDb();
 

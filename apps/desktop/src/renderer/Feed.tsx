@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@obs-remote/ui';
 import { Button } from '@obs-remote/ui';
-import { Avatar, AvatarImage, AvatarFallback } from '@obs-remote/ui';
+import { Avatar } from '@obs-remote/ui';
 import { Heart, MessageCircle, Share2, Send } from 'lucide-react';
 
 export function Feed() {
@@ -51,9 +51,7 @@ export function Feed() {
       <Card className="bg-[#161616] border-gray-800">
         <CardContent className="pt-6">
           <div className="flex gap-4">
-            <Avatar>
-              <AvatarFallback>ME</AvatarFallback>
-            </Avatar>
+            <Avatar fallback="ME" />
             <div className="flex-1 space-y-3">
               <textarea 
                 className="w-full bg-black/50 border border-gray-800 rounded-lg p-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none min-h-[100px]"
@@ -76,10 +74,7 @@ export function Feed() {
         {posts.map(post => (
           <Card key={post.id} className="bg-[#161616] border-gray-800">
             <CardHeader className="flex flex-row items-center gap-4 pb-2">
-              <Avatar>
-                <AvatarImage src={post.author.avatarUrl} />
-                <AvatarFallback>{post.author.displayName[0]}</AvatarFallback>
-              </Avatar>
+              <Avatar src={post.author.avatarUrl} fallback={post.author.displayName[0]} />
               <div>
                 <CardTitle className="text-base">{post.author.displayName}</CardTitle>
                 <p className="text-xs text-gray-400">@{post.author.twitchLogin} • {new Date(post.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>

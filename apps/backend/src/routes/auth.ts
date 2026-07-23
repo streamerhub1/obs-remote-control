@@ -1,4 +1,4 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { generateState, generateCodeVerifier } from 'arctic';
 import { getTwitchOAuth, fetchTwitchUser } from '../services/twitch.js';
 import { getDb } from '../db.js';

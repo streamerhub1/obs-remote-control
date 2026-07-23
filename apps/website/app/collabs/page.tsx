@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Button, Card, CardHeader, CardTitle, CardContent, CardFooter, Badge, Avatar, AvatarFallback, AvatarImage } from '@obs-remote/ui';
+import { Button, Card, CardHeader, CardTitle, CardContent, CardFooter, Badge, Avatar } from '@obs-remote/ui';
 import { Calendar, Clock, Search, Filter } from 'lucide-react';
 
 export default function CollabsDirectory() {
@@ -78,10 +78,7 @@ export default function CollabsDirectory() {
               </CardHeader>
               <CardContent className="flex-1 space-y-4">
                 <div className="flex items-center gap-3">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={collab.host.avatarUrl} />
-                    <AvatarFallback>{collab.host.displayName[0]}</AvatarFallback>
-                  </Avatar>
+                  <Avatar className="w-8 h-8" src={collab.host.avatarUrl} fallback={collab.host.displayName[0]} />
                   <span className="text-sm font-medium text-gray-300">{collab.host.displayName}</span>
                 </div>
                 

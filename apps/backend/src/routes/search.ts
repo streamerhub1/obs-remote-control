@@ -1,11 +1,12 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { getDb } from '../db.js';
 import { users, profiles, collaborations } from '@obs-remote/database';
 import { sql, ilike, or } from 'drizzle-orm';
-import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
+import { ZodTypeProvider } from 'fastify-type-provider-zod';
 
-export const searchRoutes: FastifyPluginAsyncZod = async (app) => {
+export const searchRoutes: FastifyPluginAsync = async (appOriginal) => {
+  const app = appOriginal.withTypeProvider<ZodTypeProvider>();
   app.get('/search', {
     schema: {
       querystring: z.object({

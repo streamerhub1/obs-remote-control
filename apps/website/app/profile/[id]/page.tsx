@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { Button, Avatar, AvatarFallback, AvatarImage, Badge, Card, CardHeader, CardContent } from '@obs-remote/ui';
-import { Twitch, Link as LinkIcon, MapPin } from 'lucide-react';
+import { Button, Avatar, Badge, Card, CardHeader, CardContent } from '@obs-remote/ui';
+import { Video, Link as LinkIcon, MapPin } from 'lucide-react';
 
 export default function ProfilePage({ params }: { params: { id: string } }) {
   // In a real app, we would fetch the profile data based on params.id
@@ -40,10 +40,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
           <div className="h-64 rounded-xl bg-gradient-to-r from-green-600 to-blue-600 w-full overflow-hidden" />
           
           <div className="absolute -bottom-16 left-8 flex items-end gap-6">
-            <Avatar className="w-32 h-32 border-4 border-[#0A0A0A] bg-[#161616]">
-              <AvatarImage src={profile.avatarUrl} />
-              <AvatarFallback>{profile.displayName[0]}</AvatarFallback>
-            </Avatar>
+            <Avatar className="w-32 h-32 border-4 border-[#0A0A0A] bg-[#161616]" src={profile.avatarUrl} fallback={profile.displayName[0]} />
           </div>
           <div className="absolute top-4 right-4 flex gap-2">
             <Button className="bg-white text-black hover:bg-gray-200 shadow-xl shadow-white/10">Подписаться</Button>
@@ -82,7 +79,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
           <div className="mt-8 flex gap-6 text-gray-400">
             {profile.socialLinks.map((link, idx) => (
               <a key={idx} href={link.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-white transition-colors">
-                {link.platform === 'twitch' ? <Twitch className="w-5 h-5" /> : <LinkIcon className="w-5 h-5" />}
+                {link.platform === 'twitch' ? <Video className="w-5 h-5" /> : <LinkIcon className="w-5 h-5" />}
                 <span>{link.url.replace('https://', '')}</span>
               </a>
             ))}

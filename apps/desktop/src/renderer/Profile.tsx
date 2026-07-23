@@ -1,6 +1,5 @@
-import React from 'react';
-import { Card, CardHeader, CardContent, Button, Avatar, AvatarFallback, AvatarImage, Badge } from '@obs-remote/ui';
-import { Edit2, Link as LinkIcon, MapPin, Twitch } from 'lucide-react';
+import { Card, CardHeader, CardContent, Button, Avatar, Badge } from '@obs-remote/ui';
+import { Edit2, Link as LinkIcon, MapPin, Video } from 'lucide-react';
 
 export function Profile() {
   return (
@@ -15,10 +14,7 @@ export function Profile() {
         </div>
         
         <div className="absolute -bottom-16 left-8 flex items-end gap-6">
-          <Avatar className="w-32 h-32 border-4 border-[#0A0A0A] bg-[#161616]">
-            <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=Me" />
-            <AvatarFallback>ME</AvatarFallback>
-          </Avatar>
+          <Avatar className="w-32 h-32 border-4 border-[#0A0A0A] bg-[#161616]" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Me" fallback="ME" />
         </div>
         <div className="absolute top-4 right-4">
           <Button variant="secondary" className="bg-black/50 hover:bg-black/70 border-none backdrop-blur-md">
@@ -59,7 +55,7 @@ export function Profile() {
 
         <div className="mt-6 flex gap-4 text-gray-400">
           <a href="#" className="flex items-center gap-2 hover:text-white transition-colors">
-            <Twitch className="w-5 h-5" />
+            <Video className="w-5 h-5" />
             <span>twitch.tv/my_twitch_login</span>
           </a>
           <a href="#" className="flex items-center gap-2 hover:text-white transition-colors">

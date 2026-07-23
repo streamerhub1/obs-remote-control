@@ -1,11 +1,12 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { getDb } from '../db.js';
 import { notifications, users } from '@obs-remote/database';
 import { eq, desc, isNull, inArray, and } from 'drizzle-orm';
-import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
+import { ZodTypeProvider } from 'fastify-type-provider-zod';
 
-export const notificationsRoutes: FastifyPluginAsyncZod = async (app) => {
+export const notificationsRoutes: FastifyPluginAsync = async (appOriginal) => {
+  const app = appOriginal.withTypeProvider<ZodTypeProvider>();
   // Get notifications
   app.get('/notifications', {
     schema: {
@@ -14,7 +15,7 @@ export const notificationsRoutes: FastifyPluginAsyncZod = async (app) => {
       })
     }
   }, async (request, reply) => {
-    const userId = request.user.sub;
+    const userId = (request.user as any).sub;
     const { limit } = request.query;
     const db = getDb();
     
@@ -42,7 +43,7 @@ export const notificationsRoutes: FastifyPluginAsyncZod = async (app) => {
 
   // Mark all as read
   app.post('/notifications/mark-read', async (request, reply) => {
-    const userId = request.user.sub;
+    const userId = (request.user as any).sub;
     const db = getDb();
     
     await db.update(notifications)
@@ -58,7 +59,7 @@ export const notificationsRoutes: FastifyPluginAsyncZod = async (app) => {
       params: z.object({ id: z.string().uuid() })
     }
   }, async (request, reply) => {
-    const userId = request.user.sub;
+    const userId = (request.user as any).sub;
     const { id } = request.params;
     const db = getDb();
     

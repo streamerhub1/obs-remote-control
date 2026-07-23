@@ -1,11 +1,12 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { getDb } from '../db.js';
 import { posts, users, comments, reactions, follows } from '@obs-remote/database';
 import { eq, and, desc, lt, inArray, sql } from 'drizzle-orm';
-import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
+import { ZodTypeProvider } from 'fastify-type-provider-zod';
 
-export const feedRoutes: FastifyPluginAsyncZod = async (app) => {
+export const feedRoutes: FastifyPluginAsync = async (appOriginal) => {
+  const app = appOriginal.withTypeProvider<ZodTypeProvider>();
   // Get feed (posts from people I follow + mine)
   app.get('/feed', {
     schema: {
@@ -15,7 +16,7 @@ export const feedRoutes: FastifyPluginAsyncZod = async (app) => {
       })
     }
   }, async (request, reply) => {
-    const userId = request.user.sub;
+    const userId = (request.user as any).sub;
     const { cursor, limit } = request.query;
     const db = getDb();
     
@@ -68,7 +69,7 @@ export const feedRoutes: FastifyPluginAsyncZod = async (app) => {
       })
     }
   }, async (request, reply) => {
-    const userId = request.user.sub;
+    const userId = (request.user as any).sub;
     const { content, mediaUrls } = request.body;
     const db = getDb();
     
@@ -87,7 +88,7 @@ export const feedRoutes: FastifyPluginAsyncZod = async (app) => {
       params: z.object({ id: z.string().uuid() })
     }
   }, async (request, reply) => {
-    const userId = request.user.sub;
+    const userId = (request.user as any).sub;
     const { id } = request.params;
     const db = getDb();
     
@@ -125,7 +126,7 @@ export const feedRoutes: FastifyPluginAsyncZod = async (app) => {
       body: z.object({ content: z.string().min(1).max(1000) })
     }
   }, async (request, reply) => {
-    const userId = request.user.sub;
+    const userId = (request.user as any).sub;
     const { id } = request.params;
     const { content } = request.body;
     const db = getDb();

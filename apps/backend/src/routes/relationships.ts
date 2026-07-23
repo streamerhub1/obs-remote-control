@@ -1,15 +1,16 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { getDb } from '../db.js';
 import { moderatorRelationships, moderatorPermissions, users } from '@obs-remote/database';
 import { eq, and, or } from 'drizzle-orm';
-import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
+import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import crypto from 'crypto';
 
-export const relationshipsRoutes: FastifyPluginAsyncZod = async (app) => {
+export const relationshipsRoutes: FastifyPluginAsync = async (appOriginal) => {
+  const app = appOriginal.withTypeProvider<ZodTypeProvider>();
   // Get all relationships for the current user
   app.get('/relationships', async (request, reply) => {
-    const userId = request.user.sub;
+    const userId = (request.user as any).sub;
     const db = getDb();
     
     // As Streamer (I have invited moderators)
@@ -50,7 +51,7 @@ export const relationshipsRoutes: FastifyPluginAsyncZod = async (app) => {
       })
     }
   }, async (request, reply) => {
-    const streamerId = request.user.sub;
+    const streamerId = (request.user as any).sub;
     const { twitchLogin, inviteCode } = request.body;
 
     const db = getDb();
@@ -118,7 +119,7 @@ export const relationshipsRoutes: FastifyPluginAsyncZod = async (app) => {
       })
     }
   }, async (request, reply) => {
-    const moderatorId = request.user.sub;
+    const moderatorId = (request.user as any).sub;
     const { id } = request.params;
     const { action } = request.body;
     
@@ -145,7 +146,7 @@ export const relationshipsRoutes: FastifyPluginAsyncZod = async (app) => {
       params: z.object({ id: z.string().uuid() }),
     }
   }, async (request, reply) => {
-    const userId = request.user.sub;
+    const userId = (request.user as any).sub;
     const { id } = request.params;
 
     const db = getDb();
@@ -169,7 +170,7 @@ export const relationshipsRoutes: FastifyPluginAsyncZod = async (app) => {
       params: z.object({ id: z.string().uuid() })
     }
   }, async (request, reply) => {
-    const userId = request.user.sub;
+    const userId = (request.user as any).sub;
     const { id } = request.params;
 
     const db = getDb();
@@ -189,7 +190,7 @@ export const relationshipsRoutes: FastifyPluginAsyncZod = async (app) => {
       })
     }
   }, async (request, reply) => {
-    const userId = request.user.sub;
+    const userId = (request.user as any).sub;
     const { id } = request.params;
     const { permissions } = request.body;
 
@@ -204,13 +205,13 @@ export const relationshipsRoutes: FastifyPluginAsyncZod = async (app) => {
         
       if (existing.length > 0) {
         await db.update(moderatorPermissions)
-          .set({ allowed, updatedAt: new Date() })
+          .set({ allowed: allowed as boolean, updatedAt: new Date() })
           .where(and(eq(moderatorPermissions.relationshipId, id), eq(moderatorPermissions.permissionKey, key)));
       } else {
         await db.insert(moderatorPermissions).values({
           relationshipId: id,
           permissionKey: key,
-          allowed,
+          allowed: allowed as boolean,
         });
       }
     }

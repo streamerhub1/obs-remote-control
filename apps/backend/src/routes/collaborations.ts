@@ -1,4 +1,4 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { getDb } from '../db.js';
 import { 
@@ -9,9 +9,10 @@ import {
   calendarEvents
 } from '@obs-remote/database';
 import { eq, and } from 'drizzle-orm';
-import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
+import { ZodTypeProvider } from 'fastify-type-provider-zod';
 
-export const collaborationsRoutes: FastifyPluginAsyncZod = async (app) => {
+export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
+  const app = appOriginal.withTypeProvider<ZodTypeProvider>();
   // Create Collaboration
   app.post('/collaborations', {
     schema: {
@@ -26,7 +27,7 @@ export const collaborationsRoutes: FastifyPluginAsyncZod = async (app) => {
       })
     }
   }, async (request, reply) => {
-    const userId = request.user.sub;
+    const userId = (request.user as any).sub;
     const data = request.body;
     const db = getDb();
     
@@ -73,7 +74,7 @@ export const collaborationsRoutes: FastifyPluginAsyncZod = async (app) => {
       params: z.object({ id: z.string().uuid() })
     }
   }, async (request, reply) => {
-    const userId = request.user.sub;
+    const userId = (request.user as any).sub;
     const { id } = request.params;
     const db = getDb();
 
@@ -97,7 +98,7 @@ export const collaborationsRoutes: FastifyPluginAsyncZod = async (app) => {
       body: z.object({ message: z.string().optional() })
     }
   }, async (request, reply) => {
-    const userId = request.user.sub;
+    const userId = (request.user as any).sub;
     const { id } = request.params;
     const { message } = request.body;
     const db = getDb();
@@ -129,7 +130,7 @@ export const collaborationsRoutes: FastifyPluginAsyncZod = async (app) => {
       body: z.object({ action: z.enum(['accept', 'reject']) })
     }
   }, async (request, reply) => {
-    const userId = request.user.sub;
+    const userId = (request.user as any).sub;
     const { id, appId } = request.params;
     const { action } = request.body;
     const db = getDb();

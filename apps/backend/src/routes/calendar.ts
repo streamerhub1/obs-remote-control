@@ -1,11 +1,12 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { getDb } from '../db.js';
 import { calendarEvents, collaborations } from '@obs-remote/database';
 import { eq, and, gte, lte, inArray } from 'drizzle-orm';
-import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
+import { ZodTypeProvider } from 'fastify-type-provider-zod';
 
-export const calendarRoutes: FastifyPluginAsyncZod = async (app) => {
+export const calendarRoutes: FastifyPluginAsync = async (appOriginal) => {
+  const app = appOriginal.withTypeProvider<ZodTypeProvider>();
   // Get calendar events for a date range
   app.get('/calendar', {
     schema: {
@@ -15,7 +16,7 @@ export const calendarRoutes: FastifyPluginAsyncZod = async (app) => {
       })
     }
   }, async (request, reply) => {
-    const userId = request.user.sub;
+    const userId = (request.user as any).sub;
     const { start, end } = request.query;
     const db = getDb();
     
@@ -58,7 +59,7 @@ export const calendarRoutes: FastifyPluginAsyncZod = async (app) => {
       })
     }
   }, async (request, reply) => {
-    const userId = request.user.sub;
+    const userId = (request.user as any).sub;
     const data = request.body;
     const db = getDb();
     
@@ -78,7 +79,7 @@ export const calendarRoutes: FastifyPluginAsyncZod = async (app) => {
       params: z.object({ id: z.string().uuid() })
     }
   }, async (request, reply) => {
-    const userId = request.user.sub;
+    const userId = (request.user as any).sub;
     const { id } = request.params;
     const db = getDb();
 
