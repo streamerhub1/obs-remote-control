@@ -19,7 +19,16 @@ export const calendarRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
+      const userId = (
+        request.user as {
+          sub: string;
+          id: string;
+          deviceId?: string;
+          role?: string;
+          remoteSessionId?: string;
+          [key: string]: unknown;
+        }
+      ).sub;
       const { start, end } = request.query;
       const db = getDb();
 
@@ -48,7 +57,19 @@ export const calendarRoutes: FastifyPluginAsync = async (appOriginal) => {
 
       const result = events.map((e) => {
         if (e.sourceType === 'collaboration' && e.sourceId) {
-          const collab = collabs.find((c) => (c as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).id === e.sourceId);
+          const collab = collabs.find(
+            (c) =>
+              (
+                c as {
+                  sub: string;
+                  id: string;
+                  deviceId?: string;
+                  role?: string;
+                  remoteSessionId?: string;
+                  [key: string]: unknown;
+                }
+              ).id === e.sourceId,
+          );
           return { ...e, collaboration: collab };
         }
         return e;
@@ -75,7 +96,16 @@ export const calendarRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
+      const userId = (
+        request.user as {
+          sub: string;
+          id: string;
+          deviceId?: string;
+          role?: string;
+          remoteSessionId?: string;
+          [key: string]: unknown;
+        }
+      ).sub;
       const data = request.body;
       const db = getDb();
 
@@ -102,7 +132,16 @@ export const calendarRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
+      const userId = (
+        request.user as {
+          sub: string;
+          id: string;
+          deviceId?: string;
+          role?: string;
+          remoteSessionId?: string;
+          [key: string]: unknown;
+        }
+      ).sub;
       const { id } = request.params;
       const db = getDb();
 

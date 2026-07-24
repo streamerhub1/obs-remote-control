@@ -146,7 +146,10 @@ export default function App() {
       // Broadcast OBS snapshot when connected
       const cleanupObsEvent = window.desktop.obs.subscribe((event: unknown) => {
         if ((event as any).state === 'connected' && (event as any).snapshot) {
-          transport.send({ type: 'snapshot', payload: (event as any).snapshot });
+          transport.send({
+            type: 'snapshot',
+            payload: (event as any).snapshot,
+          });
         }
       });
 
@@ -481,7 +484,10 @@ export default function App() {
             )}
 
             {currentRoute === 'home' && (
-              <HomeView obsState={obsState} navigate={setCurrentRoute as (r: string) => void} />
+              <HomeView
+                obsState={obsState}
+                navigate={setCurrentRoute as (r: string) => void}
+              />
             )}
 
             {currentRoute === 'feed' && <Feed />}

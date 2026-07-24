@@ -25,7 +25,16 @@ export const feedRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
+      const userId = (
+        request.user as {
+          sub: string;
+          id: string;
+          deviceId?: string;
+          role?: string;
+          remoteSessionId?: string;
+          [key: string]: unknown;
+        }
+      ).sub;
       const { cursor, limit } = request.query;
       const db = getDb();
 
@@ -89,7 +98,16 @@ export const feedRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
+      const userId = (
+        request.user as {
+          sub: string;
+          id: string;
+          deviceId?: string;
+          role?: string;
+          remoteSessionId?: string;
+          [key: string]: unknown;
+        }
+      ).sub;
       const { content, mediaUrls } = request.body;
       const db = getDb();
 
@@ -115,7 +133,16 @@ export const feedRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
+      const userId = (
+        request.user as {
+          sub: string;
+          id: string;
+          deviceId?: string;
+          role?: string;
+          remoteSessionId?: string;
+          [key: string]: unknown;
+        }
+      ).sub;
       const { id } = request.params;
       const db = getDb();
 
@@ -168,7 +195,16 @@ export const feedRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
+      const userId = (
+        request.user as {
+          sub: string;
+          id: string;
+          deviceId?: string;
+          role?: string;
+          remoteSessionId?: string;
+          [key: string]: unknown;
+        }
+      ).sub;
       const { id } = request.params;
       const { content } = request.body;
       const db = getDb();

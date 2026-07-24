@@ -27,15 +27,21 @@ export function ObsDashboard({ dataSource }: { dataSource: ObsDataSource }) {
   const [obsState, setObsState] = React.useState<string>('disconnected');
 
   React.useEffect(() => {
-    let cleanup = dataSource.subscribe((event: { state?: string; snapshot?: ObsSnapshot; event?: { type: string; payload: ObsSnapshot } }) => {
-      if (event.state) setObsState(event.state);
-      if (event.snapshot) setSnapshot(event.snapshot);
-      if (event.event && snapshot) {
-        // Simple patch logic for remote events. Real app requires strict patching.
-        // Or if it's full snapshot:
-        if (event.event.type === 'snapshot') setSnapshot(event.event.payload);
-      }
-    });
+    let cleanup = dataSource.subscribe(
+      (event: {
+        state?: string;
+        snapshot?: ObsSnapshot;
+        event?: { type: string; payload: ObsSnapshot };
+      }) => {
+        if (event.state) setObsState(event.state);
+        if (event.snapshot) setSnapshot(event.snapshot);
+        if (event.event && snapshot) {
+          // Simple patch logic for remote events. Real app requires strict patching.
+          // Or if it's full snapshot:
+          if (event.event.type === 'snapshot') setSnapshot(event.event.payload);
+        }
+      },
+    );
 
     if (dataSource.type === 'local') {
       dataSource
@@ -138,7 +144,11 @@ export function ObsDashboard({ dataSource }: { dataSource: ObsDataSource }) {
           <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
             {snapshot.sceneItems?.[snapshot.currentProgramScene]?.length > 0 ? (
               snapshot.sceneItems[snapshot.currentProgramScene].map(
-                (item: { sceneItemId: number; sourceName: string; sceneItemEnabled: boolean }) => (
+                (item: {
+                  sceneItemId: number;
+                  sourceName: string;
+                  sceneItemEnabled: boolean;
+                }) => (
                   <div
                     key={item.sceneItemId}
                     className="flex items-center justify-between p-3 bg-black border border-gray-800 rounded-lg"

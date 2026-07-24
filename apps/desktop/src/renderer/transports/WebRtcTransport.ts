@@ -32,7 +32,7 @@ export class WebRTCManager {
     // Listen to signaling messages
     window.desktop.remoteSessions.onMessage(
       this.remoteSessionId,
-      (this.handleSignalingMessage.bind(this) as (msg: unknown) => void),
+      this.handleSignalingMessage.bind(this) as (msg: unknown) => void,
     );
   }
 
@@ -108,7 +108,8 @@ export class WebRTCManager {
     }, 5000);
   }
   private stopHeartbeat() {
-    if (this.heartbeatInterval !== null) clearInterval(this.heartbeatInterval as unknown as number);
+    if (this.heartbeatInterval !== null)
+      clearInterval(this.heartbeatInterval as unknown as number);
   }
 
   private setupDataChannel(channel: RTCDataChannel) {

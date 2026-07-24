@@ -1,4 +1,7 @@
-import OBSWebSocket, { OBSRequestTypes, OBSWebSocketError } from 'obs-websocket-js';
+import OBSWebSocket, {
+  OBSRequestTypes,
+  OBSWebSocketError,
+} from 'obs-websocket-js';
 import {
   ObsConnectionConfig,
   ObsConnectionState,
@@ -325,9 +328,15 @@ export class ObsAdapter {
     this.notify(event);
   }
 
-  public async call(requestType: string, requestData?: unknown): Promise<unknown> {
+  public async call(
+    requestType: string,
+    requestData?: unknown,
+  ): Promise<unknown> {
     if (this.state !== 'connected') throw new Error('Not connected');
-    return await this.obs.call(requestType as keyof OBSRequestTypes, requestData as never);
+    return await this.obs.call(
+      requestType as keyof OBSRequestTypes,
+      requestData as never,
+    );
   }
 
   public async executeCommand(command: ObsCommand): Promise<ObsCommandResult> {

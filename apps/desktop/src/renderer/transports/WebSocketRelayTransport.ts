@@ -5,7 +5,11 @@ export class WebSocketRelayTransport implements RemoteTransport {
   private ws: WebSocket | null = null;
   private state: TransportState = 'disconnected';
   private listeners: Set<(message: unknown) => void> = new Set();
-  private sessionContext: { role: string; moderatorAuthorization?: string; streamerAuthorization?: string } | null = null;
+  private sessionContext: {
+    role: string;
+    moderatorAuthorization?: string;
+    streamerAuthorization?: string;
+  } | null = null;
   private url: string;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -13,7 +17,11 @@ export class WebSocketRelayTransport implements RemoteTransport {
     this.url = url;
   }
 
-  async connect(sessionContext: { role: string; moderatorAuthorization?: string; streamerAuthorization?: string }): Promise<void> {
+  async connect(sessionContext: {
+    role: string;
+    moderatorAuthorization?: string;
+    streamerAuthorization?: string;
+  }): Promise<void> {
     this.sessionContext = sessionContext;
     this.state = 'connecting';
 

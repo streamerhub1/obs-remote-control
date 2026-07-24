@@ -18,7 +18,16 @@ export const notificationsRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
+      const userId = (
+        request.user as {
+          sub: string;
+          id: string;
+          deviceId?: string;
+          role?: string;
+          remoteSessionId?: string;
+          [key: string]: unknown;
+        }
+      ).sub;
       const { limit } = request.query;
       const db = getDb();
 
@@ -48,7 +57,16 @@ export const notificationsRoutes: FastifyPluginAsync = async (appOriginal) => {
 
   // Mark all as read
   app.post('/notifications/mark-read', async (request, reply) => {
-    const userId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
+    const userId = (
+      request.user as {
+        sub: string;
+        id: string;
+        deviceId?: string;
+        role?: string;
+        remoteSessionId?: string;
+        [key: string]: unknown;
+      }
+    ).sub;
     const db = getDb();
 
     await db
@@ -70,7 +88,16 @@ export const notificationsRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
+      const userId = (
+        request.user as {
+          sub: string;
+          id: string;
+          deviceId?: string;
+          role?: string;
+          remoteSessionId?: string;
+          [key: string]: unknown;
+        }
+      ).sub;
       const { id } = request.params;
       const db = getDb();
 

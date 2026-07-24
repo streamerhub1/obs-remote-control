@@ -54,13 +54,15 @@ export class RemoteObsDataSource implements ObsDataSource {
 
   subscribe(callback: (event: unknown) => void) {
     if (!this.unsubTransport) {
-      this.unsubTransport = this.transport.subscribe((msg: { type: string; payload: unknown }) => {
-        if (msg.type === 'snapshot') {
-          callback({ state: 'connected', snapshot: msg.payload });
-        } else if (msg.type === 'event') {
-          callback({ state: 'connected', event: msg.payload });
-        }
-      });
+      this.unsubTransport = this.transport.subscribe(
+        (msg: { type: string; payload: unknown }) => {
+          if (msg.type === 'snapshot') {
+            callback({ state: 'connected', snapshot: msg.payload });
+          } else if (msg.type === 'event') {
+            callback({ state: 'connected', event: msg.payload });
+          }
+        },
+      );
     }
 
     return () => {

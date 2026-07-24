@@ -70,7 +70,10 @@ export function Moderators({
     try {
       const perms = await window.desktop.api.relationships.getPermissions(id);
       const map: Record<string, boolean> = {};
-      perms.forEach((p: { permissionKey: string; allowed: boolean }) => (map[p.permissionKey] = p.allowed));
+      perms.forEach(
+        (p: { permissionKey: string; allowed: boolean }) =>
+          (map[p.permissionKey] = p.allowed),
+      );
       setCurrentPerms(map);
       setManagingPermsFor(id);
     } catch (e) {
