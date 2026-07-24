@@ -71,12 +71,8 @@ export default async function remoteSessionsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const moderatorUserId = (
-        request.user as JwtPayload
-      ).sub;
-      const moderatorDeviceId = (
-        request.user as JwtPayload
-      ).deviceId;
+      const moderatorUserId = (request.user as JwtPayload).sub;
+      const moderatorDeviceId = (request.user as JwtPayload).deviceId;
       if (!moderatorDeviceId) {
         reply.status(403);
         throw new Error('Device ID required');
@@ -254,9 +250,7 @@ export default async function remoteSessionsRoutes(app: FastifyInstance) {
       },
     },
     async (request) => {
-      const userId = (
-        request.user as JwtPayload
-      ).sub;
+      const userId = (request.user as JwtPayload).sub;
       const db = getDb();
 
       const sessions = await db
@@ -298,9 +292,7 @@ export default async function remoteSessionsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const userId = (
-        request.user as JwtPayload
-      ).sub;
+      const userId = (request.user as JwtPayload).sub;
       const { id } = request.params;
       const db = getDb();
 
@@ -340,9 +332,7 @@ export default async function remoteSessionsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const userId = (
-        request.user as JwtPayload
-      ).sub;
+      const userId = (request.user as JwtPayload).sub;
       const { id } = request.params;
       const db = getDb();
 

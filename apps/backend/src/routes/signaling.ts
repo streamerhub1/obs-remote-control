@@ -34,7 +34,7 @@ interface SessionClient {
 }
 
 export default async function signalingRoutes(app: FastifyInstance) {
-    const globalClients = new Map<string, GlobalClient>(); // Keyed by deviceId
+  const globalClients = new Map<string, GlobalClient>(); // Keyed by deviceId
   const sessionRooms = new Map<string, Set<SessionClient>>(); // Keyed by remoteSessionId
 
   // Setup Redis PubSub for cross-node notifications
@@ -122,7 +122,9 @@ export default async function signalingRoutes(app: FastifyInstance) {
               }),
             );
           try {
-            const decoded = app.jwt.verify(parsed.appToken) as import('@fastify/jwt').FastifyJWT['payload'];
+            const decoded = app.jwt.verify(
+              parsed.appToken,
+            ) as import('@fastify/jwt').FastifyJWT['payload'];
             const { sub: userId, deviceId } = decoded;
             if (!deviceId) throw new Error('No deviceId in app token');
 
@@ -245,7 +247,8 @@ export default async function signalingRoutes(app: FastifyInstance) {
               publicKey,
             );
 
-            const jwtPayload = payload as import('@fastify/jwt').FastifyJWT['payload'];
+            const jwtPayload =
+              payload as import('@fastify/jwt').FastifyJWT['payload'];
             const { remoteSessionId, role, deviceId, userId } = {
               remoteSessionId: jwtPayload.remoteSessionId as string,
               role: jwtPayload.role as 'streamer' | 'moderator',

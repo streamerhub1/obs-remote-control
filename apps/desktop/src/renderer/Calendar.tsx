@@ -4,7 +4,14 @@ import { Card, CardHeader, CardTitle, CardContent } from '@obs-remote/ui';
 
 export function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [events, setEvents] = useState<Array<{ id: string; title: string; startAt: string; expectedDurationMinutes: number }>>([]);
+  const [events, setEvents] = useState<
+    Array<{
+      id: string;
+      title: string;
+      startAt: string;
+      expectedDurationMinutes: number;
+    }>
+  >([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -41,7 +48,7 @@ export function Calendar() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();

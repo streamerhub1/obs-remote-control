@@ -181,5 +181,5 @@ if (process.contextIsolated) {
     console.error(error);
   }
 } else {
-    window.desktop = API;
+  window.desktop = API;
 }

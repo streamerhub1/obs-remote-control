@@ -124,7 +124,10 @@ export class WebRTCManager {
     };
   }
 
-  private async handleSignalingMessage(msg: { type: string; payload: unknown }) {
+  private async handleSignalingMessage(msg: {
+    type: string;
+    payload: unknown;
+  }) {
     if (!this.pc) return;
 
     if (msg.type === 'signaling.offer' && this.role === 'streamer') {
@@ -132,7 +135,9 @@ export class WebRTCManager {
         new RTCSessionDescription(msg.payload as RTCSessionDescriptionInit),
       );
       for (const candidate of this.iceBuffer) {
-        await this.pc.addIceCandidate(new RTCIceCandidate(candidate as RTCIceCandidateInit));
+        await this.pc.addIceCandidate(
+          new RTCIceCandidate(candidate as RTCIceCandidateInit),
+        );
       }
       this.iceBuffer = [];
       const answer = await this.pc.createAnswer();
@@ -146,12 +151,16 @@ export class WebRTCManager {
         new RTCSessionDescription(msg.payload as RTCSessionDescriptionInit),
       );
       for (const candidate of this.iceBuffer) {
-        await this.pc.addIceCandidate(new RTCIceCandidate(candidate as RTCIceCandidateInit));
+        await this.pc.addIceCandidate(
+          new RTCIceCandidate(candidate as RTCIceCandidateInit),
+        );
       }
       this.iceBuffer = [];
     } else if (msg.type === 'signaling.ice') {
       if (this.pc.remoteDescription) {
-        await this.pc.addIceCandidate(new RTCIceCandidate(msg.payload as RTCIceCandidateInit));
+        await this.pc.addIceCandidate(
+          new RTCIceCandidate(msg.payload as RTCIceCandidateInit),
+        );
       } else {
         this.iceBuffer.push(msg.payload as RTCIceCandidateInit);
       }

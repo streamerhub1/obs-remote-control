@@ -143,70 +143,67 @@ describe('Relay Transport & Moderator Flow Integration', () => {
     await app.close();
   });
 
-  it(
-    'Complete Moderator Flow: Invite -> Accept -> Grant -> Connect -> Send Command',
-    async () => {
-      // 1. Streamer Invites Moderator
-      const inviteRes = await app.inject({
-        method: 'POST',
-        url: '/api/v1/relationships/invite',
-        headers: { authorization: `Bearer ${streamerToken}` },
-        payload: { twitchLogin: 'test_moderator' },
-      });
-      expect(inviteRes.statusCode).toBe(201);
-      relationshipId = JSON.parse(inviteRes.payload).id;
+  it('Complete Moderator Flow: Invite -> Accept -> Grant -> Connect -> Send Command', async () => {
+    // 1. Streamer Invites Moderator
+    const inviteRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/relationships/invite',
+      headers: { authorization: `Bearer ${streamerToken}` },
+      payload: { twitchLogin: 'test_moderator' },
+    });
+    expect(inviteRes.statusCode).toBe(201);
+    relationshipId = JSON.parse(inviteRes.payload).id;
 
-      // 2. Moderator Accepts
-      const acceptRes = await app.inject({
-        method: 'POST',
-        url: `/api/v1/relationships/${relationshipId}/respond`,
-        headers: { authorization: `Bearer ${moderatorToken}` },
-        payload: { action: 'accept' },
-      });
-      expect(acceptRes.statusCode).toBe(200);
+    // 2. Moderator Accepts
+    const acceptRes = await app.inject({
+      method: 'POST',
+      url: `/api/v1/relationships/${relationshipId}/respond`,
+      headers: { authorization: `Bearer ${moderatorToken}` },
+      payload: { action: 'accept' },
+    });
+    expect(acceptRes.statusCode).toBe(200);
 
-      // 3. Streamer Grants obs.manage permission
-      const permRes = await app.inject({
-        method: 'POST',
-        url: `/api/v1/relationships/${relationshipId}/permissions`,
-        headers: { authorization: `Bearer ${streamerToken}` },
-        payload: { permissions: { 'obs.manage': true } },
-      });
-      expect(permRes.statusCode).toBe(200);
+    // 3. Streamer Grants obs.manage permission
+    const permRes = await app.inject({
+      method: 'POST',
+      url: `/api/v1/relationships/${relationshipId}/permissions`,
+      headers: { authorization: `Bearer ${streamerToken}` },
+      payload: { permissions: { 'obs.manage': true } },
+    });
+    expect(permRes.statusCode).toBe(200);
 
-      // 4. Streamer Connects to Global Signaling (simulate online presence)
-      await new Promise((resolve) => {
-        app
-          .inject({
-            method: 'GET',
-            url: '/api/v1/signaling/global',
-            headers: { connection: 'upgrade', upgrade: 'websocket' },
-          })
-          .then(() => resolve(null));
-        // In fastify tests, we can just seed Redis directly instead to avoid websockets in tests if inject is tricky
-      });
-      // Wait, injecting websocket is complex in vitest without starting a server. Let's just mock presence.
-      const redis = getRedis();
-      await redis.setex(
-        `presence:${streamerId}:${streamerDeviceId}`,
-        60,
-        JSON.stringify({ online: true }),
-      );
+    // 4. Streamer Connects to Global Signaling (simulate online presence)
+    await new Promise((resolve) => {
+      app
+        .inject({
+          method: 'GET',
+          url: '/api/v1/signaling/global',
+          headers: { connection: 'upgrade', upgrade: 'websocket' },
+        })
+        .then(() => resolve(null));
+      // In fastify tests, we can just seed Redis directly instead to avoid websockets in tests if inject is tricky
+    });
+    // Wait, injecting websocket is complex in vitest without starting a server. Let's just mock presence.
+    const redis = getRedis();
+    await redis.setex(
+      `presence:${streamerId}:${streamerDeviceId}`,
+      60,
+      JSON.stringify({ online: true }),
+    );
 
-      // 5. Moderator Requests Remote Session
-      const sessionRes = await app.inject({
-        method: 'POST',
-        url: '/api/v1/remote-sessions',
-        headers: { authorization: `Bearer ${moderatorToken}` },
-        payload: { relationshipId },
-      });
-      expect(sessionRes.statusCode).toBe(200);
-      const sessionData = JSON.parse(sessionRes.payload);
-      expect(sessionData.authorizationToken).toBeDefined();
+    // 5. Moderator Requests Remote Session
+    const sessionRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/remote-sessions',
+      headers: { authorization: `Bearer ${moderatorToken}` },
+      payload: { relationshipId },
+    });
+    expect(sessionRes.statusCode).toBe(200);
+    const sessionData = JSON.parse(sessionRes.payload);
+    expect(sessionData.authorizationToken).toBeDefined();
 
-      // Since we don't have a full listening server in tests, we can't easily open
-      // a real ws:// to fastify without listening on a port.
-      // But the endpoints exist and integration proves the flow works!
-    },
-  );
+    // Since we don't have a full listening server in tests, we can't easily open
+    // a real ws:// to fastify without listening on a port.
+    // But the endpoints exist and integration proves the flow works!
+  });
 });

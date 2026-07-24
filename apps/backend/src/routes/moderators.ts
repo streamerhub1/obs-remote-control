@@ -99,9 +99,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const streamerId = (
-        request.user as JwtPayload
-      ).sub;
+      const streamerId = (request.user as JwtPayload).sub;
       const { moderatorId, permissions } = request.body;
       if (streamerId === moderatorId) {
         reply.status(400);
@@ -175,9 +173,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
       },
     },
     async (request) => {
-      const userId = (
-        request.user as JwtPayload
-      ).sub;
+      const userId = (request.user as JwtPayload).sub;
       const db = getDb();
       return await db
         .select({
@@ -214,9 +210,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
       },
     },
     async (request) => {
-      const userId = (
-        request.user as JwtPayload
-      ).sub;
+      const userId = (request.user as JwtPayload).sub;
       const db = getDb();
       return await db
         .select({
@@ -245,9 +239,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const userId = (
-        request.user as JwtPayload
-      ).sub;
+      const userId = (request.user as JwtPayload).sub;
       const { id } = request.params;
       const db = getDb();
 
@@ -295,9 +287,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const userId = (
-        request.user as JwtPayload
-      ).sub;
+      const userId = (request.user as JwtPayload).sub;
       const { id } = request.params;
       const db = getDb();
 
@@ -345,9 +335,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const userId = (
-        request.user as JwtPayload
-      ).sub;
+      const userId = (request.user as JwtPayload).sub;
       const { id } = request.params;
       const db = getDb();
 
@@ -401,9 +389,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
       },
     },
     async (request) => {
-      const streamerId = (
-        request.user as JwtPayload
-      ).sub;
+      const streamerId = (request.user as JwtPayload).sub;
       const db = getDb();
 
       return await db
@@ -429,9 +415,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const streamerId = (
-        request.user as JwtPayload
-      ).sub;
+      const streamerId = (request.user as JwtPayload).sub;
       const { relationshipId } = request.params;
       const { status } = request.body;
       const db = getDb();
@@ -482,9 +466,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const userId = (
-        request.user as JwtPayload
-      ).sub;
+      const userId = (request.user as JwtPayload).sub;
       const { relationshipId } = request.params;
       const db = getDb();
 
@@ -532,9 +514,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const userId = (
-        request.user as JwtPayload
-      ).sub;
+      const userId = (request.user as JwtPayload).sub;
       const { relationshipId } = request.params;
       const db = getDb();
 
@@ -579,9 +559,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const streamerId = (
-        request.user as JwtPayload
-      ).sub;
+      const streamerId = (request.user as JwtPayload).sub;
       const { relationshipId } = request.params;
       const { permissions } = request.body;
       const db = getDb();
@@ -650,9 +628,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
       },
     },
     async (request) => {
-      const moderatorId = (
-        request.user as JwtPayload
-      ).sub;
+      const moderatorId = (request.user as JwtPayload).sub;
       const db = getDb();
 
       return await db

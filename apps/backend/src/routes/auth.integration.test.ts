@@ -46,90 +46,87 @@ describe('Real Integration Tests', () => {
     await redis.quit();
   });
 
-  it(
-    'Creates user, registers device, and performs challenge/response',
-    async () => {
-      const db = getDb();
+  it('Creates user, registers device, and performs challenge/response', async () => {
+    const db = getDb();
 
-      // 1. Create a dummy user
-      const [user] = await db
-        .insert(users)
-        .values({
-          twitchId: '123456',
-          twitchLogin: 'integration_test_user',
-          displayName: 'Integration Tester',
-          avatarUrl: '',
-          inviteCode: 'integ-test-user',
-          inviteCodeNormalized: 'integ-test-user',
-        })
-        .returning();
+    // 1. Create a dummy user
+    const [user] = await db
+      .insert(users)
+      .values({
+        twitchId: '123456',
+        twitchLogin: 'integration_test_user',
+        displayName: 'Integration Tester',
+        avatarUrl: '',
+        inviteCode: 'integ-test-user',
+        inviteCodeNormalized: 'integ-test-user',
+      })
+      .returning();
 
-      // 2. Register Device
-      const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
-      const pubKeyPem = publicKey.export({
-        type: 'spki',
-        format: 'pem',
-      }) as string;
+    // 2. Register Device
+    const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+    const pubKeyPem = publicKey.export({
+      type: 'spki',
+      format: 'pem',
+    }) as string;
 
-      const [device] = await db
-        .insert(devices)
-        .values({
-          userId: user.id,
-          publicKey: pubKeyPem,
-          name: 'Integration Test PC',
-          platform: 'Windows',
-          appVersion: '1.0.0',
-        })
-        .returning();
+    const [device] = await db
+      .insert(devices)
+      .values({
+        userId: user.id,
+        publicKey: pubKeyPem,
+        name: 'Integration Test PC',
+        platform: 'Windows',
+        appVersion: '1.0.0',
+      })
+      .returning();
 
-      // 3. Request Challenge
-      const challengeRes = await app.inject({
-        method: 'POST',
-        url: '/desktop/challenge',
-        payload: { deviceId: device.id },
-      });
+    // 3. Request Challenge
+    const challengeRes = await app.inject({
+      method: 'POST',
+      url: '/desktop/challenge',
+      payload: { deviceId: device.id },
+    });
 
-      expect(challengeRes.statusCode).toBe(200);
-      const { challenge } = JSON.parse(challengeRes.payload);
-      expect(challenge).toBeDefined();
+    expect(challengeRes.statusCode).toBe(200);
+    const { challenge } = JSON.parse(challengeRes.payload);
+    expect(challenge).toBeDefined();
 
-      // 4. Verify Signature (Mock session to allow refresh)
-      const [session] = await db
-        .insert(sessions)
-        .values({
-          userId: user.id,
-          deviceId: device.id,
-          tokenHash: crypto
-            .createHash('sha256')
-            .update('real-refresh-token')
-            .digest('hex'),
-          familyId: crypto.randomUUID(),
-          expiresAt: new Date(Date.now() + 100000),
-        })
-        .returning();
+    // 4. Verify Signature (Mock session to allow refresh)
+    const [session] = await db
+      .insert(sessions)
+      .values({
+        userId: user.id,
+        deviceId: device.id,
+        tokenHash: crypto
+          .createHash('sha256')
+          .update('real-refresh-token')
+          .digest('hex'),
+        familyId: crypto.randomUUID(),
+        expiresAt: new Date(Date.now() + 100000),
+      })
+      .returning();
 
-      const signature = crypto
-        .sign(null, Buffer.from(challenge), privateKey)
-        .toString('base64');
+    const signature = crypto
+      .sign(null, Buffer.from(challenge), privateKey)
+      .toString('base64');
 
-      const verifyRes = await app.inject({
-        method: 'POST',
-        url: '/desktop/refresh',
-        payload: {
-          deviceId: device.id,
-          refreshToken: 'real-refresh-token',
-          signature,
-        },
-      });
+    const verifyRes = await app.inject({
+      method: 'POST',
+      url: '/desktop/refresh',
+      payload: {
+        deviceId: device.id,
+        refreshToken: 'real-refresh-token',
+        signature,
+      },
+    });
 
-      expect(verifyRes.statusCode).toBe(200);
-      const verifyPayload = JSON.parse(verifyRes.payload);
-      expect(verifyPayload.accessToken).toBeDefined();
+    expect(verifyRes.statusCode).toBe(200);
+    const verifyPayload = JSON.parse(verifyRes.payload);
+    expect(verifyPayload.accessToken).toBeDefined();
 
-      // Cleanup
-      await db.delete(sessions).where(eq(sessions.userId, user.id));
-      await db.delete(devices).where(eq(devices.userId, user.id));
-      await db.delete(users).where(eq(users.id, user.id));
-    },
-  );
+    // Cleanup
+    await db.delete(sessions).where(eq(sessions.userId, user.id));
+    await db.delete(devices).where(eq(devices.userId, user.id));
+    await db.delete(users).where(eq(users.id, user.id));
+  });
 });

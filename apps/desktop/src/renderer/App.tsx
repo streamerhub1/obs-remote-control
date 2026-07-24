@@ -114,7 +114,13 @@ export default function App() {
     const cleanupIncoming = window.desktop.remoteSessions.onIncoming(
       (session: unknown) => {
         console.log('Incoming session', session);
-        setIncomingSession(session as { remoteSessionId: string; streamerAuthorization: string; moderatorId: string; });
+        setIncomingSession(
+          session as {
+            remoteSessionId: string;
+            streamerAuthorization: string;
+            moderatorId: string;
+          },
+        );
       },
     );
 
@@ -147,7 +153,10 @@ export default function App() {
 
       // Broadcast OBS snapshot when connected
       const cleanupObsEvent = window.desktop.obs.subscribe((event: unknown) => {
-        const evt = event as { state: string; snapshot?: Record<string, unknown> };
+        const evt = event as {
+          state: string;
+          snapshot?: Record<string, unknown>;
+        };
         if (evt.state === 'connected' && evt.snapshot) {
           transport.send({
             type: 'snapshot',
