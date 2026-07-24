@@ -6,6 +6,7 @@ const backendSchema = z.object({
     .default('development'),
   PORT: z.coerce.number().default(3000),
   DATABASE_URL: z.string().url(),
+  DATABASE_DIRECT_URL: z.string().url().optional(),
   REDIS_URL: z.string().url(),
   TWITCH_CLIENT_ID: z.string().min(1),
   TWITCH_CLIENT_SECRET: z.string().min(1),
@@ -14,6 +15,7 @@ const backendSchema = z.object({
   JWT_SECRET: z.string().min(10),
   SESSION_SECRET: z.string().min(10),
   TOKEN_ENCRYPTION_KEY: z.string().length(64).describe('32-byte hex string'),
+  WEBSITE_ORIGIN: z.string().url().optional(),
 });
 
 const websiteSchema = z.object({

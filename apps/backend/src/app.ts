@@ -20,7 +20,7 @@ import { searchRoutes } from './routes/search.js';
 import { notificationsRoutes } from './routes/notifications.js';
 import fastifyWebsocket from '@fastify/websocket';
 import { initDb, getDb } from './db.js';
-import { initRedis } from './redis.js';
+import { initRedis, getRedis } from './redis.js';
 import { sql } from 'drizzle-orm';
 
 export async function buildApp() {
@@ -40,8 +40,29 @@ export async function buildApp() {
   initDb(process.env.DATABASE_URL!);
   initRedis(process.env.REDIS_URL!);
 
+  // CORS: allow Vercel website origin in production, localhost in development
+  const corsOrigins: string[] = [];
+  if (process.env.NODE_ENV === 'production') {
+    if (process.env.WEBSITE_ORIGIN) {
+      corsOrigins.push(process.env.WEBSITE_ORIGIN);
+    }
+  } else {
+    corsOrigins.push('http://localhost:3001', 'http://localhost:5173');
+  }
+
   await app.register(fastifyCors, {
-    origin: ['http://localhost:3001', 'http://localhost:5173'], // Frontend & Electron dev server
+    origin: (origin, cb) => {
+      // Allow requests with no Origin header (Electron Main, curl, etc.)
+      if (!origin) {
+        cb(null, true);
+        return;
+      }
+      if (corsOrigins.includes(origin)) {
+        cb(null, true);
+        return;
+      }
+      cb(new Error('Not allowed by CORS'), false);
+    },
     credentials: true,
   });
 
@@ -82,15 +103,33 @@ export async function buildApp() {
   });
 
   app.get('/ready', async (_request, reply) => {
+    const checks: { db: string; redis: string } = { db: 'fail', redis: 'fail' };
     try {
       const db = getDb();
       await db.execute(sql`SELECT 1`);
-      return { status: 'ready', timestamp: new Date().toISOString() };
-    } catch (_e) {
-      reply
-        .status(503)
-        .send({ status: 'not_ready', error: 'Database unavailable' });
+      checks.db = 'ok';
+    } catch {
+      // db stays 'fail'
     }
+    try {
+      const redis = getRedis();
+      const pong = await redis.ping();
+      if (pong === 'PONG') checks.redis = 'ok';
+    } catch {
+      // redis stays 'fail'
+    }
+    if (checks.db !== 'ok' || checks.redis !== 'ok') {
+      return reply.status(503).send({
+        status: 'not_ready',
+        checks,
+        timestamp: new Date().toISOString(),
+      });
+    }
+    return {
+      status: 'ready',
+      checks,
+      timestamp: new Date().toISOString(),
+    };
   });
 
   await app.register(authRoutes, { prefix: '/api/v1/auth' });

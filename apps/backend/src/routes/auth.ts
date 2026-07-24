@@ -213,7 +213,10 @@ export default async function authRoutes(app: FastifyInstance) {
         300,
       );
 
-      const deepLink = `streamerhub://auth/callback?code=${exchangeCode}`;
+      const deepLinkBase = process.env.DESKTOP_DEEP_LINK!;
+      const deepLinkUrl = new URL(deepLinkBase);
+      deepLinkUrl.searchParams.set('code', exchangeCode);
+      const deepLink = deepLinkUrl.toString();
 
       return reply.type('text/html').send(`
         <html>
@@ -221,7 +224,7 @@ export default async function authRoutes(app: FastifyInstance) {
             <h2>Authorization Successful!</h2>
             <p>You can close this window now. The application will resume shortly.</p>
             <script>
-              window.location.href = "${deepLink}";
+              window.location.href = ${JSON.stringify(deepLink)};
             </script>
           </body>
         </html>

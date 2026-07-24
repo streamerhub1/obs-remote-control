@@ -1,4 +1,9 @@
-import 'dotenv/config';
+// dotenv is a devDependency; skip in production containers where env comes from runtime
+try {
+  await import('dotenv/config');
+} catch {
+  // dotenv not available (production) — env vars provided by runtime
+}
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
@@ -8,12 +13,17 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export async function main() {
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL is required for migrations');
+  const databaseUrl =
+    process.env.DATABASE_DIRECT_URL ?? process.env.DATABASE_URL;
+
+  if (!databaseUrl) {
+    throw new Error(
+      'DATABASE_URL or DATABASE_DIRECT_URL is required for migrations',
+    );
   }
 
   console.log('Running migrations...');
-  const migrationClient = postgres(process.env.DATABASE_URL, { max: 1 });
+  const migrationClient = postgres(databaseUrl, { max: 1 });
   const db = drizzle(migrationClient);
 
   await migrate(db, {

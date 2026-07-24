@@ -1,0 +1,22 @@
+.git
+.github
+node_modules
+**/node_modules
+**/dist
+**/.next
+**/out
+**/release
+*.exe
+*.log
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+coverage
+**/.turbo
+.vscode
+.idea
+
+# Desktop Electron build artifacts (not needed in backend container)
+apps/desktop/release/
+apps/desktop/out/

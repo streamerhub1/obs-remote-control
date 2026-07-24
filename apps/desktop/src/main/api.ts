@@ -3,28 +3,30 @@ import { getAccessToken } from './auth.js';
 import { z } from 'zod';
 
 export const getApiUrl = () => {
+  // Compile-time env vars injected by electron-vite
   const url =
-    process.env.STREAMERHUB_API_URL ||
-    process.env.VITE_API_URL ||
-    process.env.VITE_BACKEND_URL;
-  if (!url) {
-    if (import.meta.env.PROD || app.isPackaged) {
-      return 'https://api.streamerhub.app';
-    }
-    return 'http://localhost:3000';
+    import.meta.env.VITE_STREAMERHUB_API_URL || process.env.STREAMERHUB_API_URL;
+  if (url) return url.replace(/\/$/, '');
+
+  if (import.meta.env.PROD || app.isPackaged) {
+    throw new Error(
+      'VITE_STREAMERHUB_API_URL is required for production builds',
+    );
   }
-  return url;
+  return 'http://localhost:3000';
 };
 
 export const getWsUrl = () => {
-  const url = process.env.STREAMERHUB_WS_URL || process.env.VITE_WS_URL;
-  if (!url) {
-    if (import.meta.env.PROD || app.isPackaged) {
-      return 'wss://api.streamerhub.app';
-    }
-    return 'ws://localhost:3000';
+  const url =
+    import.meta.env.VITE_STREAMERHUB_WS_URL || process.env.STREAMERHUB_WS_URL;
+  if (url) return url.replace(/\/$/, '');
+
+  if (import.meta.env.PROD || app.isPackaged) {
+    throw new Error(
+      'VITE_STREAMERHUB_WS_URL is required for production builds',
+    );
   }
-  return url;
+  return 'ws://localhost:3000';
 };
 
 async function apiFetch(path: string, options: RequestInit = {}) {
