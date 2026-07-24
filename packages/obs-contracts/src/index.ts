@@ -24,26 +24,41 @@ export const ObsSnapshotSchema = z.object({
   currentProgramScene: z.string(),
   currentPreviewScene: z.string().nullable(),
   scenes: z.array(z.string()),
-  sceneItems: z.record(z.string(), z.array(z.object({
-    sceneItemId: z.number(),
-    sourceName: z.string(),
-    sceneItemEnabled: z.boolean(),
-  }))),
-  filters: z.record(z.string(), z.array(z.object({
-    filterName: z.string(),
-    filterEnabled: z.boolean(),
-    filterKind: z.string(),
-  }))),
-  inputs: z.array(z.object({
-    inputName: z.string(),
-    inputKind: z.string(),
-    unversionedInputKind: z.string(),
-  })),
-  audioMixer: z.record(z.string(), z.object({
-    volumeDb: z.number(),
-    volumeMul: z.number(),
-    muted: z.boolean(),
-  })),
+  sceneItems: z.record(
+    z.string(),
+    z.array(
+      z.object({
+        sceneItemId: z.number(),
+        sourceName: z.string(),
+        sceneItemEnabled: z.boolean(),
+      }),
+    ),
+  ),
+  filters: z.record(
+    z.string(),
+    z.array(
+      z.object({
+        filterName: z.string(),
+        filterEnabled: z.boolean(),
+        filterKind: z.string(),
+      }),
+    ),
+  ),
+  inputs: z.array(
+    z.object({
+      inputName: z.string(),
+      inputKind: z.string(),
+      unversionedInputKind: z.string(),
+    }),
+  ),
+  audioMixer: z.record(
+    z.string(),
+    z.object({
+      volumeDb: z.number(),
+      volumeMul: z.number(),
+      muted: z.boolean(),
+    }),
+  ),
   studioMode: z.boolean(),
   streamStatus: z.object({
     active: z.boolean(),

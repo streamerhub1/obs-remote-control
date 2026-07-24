@@ -7,7 +7,7 @@ import { AuthGate } from '../src/renderer/AuthGate';
 describe('AuthGate', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Setup window.desktop mock
     (window as any).desktop = {
       auth: {
@@ -15,7 +15,7 @@ describe('AuthGate', () => {
         subscribe: vi.fn(),
         login: vi.fn(),
         logout: vi.fn(),
-      }
+      },
     };
   });
 
@@ -25,12 +25,14 @@ describe('AuthGate', () => {
 
   it('shows loading state initially', () => {
     // We delay the promise to keep it in loading state
-    (window as any).desktop.auth.getState = vi.fn().mockImplementation(() => new Promise(() => {}));
-    
+    (window as any).desktop.auth.getState = vi
+      .fn()
+      .mockImplementation(() => new Promise(() => {}));
+
     render(
       <AuthGate>
         <div data-testid="app-content">App Content</div>
-      </AuthGate>
+      </AuthGate>,
     );
 
     expect(screen.getByText('Загрузка...')).toBeDefined();
@@ -38,12 +40,14 @@ describe('AuthGate', () => {
   });
 
   it('shows login screen when not authenticated', async () => {
-    (window as any).desktop.auth.getState = vi.fn().mockResolvedValue({ authenticated: false });
-    
+    (window as any).desktop.auth.getState = vi
+      .fn()
+      .mockResolvedValue({ authenticated: false });
+
     render(
       <AuthGate>
         <div data-testid="app-content">App Content</div>
-      </AuthGate>
+      </AuthGate>,
     );
 
     await waitFor(() => {
@@ -53,12 +57,14 @@ describe('AuthGate', () => {
   });
 
   it('shows children when authenticated', async () => {
-    (window as any).desktop.auth.getState = vi.fn().mockResolvedValue({ authenticated: true });
-    
+    (window as any).desktop.auth.getState = vi
+      .fn()
+      .mockResolvedValue({ authenticated: true });
+
     render(
       <AuthGate>
         <div data-testid="app-content">App Content</div>
-      </AuthGate>
+      </AuthGate>,
     );
 
     await waitFor(() => {

@@ -1,6 +1,13 @@
 /// <reference types="vite/client" />
 
-import { ObsCommand, ObsCommandResult, ObsConnectionConfig, ObsConnectionState, ObsEvent, ObsSnapshot } from '@obs-remote/obs-contracts';
+import {
+  ObsCommand,
+  ObsCommandResult,
+  ObsConnectionConfig,
+  ObsConnectionState,
+  ObsEvent,
+  ObsSnapshot,
+} from '@obs-remote/obs-contracts';
 
 interface Window {
   desktop: {
@@ -10,9 +17,19 @@ interface Window {
     auth: {
       login: () => Promise<void>;
       logout: () => Promise<void>;
-      getState: () => Promise<{ loading: boolean; authenticated: boolean; error?: string }>;
+      getState: () => Promise<{
+        loading: boolean;
+        authenticated: boolean;
+        error?: string;
+      }>;
       getProfile: () => Promise<any>;
-      subscribe: (callback: (state: { loading?: boolean; authenticated?: boolean; error?: string }) => void) => () => void;
+      subscribe: (
+        callback: (state: {
+          loading?: boolean;
+          authenticated?: boolean;
+          error?: string;
+        }) => void,
+      ) => () => void;
     };
     signaling: {
       connect: () => Promise<void>;

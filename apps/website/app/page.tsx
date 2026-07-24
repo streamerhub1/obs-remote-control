@@ -11,12 +11,29 @@ export default function Home() {
             <div className="w-8 h-8 rounded bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-bold">
               SH
             </div>
-            <span className="font-semibold text-lg tracking-tight">StreamerHub</span>
+            <span className="font-semibold text-lg tracking-tight">
+              StreamerHub
+            </span>
           </div>
           <div className="flex items-center gap-6 text-sm font-medium text-gray-300">
-            <Link href="/collabs" className="hover:text-white transition-colors">Коллаборации</Link>
-            <Link href="/features" className="hover:text-white transition-colors">Возможности</Link>
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-500 text-white">Скачать для Desktop</Button>
+            <Link
+              href="/collabs"
+              className="hover:text-white transition-colors"
+            >
+              Коллаборации
+            </Link>
+            <Link
+              href="/features"
+              className="hover:text-white transition-colors"
+            >
+              Возможности
+            </Link>
+            <Button
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-500 text-white"
+            >
+              Скачать для Desktop
+            </Button>
           </div>
         </div>
       </nav>
@@ -25,19 +42,27 @@ export default function Home() {
         {/* Hero Section */}
         <section className="relative pt-32 pb-20 px-6 overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-[#0A0A0A] to-[#0A0A0A] -z-10" />
-          
+
           <div className="max-w-4xl mx-auto text-center space-y-8">
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-500">
               Единое пространство <br /> для стримеров
             </h1>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
-              Находите партнеров для коллабораций, обменивайтесь аудиторией, и управляйте своим OBS из любой точки мира вместе с модераторами.
+              Находите партнеров для коллабораций, обменивайтесь аудиторией, и
+              управляйте своим OBS из любой точки мира вместе с модераторами.
             </p>
             <div className="flex items-center justify-center gap-4 pt-4">
-              <Button size="lg" className="bg-white text-black hover:bg-gray-200">
+              <Button
+                size="lg"
+                className="bg-white text-black hover:bg-gray-200"
+              >
                 Создать профиль
               </Button>
-              <Button size="lg" variant="outline" className="border-gray-700 text-gray-300 hover:bg-gray-800">
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-gray-700 text-gray-300 hover:bg-gray-800"
+              >
                 Искать коллаборации
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
@@ -55,7 +80,8 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-semibold">Социальная сеть</h3>
                 <p className="text-gray-400 leading-relaxed">
-                  Первая социальная сеть специально для стримеров. Лента новостей, профили, поиск партнеров по категориям и языкам.
+                  Первая социальная сеть специально для стримеров. Лента
+                  новостей, профили, поиск партнеров по категориям и языкам.
                 </p>
               </div>
 
@@ -65,7 +91,8 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-semibold">Биржа коллабораций</h3>
                 <p className="text-gray-400 leading-relaxed">
-                  Создавайте открытые коллаборации, подавайте заявки и растите вместе. Удобный календарь интегрирован в приложение.
+                  Создавайте открытые коллаборации, подавайте заявки и растите
+                  вместе. Удобный календарь интегрирован в приложение.
                 </p>
               </div>
 
@@ -75,7 +102,9 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-semibold">Удаленный OBS</h3>
                 <p className="text-gray-400 leading-relaxed">
-                  Дайте модераторам безопасный доступ к вашему OBS через WebRTC. Переключение сцен, звука и управление стримом без передачи паролей.
+                  Дайте модераторам безопасный доступ к вашему OBS через WebRTC.
+                  Переключение сцен, звука и управление стримом без передачи
+                  паролей.
                 </p>
               </div>
             </div>

@@ -46,8 +46,8 @@ export class RemoteObsDataSource implements ObsDataSource {
       type: 'command.request',
       payload: {
         commandId: crypto.randomUUID(),
-        command
-      }
+        command,
+      },
     });
   }
 

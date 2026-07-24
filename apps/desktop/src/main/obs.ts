@@ -1,11 +1,16 @@
 import { ipcMain, safeStorage, app } from 'electron';
 import { ObsAdapter } from '@obs-remote/obs-adapter';
-import { ObsConnectionConfigSchema, ObsCommandSchema } from '@obs-remote/obs-contracts';
+import {
+  ObsConnectionConfigSchema,
+  ObsCommandSchema,
+} from '@obs-remote/obs-contracts';
 import path from 'path';
 import fs from 'fs';
 
 const obs = new ObsAdapter();
-export function getObsAdapter() { return obs; }
+export function getObsAdapter() {
+  return obs;
+}
 
 function getObsSettingsPath() {
   return path.join(app.getPath('userData'), 'obs_settings.json');
@@ -16,7 +21,7 @@ function loadObsSettings() {
     const storePath = getObsSettingsPath();
     if (fs.existsSync(storePath)) {
       const encrypted = fs.readFileSync(storePath);
-      const data = safeStorage.isEncryptionAvailable() 
+      const data = safeStorage.isEncryptionAvailable()
         ? safeStorage.decryptString(encrypted)
         : encrypted.toString('utf-8');
       return JSON.parse(data);
@@ -30,7 +35,7 @@ function loadObsSettings() {
 function saveObsSettings(data: unknown) {
   const storePath = getObsSettingsPath();
   const json = JSON.stringify(data);
-  const buffer = safeStorage.isEncryptionAvailable() 
+  const buffer = safeStorage.isEncryptionAvailable()
     ? safeStorage.encryptString(json)
     : Buffer.from(json, 'utf-8');
   fs.writeFileSync(storePath, buffer);

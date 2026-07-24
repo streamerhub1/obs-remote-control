@@ -9,16 +9,21 @@ const VERSION = 1;
  */
 export function encryptToken(text: string, hexKey: string): string {
   if (!text) return text;
-  
+
   const key = Buffer.from(hexKey, 'hex');
   if (key.length !== 32) {
-    throw new Error('Encryption key must be exactly 32 bytes (64 hex characters)');
+    throw new Error(
+      'Encryption key must be exactly 32 bytes (64 hex characters)',
+    );
   }
 
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
 
-  const encrypted = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
+  const encrypted = Buffer.concat([
+    cipher.update(text, 'utf8'),
+    cipher.final(),
+  ]);
   const authTag = cipher.getAuthTag();
 
   return `v${VERSION}:${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
@@ -32,7 +37,9 @@ export function decryptToken(encryptedText: string, hexKey: string): string {
 
   const key = Buffer.from(hexKey, 'hex');
   if (key.length !== 32) {
-    throw new Error('Encryption key must be exactly 32 bytes (64 hex characters)');
+    throw new Error(
+      'Encryption key must be exactly 32 bytes (64 hex characters)',
+    );
   }
 
   const parts = encryptedText.split(':');
@@ -49,6 +56,9 @@ export function decryptToken(encryptedText: string, hexKey: string): string {
   const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
   decipher.setAuthTag(authTag);
 
-  const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+  const decrypted = Buffer.concat([
+    decipher.update(ciphertext),
+    decipher.final(),
+  ]);
   return decrypted.toString('utf8');
 }

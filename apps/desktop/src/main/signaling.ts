@@ -18,7 +18,7 @@ export function connectSignaling() {
     globalWs.close();
     globalWs = null;
   }
-  
+
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
@@ -33,28 +33,35 @@ export function connectSignaling() {
   globalWs.on('open', () => {
     console.log('Global Signaling WebSocket connected');
     getMainWindow()?.webContents.send('signaling:connected');
-    
-    globalWs?.send(JSON.stringify({
-      type: 'signaling.authenticate',
-      appToken: token,
-    }));
+
+    globalWs?.send(
+      JSON.stringify({
+        type: 'signaling.authenticate',
+        appToken: token,
+      }),
+    );
   });
 
   globalWs.on('message', (data) => {
     try {
       const msg = JSON.parse(data.toString());
       if (msg.type === 'heartbeat.ping') {
-         globalWs?.send(JSON.stringify({ type: 'heartbeat.pong', timestamp: Date.now() }));
-         return;
+        globalWs?.send(
+          JSON.stringify({ type: 'heartbeat.pong', timestamp: Date.now() }),
+        );
+        return;
       }
-      
+
       if (msg.type === 'remoteSession.incoming') {
-        getMainWindow()?.webContents.send('remoteSessions:incoming', msg.payload);
+        getMainWindow()?.webContents.send(
+          'remoteSessions:incoming',
+          msg.payload,
+        );
         return;
       }
 
       getMainWindow()?.webContents.send('signaling:message', msg);
-    } catch(e) {}
+    } catch (e) {}
   });
 
   globalWs.on('close', () => {

@@ -2,10 +2,21 @@ import React from 'react';
 import { cn } from './utils';
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: 'default' | 'success' | 'warning' | 'danger' | 'purple' | 'outline' | 'secondary';
+  variant?:
+    | 'default'
+    | 'success'
+    | 'warning'
+    | 'danger'
+    | 'purple'
+    | 'outline'
+    | 'secondary';
 }
 
-export function Badge({ className, variant = 'default', ...props }: BadgeProps) {
+export function Badge({
+  className,
+  variant = 'default',
+  ...props
+}: BadgeProps) {
   const variants = {
     default: 'bg-gray-800 text-gray-300',
     success: 'bg-green-500/10 text-green-400 border border-green-500/20',
@@ -19,9 +30,9 @@ export function Badge({ className, variant = 'default', ...props }: BadgeProps) 
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
+        'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
         variants[variant],
-        className
+        className,
       )}
       {...props}
     />

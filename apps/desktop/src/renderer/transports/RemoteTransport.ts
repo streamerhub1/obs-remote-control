@@ -1,4 +1,5 @@
-export type TransportState = 'disconnected' | 'connecting' | 'connected' | 'error';
+export type TransportState =
+  'disconnected' | 'connecting' | 'connected' | 'error';
 
 export interface RemoteTransport {
   connect(sessionContext: any): Promise<void>;

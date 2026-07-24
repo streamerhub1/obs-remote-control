@@ -7,7 +7,9 @@ describe('Collaborations API', () => {
 
   beforeAll(async () => {
     if (!process.env.DATABASE_URL || !process.env.REDIS_URL) {
-      console.warn("Skipping collaborations test because DATABASE_URL or REDIS_URL are missing.");
+      console.warn(
+        'Skipping collaborations test because DATABASE_URL or REDIS_URL are missing.',
+      );
       return;
     }
     process.env.JWT_SECRET = 'test-secret';
@@ -26,7 +28,7 @@ describe('Collaborations API', () => {
         title: 'Test Collab',
         startAt: new Date().toISOString(),
         expectedDurationMinutes: 60,
-      }
+      },
     });
 
     expect(response.statusCode).toBe(401);

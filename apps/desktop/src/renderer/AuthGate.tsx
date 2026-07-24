@@ -17,7 +17,8 @@ export function AuthGate({ children }: AuthGateProps) {
     });
     return window.desktop.auth.subscribe((state: unknown) => {
       if (state.loading !== undefined) setAuthLoading(state.loading);
-      if (state.authenticated !== undefined) setAuthenticated(state.authenticated);
+      if (state.authenticated !== undefined)
+        setAuthenticated(state.authenticated);
     });
   }, []);
 
@@ -41,8 +42,10 @@ export function AuthGate({ children }: AuthGateProps) {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent mb-2">
             StreamerHub
           </h1>
-          <p className="text-gray-400 text-sm mb-8">Единый центр управления стримами, коллаборациями и сообществом.</p>
-          <button 
+          <p className="text-gray-400 text-sm mb-8">
+            Единый центр управления стримами, коллаборациями и сообществом.
+          </p>
+          <button
             onClick={handleTwitchLogin}
             className="w-full py-3 px-4 bg-[#9146FF] hover:bg-[#772CE8] text-white rounded-xl font-semibold transition-all shadow-lg shadow-[#9146FF]/20 flex items-center justify-center gap-2"
           >

@@ -9,15 +9,17 @@ import { setupApiHandlers } from './api';
 // Prevent multiple instances
 const gotTheLock = app.requestSingleInstanceLock();
 
-const isDev = process.env.NODE_ENV === 'development' || !!process.env.ELECTRON_RENDERER_URL;
+const isDev =
+  process.env.NODE_ENV === 'development' || !!process.env.ELECTRON_RENDERER_URL;
 
 let mainWindow: BrowserWindow | null = null;
-export function getMainWindow() { return mainWindow; }
+export function getMainWindow() {
+  return mainWindow;
+}
 
 if (!gotTheLock) {
   app.quit();
 } else {
-
   function createWindow() {
     mainWindow = new BrowserWindow({
       width: 1280,
@@ -49,12 +51,19 @@ if (!gotTheLock) {
     });
 
     // Handle render process errors
-    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
-      console.error(`Page failed to load: ${errorDescription} (${errorCode}) at ${validatedURL}`);
-    });
+    mainWindow.webContents.on(
+      'did-fail-load',
+      (event, errorCode, errorDescription, validatedURL) => {
+        console.error(
+          `Page failed to load: ${errorDescription} (${errorCode}) at ${validatedURL}`,
+        );
+      },
+    );
 
     mainWindow.webContents.on('render-process-gone', (event, details) => {
-      console.error(`Render process gone. Reason: ${details.reason}, exitCode: ${details.exitCode}`);
+      console.error(
+        `Render process gone. Reason: ${details.reason}, exitCode: ${details.exitCode}`,
+      );
     });
 
     mainWindow.webContents.on('preload-error', (event, preloadPath, error) => {
@@ -62,15 +71,19 @@ if (!gotTheLock) {
     });
 
     // Content Security Policy
-    mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
-      const responseHeaders = { ...details.responseHeaders };
-      
-      if (!isDev) {
-        responseHeaders['Content-Security-Policy'] = ["default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss: http: https:;"];
-      }
+    mainWindow.webContents.session.webRequest.onHeadersReceived(
+      (details, callback) => {
+        const responseHeaders = { ...details.responseHeaders };
 
-      callback({ responseHeaders });
-    });
+        if (!isDev) {
+          responseHeaders['Content-Security-Policy'] = [
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss: http: https:;",
+          ];
+        }
+
+        callback({ responseHeaders });
+      },
+    );
 
     // Prevent external window creation
     mainWindow.webContents.setWindowOpenHandler((_details) => {
@@ -89,10 +102,12 @@ if (!gotTheLock) {
     // Register Deep Link
     if (process.defaultApp) {
       if (process.argv.length >= 2) {
-        app.setAsDefaultProtocolClient('streamerhub', process.execPath, [path.resolve(process.argv[1])])
+        app.setAsDefaultProtocolClient('streamerhub', process.execPath, [
+          path.resolve(process.argv[1]),
+        ]);
       }
     } else {
-      app.setAsDefaultProtocolClient('streamerhub')
+      app.setAsDefaultProtocolClient('streamerhub');
     }
 
     // Register IPC handlers
@@ -100,7 +115,10 @@ if (!gotTheLock) {
       const allowlist = ['github.com', 'twitch.tv'];
       try {
         const parsedUrl = new URL(url);
-        if ((parsedUrl.protocol === 'https:' || parsedUrl.protocol === 'http:') && allowlist.some(domain => parsedUrl.hostname.endsWith(domain))) {
+        if (
+          (parsedUrl.protocol === 'https:' || parsedUrl.protocol === 'http:') &&
+          allowlist.some((domain) => parsedUrl.hostname.endsWith(domain))
+        ) {
           shell.openExternal(url);
           return true;
         }
@@ -113,7 +131,7 @@ if (!gotTheLock) {
     });
 
     createWindow();
-    
+
     if (mainWindow) {
       setupAuthHandlers(mainWindow);
       setupObsHandlers(mainWindow);

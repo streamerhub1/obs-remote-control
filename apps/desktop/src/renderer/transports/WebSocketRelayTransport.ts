@@ -16,28 +16,33 @@ export class WebSocketRelayTransport implements RemoteTransport {
   async connect(sessionContext: any): Promise<void> {
     this.sessionContext = sessionContext;
     this.state = 'connecting';
-    
+
     return new Promise((resolve, reject) => {
       this.ws = new WebSocket(this.url);
-      
+
       this.ws.onopen = () => {
         this.state = 'connected';
         // Authenticate the session
-        this.ws?.send(JSON.stringify({
-          type: 'signaling.authenticate',
-          authorizationToken: sessionContext.role === 'moderator' ? sessionContext.moderatorAuthorization : sessionContext.streamerAuthorization,
-        }));
+        this.ws?.send(
+          JSON.stringify({
+            type: 'signaling.authenticate',
+            authorizationToken:
+              sessionContext.role === 'moderator'
+                ? sessionContext.moderatorAuthorization
+                : sessionContext.streamerAuthorization,
+          }),
+        );
         resolve();
       };
-      
+
       this.ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          
+
           if (data.type === 'session.message') {
             const parsedMsg = P2PMessageSchema.safeParse(data.payload);
             if (parsedMsg.success) {
-              this.listeners.forEach(l => l(parsedMsg.data));
+              this.listeners.forEach((l) => l(parsedMsg.data));
             } else {
               console.error('Invalid message from relay', parsedMsg.error);
             }
@@ -60,7 +65,10 @@ export class WebSocketRelayTransport implements RemoteTransport {
         this.ws = null;
         // Basic reconnect logic
         if (this.sessionContext) {
-          this.reconnectTimer = setTimeout(() => this.connect(this.sessionContext), 3000);
+          this.reconnectTimer = setTimeout(
+            () => this.connect(this.sessionContext),
+            3000,
+          );
         }
       };
     });
@@ -70,11 +78,13 @@ export class WebSocketRelayTransport implements RemoteTransport {
     if (this.state !== 'connected' || !this.ws) {
       throw new Error('Transport not connected');
     }
-    
-    this.ws.send(JSON.stringify({
-      type: 'session.message',
-      payload: message,
-    }));
+
+    this.ws.send(
+      JSON.stringify({
+        type: 'session.message',
+        payload: message,
+      }),
+    );
   }
 
   subscribe(listener: (message: any) => void): () => void {

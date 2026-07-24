@@ -3,7 +3,10 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 import { execSync } from 'child_process';
 
-const commitSha = execSync('git rev-parse HEAD').toString().trim().substring(0, 7);
+const commitSha = execSync('git rev-parse HEAD')
+  .toString()
+  .trim()
+  .substring(0, 7);
 const buildDate = new Date().toISOString();
 const appVersion = process.env.npm_package_version || '1.0.0';
 
@@ -29,8 +32,8 @@ export default defineConfig({
         },
         output: {
           format: 'cjs',
-          entryFileNames: '[name].cjs'
-        }
+          entryFileNames: '[name].cjs',
+        },
       },
     },
   },

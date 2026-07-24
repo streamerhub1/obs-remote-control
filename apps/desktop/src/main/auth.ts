@@ -9,8 +9,12 @@ let mainWindowRef: Electron.BrowserWindow | null = null;
 let accessToken: string | null = null;
 let deviceId: string | null = null;
 
-export function getAccessToken() { return accessToken; }
-export function getDeviceId() { return deviceId; }
+export function getAccessToken() {
+  return accessToken;
+}
+export function getDeviceId() {
+  return deviceId;
+}
 
 function getStorePath() {
   return path.join(app.getPath('userData'), 'device_identity.json');
@@ -21,7 +25,7 @@ function loadDeviceIdentity() {
     const storePath = getStorePath();
     if (fs.existsSync(storePath)) {
       const encrypted = fs.readFileSync(storePath);
-      const data = safeStorage.isEncryptionAvailable() 
+      const data = safeStorage.isEncryptionAvailable()
         ? safeStorage.decryptString(encrypted)
         : encrypted.toString('utf-8');
       return JSON.parse(data);
@@ -32,10 +36,15 @@ function loadDeviceIdentity() {
   return null;
 }
 
-function saveDeviceIdentity(data: { publicKey: string; privateKey: string; deviceId?: string; refreshToken?: string }) {
+function saveDeviceIdentity(data: {
+  publicKey: string;
+  privateKey: string;
+  deviceId?: string;
+  refreshToken?: string;
+}) {
   const storePath = getStorePath();
   const json = JSON.stringify(data);
-  const buffer = safeStorage.isEncryptionAvailable() 
+  const buffer = safeStorage.isEncryptionAvailable()
     ? safeStorage.encryptString(json)
     : Buffer.from(json, 'utf-8');
   fs.writeFileSync(storePath, buffer);
@@ -62,17 +71,19 @@ export function setupAuthHandlers(mainWindow: Electron.BrowserWindow) {
         await fetch(`${getApiUrl()}/api/v1/auth/logout`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken: identity.refreshToken })
+          body: JSON.stringify({ refreshToken: identity.refreshToken }),
         });
       }
     } catch (e) {
       console.error('Logout error', e);
     }
-    
+
     deleteDeviceIdentity();
     accessToken = null;
     deviceId = null;
-    mainWindowRef?.webContents.send('auth:state-changed', { authenticated: false });
+    mainWindowRef?.webContents.send('auth:state-changed', {
+      authenticated: false,
+    });
   });
 
   ipcMain.handle('auth:getState', async () => {
@@ -90,7 +101,7 @@ export function setupAuthHandlers(mainWindow: Electron.BrowserWindow) {
     if (!accessToken) return null;
     try {
       const res = await fetch(`${getApiUrl()}/api/v1/auth/me`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (res.ok) {
         return await res.json();
@@ -104,7 +115,9 @@ export function setupAuthHandlers(mainWindow: Electron.BrowserWindow) {
   // Automatically attempt restore on startup
   refreshAccessToken().then((success) => {
     if (mainWindowRef) {
-      mainWindowRef.webContents.send('auth:state-changed', { authenticated: success });
+      mainWindowRef.webContents.send('auth:state-changed', {
+        authenticated: success,
+      });
     }
   });
 }
@@ -115,28 +128,36 @@ async function refreshAccessToken() {
 
   try {
     // 1. Refresh flow with Proof-of-Possession challenge
-    const challengeRes = await fetch(`${getApiUrl()}/api/v1/auth/desktop/challenge`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ deviceId: identity.deviceId })
-    });
-    
+    const challengeRes = await fetch(
+      `${getApiUrl()}/api/v1/auth/desktop/challenge`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId: identity.deviceId }),
+      },
+    );
+
     if (!challengeRes.ok) throw new Error('Challenge failed');
     const { challenge } = await challengeRes.json();
 
     // Sign challenge
-    const signature = crypto.sign(null, Buffer.from(challenge), identity.privateKey).toString('base64');
+    const signature = crypto
+      .sign(null, Buffer.from(challenge), identity.privateKey)
+      .toString('base64');
 
     // 2. Exchange refresh token + signature for new tokens
-    const refreshRes = await fetch(`${getApiUrl()}/api/v1/auth/desktop/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        deviceId: identity.deviceId,
-        refreshToken: identity.refreshToken,
-        signature
-      })
-    });
+    const refreshRes = await fetch(
+      `${getApiUrl()}/api/v1/auth/desktop/refresh`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deviceId: identity.deviceId,
+          refreshToken: identity.refreshToken,
+          signature,
+        }),
+      },
+    );
 
     if (!refreshRes.ok) {
       deleteDeviceIdentity();
@@ -148,7 +169,6 @@ async function refreshAccessToken() {
     identity.refreshToken = tokens.refreshToken;
     saveDeviceIdentity(identity);
     return true;
-
   } catch (e) {
     console.error('Refresh token error', e);
     return false;
@@ -175,25 +195,34 @@ async function exchangeCode(code: string) {
   try {
     // Generate Ed25519 keys
     const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
-    const pubKeyPem = publicKey.export({ type: 'spki', format: 'pem' }) as string;
-    const privKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' }) as string;
+    const pubKeyPem = publicKey.export({
+      type: 'spki',
+      format: 'pem',
+    }) as string;
+    const privKeyPem = privateKey.export({
+      type: 'pkcs8',
+      format: 'pem',
+    }) as string;
 
-    const response = await fetch(`${getApiUrl()}/api/v1/auth/desktop/exchange`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        code,
-        publicKey: pubKeyPem,
-        deviceName: `${process.platform} Device`,
-        platform: process.platform,
-        appVersion: app.getVersion()
-      })
-    });
+    const response = await fetch(
+      `${getApiUrl()}/api/v1/auth/desktop/exchange`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code,
+          publicKey: pubKeyPem,
+          deviceName: `${process.platform} Device`,
+          platform: process.platform,
+          appVersion: app.getVersion(),
+        }),
+      },
+    );
 
     if (!response.ok) throw new Error('Exchange failed');
-    
+
     const data = await response.json();
-    
+
     accessToken = data.accessToken;
     deviceId = data.deviceId;
 
@@ -201,10 +230,12 @@ async function exchangeCode(code: string) {
       deviceId: data.deviceId,
       publicKey: pubKeyPem,
       privateKey: privKeyPem,
-      refreshToken: data.refreshToken
+      refreshToken: data.refreshToken,
     });
 
-    mainWindowRef?.webContents.send('auth:state-changed', { authenticated: true });
+    mainWindowRef?.webContents.send('auth:state-changed', {
+      authenticated: true,
+    });
   } catch (error) {
     console.error('Code exchange failed', error);
     mainWindowRef?.webContents.send('auth:error', 'Login failed');

@@ -11,16 +11,15 @@ describe('Calendar API Integration', () => {
   let testUserId: string;
 
   beforeAll(async () => {
-
-    
     initDb(process.env.DATABASE_URL!);
-    
+
     app = fastify();
-    
-    const { serializerCompiler, validatorCompiler } = await import('fastify-type-provider-zod');
+
+    const { serializerCompiler, validatorCompiler } =
+      await import('fastify-type-provider-zod');
     app.setValidatorCompiler(validatorCompiler);
     app.setSerializerCompiler(serializerCompiler);
-    
+
     // Mock user for requests
     app.addHook('onRequest', async (request: any) => {
       request.user = { sub: testUserId };
@@ -31,20 +30,25 @@ describe('Calendar API Integration', () => {
     const db = getDb();
 
     // Create a test user
-    const userResult = await db.insert(users).values({
-      twitchId: 'calendar_integration_test_user',
-      twitchLogin: 'calendaruser',
-      displayName: 'Test User Calendar',
-      avatarUrl: '',
-      inviteCode: crypto.randomUUID(),
-      inviteCodeNormalized: crypto.randomUUID(),
-    }).returning();
+    const userResult = await db
+      .insert(users)
+      .values({
+        twitchId: 'calendar_integration_test_user',
+        twitchLogin: 'calendaruser',
+        displayName: 'Test User Calendar',
+        avatarUrl: '',
+        inviteCode: crypto.randomUUID(),
+        inviteCodeNormalized: crypto.randomUUID(),
+      })
+      .returning();
     testUserId = userResult[0].id;
   });
 
   afterAll(async () => {
     const db = getDb();
-    await db.delete(calendarEvents).where(eq(calendarEvents.ownerId, testUserId));
+    await db
+      .delete(calendarEvents)
+      .where(eq(calendarEvents.ownerId, testUserId));
     await db.delete(users).where(eq(users.id, testUserId));
   });
 
@@ -61,8 +65,8 @@ describe('Calendar API Integration', () => {
         startAt,
         endAt,
         timezone: 'UTC',
-        visibility: 'private'
-      }
+        visibility: 'private',
+      },
     });
 
     expect(createRes.statusCode).toBe(201);

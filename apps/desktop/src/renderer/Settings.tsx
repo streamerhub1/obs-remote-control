@@ -1,12 +1,20 @@
 import React from 'react';
-import { Card, CardHeader, CardTitle, CardContent, Button } from '@obs-remote/ui';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Button,
+} from '@obs-remote/ui';
 
 export function Settings() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <header>
         <h2 className="text-3xl font-semibold text-gray-100">Настройки</h2>
-        <p className="text-gray-400 mt-2">Управление вашим аккаунтом и приложением.</p>
+        <p className="text-gray-400 mt-2">
+          Управление вашим аккаунтом и приложением.
+        </p>
       </header>
 
       <div className="space-y-6">
@@ -18,7 +26,9 @@ export function Settings() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="font-medium text-gray-200">Тема оформления</p>
-                <p className="text-sm text-gray-400">Выберите светлую или темную тему</p>
+                <p className="text-sm text-gray-400">
+                  Выберите светлую или темную тему
+                </p>
               </div>
               <select className="bg-black border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
                 <option value="dark">Темная</option>
@@ -37,9 +47,15 @@ export function Settings() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="font-medium text-gray-200">Push-уведомления</p>
-                <p className="text-sm text-gray-400">Получать уведомления на рабочем столе</p>
+                <p className="text-sm text-gray-400">
+                  Получать уведомления на рабочем столе
+                </p>
               </div>
-              <input type="checkbox" className="w-5 h-5 rounded border-gray-700 text-blue-600 focus:ring-blue-500 bg-black/50" defaultChecked />
+              <input
+                type="checkbox"
+                className="w-5 h-5 rounded border-gray-700 text-blue-600 focus:ring-blue-500 bg-black/50"
+                defaultChecked
+              />
             </div>
           </CardContent>
         </Card>
@@ -52,7 +68,9 @@ export function Settings() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="font-medium text-gray-200">Удаление аккаунта</p>
-                <p className="text-sm text-gray-400">Это действие необратимо удалит все ваши данные</p>
+                <p className="text-sm text-gray-400">
+                  Это действие необратимо удалит все ваши данные
+                </p>
               </div>
               <Button variant="danger">Удалить аккаунт</Button>
             </div>
@@ -67,7 +85,9 @@ export function Settings() {
             <div className="space-y-2 text-sm text-gray-300">
               <div className="flex justify-between">
                 <span className="text-gray-500">Название:</span>
-                <span className="font-medium">Streamly (StreamerHub Desktop)</span>
+                <span className="font-medium">
+                  Streamly (StreamerHub Desktop)
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Версия:</span>
@@ -83,7 +103,11 @@ export function Settings() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Окружение:</span>
-                <span className="font-medium">{import.meta.env.MODE === 'development' ? 'Development' : 'Production'}</span>
+                <span className="font-medium">
+                  {import.meta.env.MODE === 'development'
+                    ? 'Development'
+                    : 'Production'}
+                </span>
               </div>
             </div>
           </CardContent>

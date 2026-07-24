@@ -25,7 +25,9 @@ import { sql } from 'drizzle-orm';
 
 export async function buildApp(): Promise<any> {
   const logger = createLogger({
-    env: (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development',
+    env:
+      (process.env.NODE_ENV as 'development' | 'production' | 'test') ||
+      'development',
     name: 'backend',
   });
 
@@ -44,7 +46,7 @@ export async function buildApp(): Promise<any> {
   });
 
   await app.register(fastifyCookie);
-  
+
   await app.register(fastifyJwt, {
     secret: process.env.JWT_SECRET!,
   });
@@ -55,11 +57,12 @@ export async function buildApp(): Promise<any> {
   const fastifyRateLimit = (await import('@fastify/rate-limit')).default;
   await app.register(fastifyRateLimit, {
     max: 100,
-    timeWindow: '1 minute'
+    timeWindow: '1 minute',
   });
 
   // Zod Type Provider
-  const { serializerCompiler, validatorCompiler } = await import('fastify-type-provider-zod');
+  const { serializerCompiler, validatorCompiler } =
+    await import('fastify-type-provider-zod');
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
@@ -83,8 +86,10 @@ export async function buildApp(): Promise<any> {
       const db = getDb();
       await db.execute(sql`SELECT 1`);
       return { status: 'ready', timestamp: new Date().toISOString() };
-    } catch(e) {
-      reply.status(503).send({ status: 'not_ready', error: 'Database unavailable' });
+    } catch (e) {
+      reply
+        .status(503)
+        .send({ status: 'not_ready', error: 'Database unavailable' });
     }
   });
 

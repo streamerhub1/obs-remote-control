@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { ObsCommandSchema, ObsSnapshotSchema, ObsEventSchema } from '@obs-remote/obs-contracts';
+import {
+  ObsCommandSchema,
+  ObsSnapshotSchema,
+  ObsEventSchema,
+} from '@obs-remote/obs-contracts';
 
 const BasePayloadSchema = z.object({});
 
@@ -70,10 +74,12 @@ const CommandResultSchema = z.object({
     commandId: z.string(),
     success: z.boolean(),
     result: z.unknown().optional(), // Obs return data can vary, but we don't use `any`
-    error: z.object({
-      code: z.string(),
-      message: z.string(),
-    }).optional(),
+    error: z
+      .object({
+        code: z.string(),
+        message: z.string(),
+      })
+      .optional(),
     revision: z.number().optional(),
   }),
 });
@@ -145,7 +151,7 @@ export const P2PEnvelopeBaseSchema = z.object({
 
 export const P2PMessageSchema = z.intersection(
   P2PEnvelopeBaseSchema,
-  P2PPayloadSchema
+  P2PPayloadSchema,
 );
 
 export type P2PMessage = z.infer<typeof P2PMessageSchema>;
@@ -154,7 +160,7 @@ export function createP2PMessage<T extends P2PPayload['type']>(
   sessionId: string,
   sequence: number,
   type: T,
-  payload: Extract<P2PPayload, { type: T }>['payload']
+  payload: Extract<P2PPayload, { type: T }>['payload'],
 ): P2PMessage {
   return {
     protocolVersion: '1.0',

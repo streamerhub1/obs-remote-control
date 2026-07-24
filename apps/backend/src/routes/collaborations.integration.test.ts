@@ -2,7 +2,11 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fastify from 'fastify';
 import { collaborationsRoutes } from './collaborations.js';
 import { initDb, getDb } from '../db.js';
-import { users, collaborations, collaborationParticipants } from '@obs-remote/database';
+import {
+  users,
+  collaborations,
+  collaborationParticipants,
+} from '@obs-remote/database';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 
@@ -13,13 +17,14 @@ describe('Collaborations API Integration', () => {
 
   beforeAll(async () => {
     initDb(process.env.DATABASE_URL!);
-    
+
     app = fastify();
-    
-    const { serializerCompiler, validatorCompiler } = await import('fastify-type-provider-zod');
+
+    const { serializerCompiler, validatorCompiler } =
+      await import('fastify-type-provider-zod');
     app.setValidatorCompiler(validatorCompiler);
     app.setSerializerCompiler(serializerCompiler);
-    
+
     // Mock user for requests
     app.addHook('onRequest', async (request: any) => {
       request.user = { sub: streamerId };
@@ -30,32 +35,42 @@ describe('Collaborations API Integration', () => {
     const db = getDb();
 
     // Create a test streamer
-    const streamerResult = await db.insert(users).values({
-      twitchId: 'collab_streamer123',
-      twitchLogin: 'collabstreamer',
-      displayName: 'Collab Streamer',
-      avatarUrl: '',
-      inviteCode: crypto.randomUUID(),
-      inviteCodeNormalized: crypto.randomUUID(),
-    }).returning();
+    const streamerResult = await db
+      .insert(users)
+      .values({
+        twitchId: 'collab_streamer123',
+        twitchLogin: 'collabstreamer',
+        displayName: 'Collab Streamer',
+        avatarUrl: '',
+        inviteCode: crypto.randomUUID(),
+        inviteCodeNormalized: crypto.randomUUID(),
+      })
+      .returning();
     streamerId = streamerResult[0].id;
 
     // Create a participant
-    const participantResult = await db.insert(users).values({
-      twitchId: 'collab_participant123',
-      twitchLogin: 'collabparticipant',
-      displayName: 'Collab Participant',
-      avatarUrl: '',
-      inviteCode: crypto.randomUUID(),
-      inviteCodeNormalized: crypto.randomUUID(),
-    }).returning();
+    const participantResult = await db
+      .insert(users)
+      .values({
+        twitchId: 'collab_participant123',
+        twitchLogin: 'collabparticipant',
+        displayName: 'Collab Participant',
+        avatarUrl: '',
+        inviteCode: crypto.randomUUID(),
+        inviteCodeNormalized: crypto.randomUUID(),
+      })
+      .returning();
     participantId = participantResult[0].id;
   });
 
   afterAll(async () => {
     const db = getDb();
-    await db.delete(collaborationParticipants).where(eq(collaborationParticipants.userId, participantId));
-    await db.delete(collaborations).where(eq(collaborations.ownerId, streamerId));
+    await db
+      .delete(collaborationParticipants)
+      .where(eq(collaborationParticipants.userId, participantId));
+    await db
+      .delete(collaborations)
+      .where(eq(collaborations.ownerId, streamerId));
     await db.delete(users).where(eq(users.id, streamerId));
     await db.delete(users).where(eq(users.id, participantId));
   });
@@ -69,8 +84,8 @@ describe('Collaborations API Integration', () => {
         title: 'Epic Stream Collab',
         description: 'Playing games together',
         startAt: new Date(Date.now() + 86400000).toISOString(),
-        visibility: 'public'
-      }
+        visibility: 'public',
+      },
     });
 
     expect(createRes.statusCode).toBe(201);
@@ -83,8 +98,8 @@ describe('Collaborations API Integration', () => {
       url: `/collaborations/${createdCollab.id}/participants`,
       payload: {
         twitchLogin: 'collabparticipant',
-        role: 'co_host'
-      }
+        role: 'co_host',
+      },
     });
 
     expect(inviteRes.statusCode).toBe(200);
@@ -98,7 +113,7 @@ describe('Collaborations API Integration', () => {
     expect(listRes.statusCode).toBe(200);
     const collabs = JSON.parse(listRes.payload);
     expect(collabs.length).toBeGreaterThan(0);
-    
+
     const ourCollab = collabs.find((c: any) => c.id === createdCollab.id);
     expect(ourCollab).toBeDefined();
 
@@ -107,7 +122,7 @@ describe('Collaborations API Integration', () => {
       method: 'GET',
       url: `/collaborations/${createdCollab.id}/participants`,
     });
-    
+
     expect(participantsRes.statusCode).toBe(200);
     const participants = JSON.parse(participantsRes.payload);
     expect(participants.length).toBe(1);
