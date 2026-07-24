@@ -29,6 +29,8 @@ describe('Auth Routes Security Tests', () => {
 
     app.jwt = { sign: vi.fn().mockReturnValue('mock-jwt') };
 
+    const fastifyCookie = (await import('@fastify/cookie')).default;
+    await app.register(fastifyCookie);
     await app.register(authRoutes);
 
     mockRedis = {
@@ -249,3 +251,171 @@ describe('Auth Routes Security Tests', () => {
     expect(mockDb.set).toHaveBeenCalledWith({ revokedAt: expect.any(Date) });
   });
 });
+
+describe('Twitch OAuth Flow', () => {
+  let app: any;
+  let mockRedis: any;
+  let mockDb: any;
+  let fetchMock: any;
+
+  beforeEach(async () => {
+    process.env.TWITCH_CLIENT_ID = 'test-client-id';
+    process.env.TWITCH_CLIENT_SECRET = 'test-secret';
+    process.env.TWITCH_REDIRECT_URI = 'http://test-redirect';
+    process.env.TOKEN_ENCRYPTION_KEY = 'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90';
+    process.env.DESKTOP_DEEP_LINK = 'streamerhub://auth/callback';
+
+    app = fastify();
+
+    const { serializerCompiler, validatorCompiler } =
+      await import('fastify-type-provider-zod');
+    app.setValidatorCompiler(validatorCompiler);
+    app.setSerializerCompiler(serializerCompiler);
+    app.jwt = { sign: vi.fn().mockReturnValue('mock-jwt') };
+
+    const fastifyCookie = (await import('@fastify/cookie')).default;
+    await app.register(fastifyCookie);
+    await app.register(authRoutes);
+
+    mockRedis = {
+      get: vi.fn(),
+      set: vi.fn(),
+      del: vi.fn(),
+    };
+    (getRedis as import('vitest').Mock).mockReturnValue(mockRedis);
+
+    mockDb = {
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      transaction: vi.fn().mockImplementation(async (cb) => cb(mockDb)),
+      insert: vi.fn().mockReturnThis(),
+      values: vi.fn().mockReturnThis(),
+      update: vi.fn().mockReturnThis(),
+      set: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockReturnThis(),
+    };
+    (getDb as import('vitest').Mock).mockReturnValue(mockDb);
+
+    fetchMock = vi.fn();
+    global.fetch = fetchMock;
+  });
+
+  it('1 & 2. authorize URL contains correct redirect_uri, state, and no PKCE', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/desktop/login',
+    });
+
+    if (response.statusCode !== 302) console.log(response.payload);
+    expect(response.statusCode).toBe(302);
+    const location = new URL(response.headers.location as string);
+    expect(location.hostname).toBe('id.twitch.tv');
+    expect(location.pathname).toBe('/oauth2/authorize');
+    expect(location.searchParams.get('client_id')).toBe('test-client-id');
+    expect(location.searchParams.get('redirect_uri')).toBe('http://test-redirect');
+    expect(location.searchParams.get('response_type')).toBe('code');
+    expect(location.searchParams.get('state')).toBeTruthy();
+    
+    // NO PKCE
+    expect(location.searchParams.has('code_challenge')).toBe(false);
+    expect(location.searchParams.has('code_challenge_method')).toBe(false);
+
+    expect(mockRedis.set).toHaveBeenCalledWith(
+      expect.stringContaining('auth:state:'),
+      expect.stringContaining('"flow":"desktop"'),
+      'EX',
+      600
+    );
+  });
+
+  it('3, 4, 5, 6, 8. token request format is correct and successful flow creates exchange code', async () => {
+    mockRedis.get.mockResolvedValueOnce(JSON.stringify({ flow: 'desktop' }));
+    
+    // Mock Token Response
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        access_token: 'mock-access',
+        refresh_token: 'mock-refresh',
+        expires_in: 3600
+      })
+    });
+
+    // Mock Validate Response
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        client_id: 'test-client-id',
+        user_id: '123'
+      })
+    });
+
+    // Mock User Response
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [{ id: '123', login: 'testuser', display_name: 'TestUser', profile_image_url: 'img' }]
+      })
+    });
+
+    mockDb.where.mockResolvedValueOnce([]); // No existing user
+    mockDb.returning.mockResolvedValueOnce([{ id: 'new-user-id' }]); // User insert
+    mockDb.where.mockResolvedValueOnce([]); // No existing oauth
+    mockDb.values.mockResolvedValueOnce([{ id: 'new-oauth-id' }]); // OAuth insert
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/twitch/callback?code=test-code&state=test-state',
+      cookies: { oauth_state: 'test-state' }
+    });
+
+    // Validate fetch calls
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+
+    const tokenCall = fetchMock.mock.calls[0];
+    expect(tokenCall[0]).toBe('https://id.twitch.tv/oauth2/token');
+    expect(tokenCall[1].method).toBe('POST');
+    expect(tokenCall[1].headers['Content-Type']).toBe('application/x-www-form-urlencoded');
+    expect(tokenCall[1].headers['Authorization']).toBeUndefined(); // No basic auth
+
+    const body = tokenCall[1].body as URLSearchParams;
+    expect(body.get('client_id')).toBe('test-client-id');
+    expect(body.get('client_secret')).toBe('test-secret');
+    expect(body.get('code')).toBe('test-code');
+    expect(body.get('grant_type')).toBe('authorization_code');
+    expect(body.get('redirect_uri')).toBe('http://test-redirect'); // matches exactly
+
+    if (response.statusCode !== 200) console.log(response.payload);
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).toContain('window.location.href = "streamerhub://auth/callback?code=');
+    expect(mockRedis.set).toHaveBeenCalledWith(
+      expect.stringContaining('auth:exchange:'),
+      expect.stringContaining('"userId":"new-user-id"'),
+      'EX',
+      300
+    );
+  });
+
+  it('7. Twitch error is handled gracefully', async () => {
+    mockRedis.get.mockResolvedValueOnce(JSON.stringify({ flow: 'desktop' }));
+    
+    // Mock Token Error Response
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      json: async () => ({ message: 'Invalid token' })
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/twitch/callback?code=test-code&state=test-state',
+      cookies: { oauth_state: 'test-state' }
+    });
+
+    expect(response.statusCode).toBe(200); // Renders HTML error page
+    expect(response.payload).toContain('Authorization Failed');
+    expect(response.payload).toContain('Token exchange failed');
+  });
+});
+

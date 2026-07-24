@@ -5,7 +5,7 @@ import { setupObsHandlers } from './obs';
 import { setupSignaling } from './signaling';
 import { setupRemoteSessions } from './remote-sessions';
 import { setupApiHandlers } from './api';
-
+import { setupUpdater } from './updater';
 // Prevent multiple instances
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -138,6 +138,7 @@ if (!gotTheLock) {
       setupSignaling();
       setupRemoteSessions();
       setupApiHandlers();
+      setupUpdater(mainWindow);
     }
 
     app.on('activate', function () {

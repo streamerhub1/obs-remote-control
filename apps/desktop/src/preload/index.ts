@@ -170,6 +170,16 @@ const API = {
         ipcRenderer.invoke('api:remoteSessions:create', data),
     },
   },
+  updater: {
+    getState: () => ipcRenderer.invoke('updater:getState'),
+    check: () => ipcRenderer.send('updater:check'),
+    install: () => ipcRenderer.send('updater:install'),
+    onStateChanged: (callback: (state: string, data?: any) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: { state: string, data?: any }) => callback(payload.state, payload.data);
+      ipcRenderer.on('updater:state', handler);
+      return () => ipcRenderer.removeListener('updater:state', handler);
+    },
+  },
 };
 
 export type DesktopAPI = typeof API;

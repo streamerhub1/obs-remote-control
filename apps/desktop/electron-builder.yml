@@ -37,3 +37,9 @@ protocols:
   - name: StreamerHub Deep Link
     schemes:
       - streamerhub
+
+publish:
+  provider: github
+  owner: streamerhub1
+  repo: obs-remote-control
+  releaseType: release

@@ -1,6 +1,5 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
-import { generateState, generateCodeVerifier } from 'arctic';
-import { getTwitchOAuth, fetchTwitchUser } from '../services/twitch.js';
+import { fetchTwitchUser } from '../services/twitch.js';
 import { getDb } from '../db.js';
 import { getRedis } from '../redis.js';
 import { users, oauthAccounts, devices, sessions } from '@obs-remote/database';
@@ -20,28 +19,18 @@ export default async function authRoutes(app: FastifyInstance) {
   });
 
   server.get('/desktop/login', async (request, reply) => {
-    const oauthClient = getTwitchOAuth(
-      process.env.TWITCH_CLIENT_ID!,
-      process.env.TWITCH_CLIENT_SECRET!,
-      process.env.TWITCH_REDIRECT_URI!,
-    );
-    const state = generateState();
-    const codeVerifier = generateCodeVerifier();
-    // Twitch uses S256 for code_challenge_method (value 0 in arctic CodeChallengeMethod enum)
-    const url = oauthClient.createAuthorizationURLWithPKCE(
-      'https://id.twitch.tv/oauth2/authorize',
-      state,
-      0, // S256
-      codeVerifier,
-      [],
-    );
+    const state = crypto.randomBytes(16).toString('hex');
+    const url = new URL('https://id.twitch.tv/oauth2/authorize');
+    url.searchParams.set('client_id', process.env.TWITCH_CLIENT_ID!);
+    url.searchParams.set('redirect_uri', process.env.TWITCH_REDIRECT_URI!);
+    url.searchParams.set('response_type', 'code');
+    url.searchParams.set('state', state);
 
     const redis = getRedis();
     await redis.set(
       `auth:state:${state}`,
       JSON.stringify({
         flow: 'desktop',
-        codeVerifier,
       }),
       'EX',
       600,
@@ -93,26 +82,63 @@ export default async function authRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'No code provided' });
     }
 
-    const oauthClient = getTwitchOAuth(
-      process.env.TWITCH_CLIENT_ID!,
-      process.env.TWITCH_CLIENT_SECRET!,
-      process.env.TWITCH_REDIRECT_URI!,
-    );
+    let accessToken: string;
+    let refreshToken: string | null = null;
+    let expiresAt: Date;
 
-    let tokens;
     try {
-      tokens = await oauthClient.validateAuthorizationCode(
-        'https://id.twitch.tv/oauth2/token',
+      const body = new URLSearchParams({
+        client_id: process.env.TWITCH_CLIENT_ID!,
+        client_secret: process.env.TWITCH_CLIENT_SECRET!,
         code,
-        stateData.codeVerifier,
-      );
-    } catch (err) {
-      return reply
-        .status(400)
-        .send({ error: 'Failed to validate authorization code' });
+        grant_type: 'authorization_code',
+        redirect_uri: process.env.TWITCH_REDIRECT_URI!,
+      });
+
+      const tokenResponse = await fetch('https://id.twitch.tv/oauth2/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body,
+      });
+
+      if (!tokenResponse.ok) {
+        throw new Error(`Token exchange failed with status ${tokenResponse.status}`);
+      }
+
+      const tokenData = await tokenResponse.json();
+      accessToken = tokenData.access_token;
+      refreshToken = tokenData.refresh_token || null;
+      expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
+
+      const validateResponse = await fetch('https://id.twitch.tv/oauth2/validate', {
+        headers: {
+          Authorization: `OAuth ${accessToken}`,
+        },
+      });
+
+      if (!validateResponse.ok) {
+        throw new Error(`Token validation failed with status ${validateResponse.status}`);
+      }
+      const validateData = await validateResponse.json();
+      if (validateData.client_id !== process.env.TWITCH_CLIENT_ID) {
+        throw new Error('Client ID mismatch');
+      }
+    } catch (err: any) {
+      request.log.error({ error: err.message }, 'Twitch OAuth failed');
+      return reply.type('text/html').send(`
+        <html>
+          <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #0A0A0A; color: white;">
+            <h2>Authorization Failed</h2>
+            <p>We could not validate your Twitch login. Please try again.</p>
+            <p>Error details: ${err.message || 'Unknown error'}</p>
+          </body>
+        </html>
+      `);
     }
 
-    const twitchUser = await fetchTwitchUser(tokens.accessToken());
+    const twitchUser = await fetchTwitchUser(accessToken);
     const db = getDb();
 
     let userId: string;
@@ -160,9 +186,9 @@ export default async function authRoutes(app: FastifyInstance) {
       }
 
       const encryptionKey = process.env.TOKEN_ENCRYPTION_KEY!;
-      const encryptedAccess = encryptToken(tokens.accessToken(), encryptionKey);
-      const encryptedRefresh = tokens.hasRefreshToken()
-        ? encryptToken(tokens.refreshToken(), encryptionKey)
+      const encryptedAccess = encryptToken(accessToken, encryptionKey);
+      const encryptedRefresh = refreshToken
+        ? encryptToken(refreshToken, encryptionKey)
         : null;
 
       const [existingOauth] = await tx
@@ -181,7 +207,7 @@ export default async function authRoutes(app: FastifyInstance) {
           .set({
             encryptedAccessToken: encryptedAccess,
             encryptedRefreshToken: encryptedRefresh,
-            expiresAt: tokens.accessTokenExpiresAt(),
+            expiresAt: expiresAt,
           })
           .where(
             and(
@@ -196,7 +222,7 @@ export default async function authRoutes(app: FastifyInstance) {
           providerAccountId: twitchUser.id,
           encryptedAccessToken: encryptedAccess,
           encryptedRefreshToken: encryptedRefresh,
-          expiresAt: tokens.accessTokenExpiresAt(),
+          expiresAt: expiresAt,
         });
       }
     });
