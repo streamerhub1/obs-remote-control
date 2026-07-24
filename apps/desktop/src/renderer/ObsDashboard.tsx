@@ -27,7 +27,7 @@ export function ObsDashboard({ dataSource }: { dataSource: ObsDataSource }) {
   const [obsState, setObsState] = React.useState<string>('disconnected');
 
   React.useEffect(() => {
-    let cleanup = dataSource.subscribe(
+    const cleanup = dataSource.subscribe(
       (event: {
         state?: string;
         snapshot?: ObsSnapshot;
@@ -54,7 +54,7 @@ export function ObsDashboard({ dataSource }: { dataSource: ObsDataSource }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataSource]);
 
-  const execute = (cmd: ObsCommand) => dataSource.execute(cmd as any);
+  const execute = (cmd: ObsCommand) => dataSource.execute(cmd);
 
   if (obsState !== 'connected' || !snapshot) {
     return (

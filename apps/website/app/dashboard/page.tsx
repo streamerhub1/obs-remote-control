@@ -12,6 +12,7 @@ export default function DashboardOverview() {
   useEffect(() => {
     // In a real app we'd fetch from our backend
     // fetch('http://localhost:3000/api/users/me').then(r => r.json()).then(setUser)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setUser({
       displayName: 'StreamerOne',
       avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',

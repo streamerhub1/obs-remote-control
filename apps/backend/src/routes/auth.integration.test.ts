@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fastify from 'fastify';
 import authRoutes from './auth.js';
@@ -45,7 +46,7 @@ describe('Real Integration Tests', () => {
     await redis.quit();
   });
 
-  it.skipIf(!process.env.DATABASE_URL || !process.env.REDIS_URL)(
+  it(
     'Creates user, registers device, and performs challenge/response',
     async () => {
       const db = getDb();

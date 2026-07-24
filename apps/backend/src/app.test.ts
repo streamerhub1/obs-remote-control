@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { buildApp } from './app.js';
 import { FastifyInstance } from 'fastify';

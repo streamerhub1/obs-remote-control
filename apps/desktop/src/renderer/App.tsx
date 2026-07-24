@@ -87,12 +87,14 @@ export default function App() {
 
   const [incomingSession, setIncomingSession] = React.useState<{
     remoteSessionId: string;
+    streamerAuthorization: string;
+    moderatorId: string;
   } | null>(null);
 
   React.useEffect(() => {
     if (!window.desktop?.obs) return;
     const cleanup = window.desktop.obs.subscribe((event: unknown) => {
-      setObsState((event as any).state);
+      setObsState((event as { state: string }).state);
     });
     window.desktop.obs.getStatus().then(setObsState);
     return cleanup;
@@ -104,7 +106,7 @@ export default function App() {
     // We only connect signaling if we know we are authenticated.
     // AuthGate handles authentication state, but we need to check it here.
     window.desktop.auth.getState().then((state: unknown) => {
-      if ((state as any).authenticated) {
+      if ((state as { authenticated: boolean }).authenticated) {
         window.desktop.signaling.connect();
       }
     });
@@ -112,7 +114,7 @@ export default function App() {
     const cleanupIncoming = window.desktop.remoteSessions.onIncoming(
       (session: unknown) => {
         console.log('Incoming session', session);
-        setIncomingSession(session as any);
+        setIncomingSession(session as { remoteSessionId: string; streamerAuthorization: string; moderatorId: string; });
       },
     );
 
@@ -129,7 +131,7 @@ export default function App() {
     try {
       // 1. Authenticate with backend and verify token in Main
       const ctx = await window.desktop.remoteSessions.connect(
-        (sessionInfo as any).streamerAuthorization,
+        sessionInfo.streamerAuthorization,
       );
 
       // 2. Start WebSocket Relay Transport
@@ -140,15 +142,16 @@ export default function App() {
       await transport.connect({
         remoteSessionId: ctx.remoteSessionId,
         role: 'streamer',
-        streamerAuthorization: (sessionInfo as any).streamerAuthorization,
-      } as any);
+        streamerAuthorization: sessionInfo.streamerAuthorization,
+      });
 
       // Broadcast OBS snapshot when connected
       const cleanupObsEvent = window.desktop.obs.subscribe((event: unknown) => {
-        if ((event as any).state === 'connected' && (event as any).snapshot) {
+        const evt = event as { state: string; snapshot?: Record<string, unknown> };
+        if (evt.state === 'connected' && evt.snapshot) {
           transport.send({
             type: 'snapshot',
-            payload: (event as any).snapshot,
+            payload: evt.snapshot,
           });
         }
       });
@@ -229,7 +232,7 @@ export default function App() {
         remoteSessionId: ctx.remoteSessionId,
         role: 'moderator',
         moderatorAuthorization: token,
-      } as any);
+      });
 
       setRemoteObsDataSource(new RemoteObsDataSource(transport));
       setCurrentRoute('remote_obs');

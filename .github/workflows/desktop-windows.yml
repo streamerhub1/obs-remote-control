@@ -10,46 +10,103 @@ permissions:
   contents: write
 
 jobs:
-  lint-test:
-    name: Lint & Test
+  verify:
+    name: Verify Project
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: streamerhub
+          POSTGRES_PASSWORD: streamerhub_password
+          POSTGRES_DB: streamerhub_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://streamerhub:streamerhub_password@localhost:5432/streamerhub_test
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: test-jwt-secret-12345
+      SESSION_SECRET: test-session-secret-12345
+      TOKEN_ENCRYPTION_KEY: 1234567890123456789012345678901234567890123456789012345678901234
+      TWITCH_CLIENT_ID: test_client_id
+      TWITCH_CLIENT_SECRET: test_client_secret
+      TWITCH_REDIRECT_URI: http://localhost:3000/api/v1/auth/callback
+      DESKTOP_DEEP_LINK: streamerhub://auth/callback
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v3
         with:
           version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Format check
+      - name: Validate Version Matches Tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$VERSION" != "$PKG_VERSION" ]; then
+            echo "Tag version ($VERSION) does not match root package.json version ($PKG_VERSION)"
+            exit 1
+          fi
+          DESKTOP_VERSION=$(node -p "require('./apps/desktop/package.json').version")
+          if [ "$VERSION" != "$DESKTOP_VERSION" ]; then
+            echo "Tag version ($VERSION) does not match desktop package.json version ($DESKTOP_VERSION)"
+            exit 1
+          fi
+          echo "Version validation passed!"
+
+      - name: Check Format
         run: pnpm format:check
-        continue-on-error: true # formatting warnings should not block release
 
       - name: Lint
-        run: pnpm --filter '!@obs-remote/backend' lint
-        continue-on-error: true # eslint-plugin-react-hooks v4 incompatibility on ESLint 9
+        run: pnpm lint
 
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Unit tests (no DB required)
-        run: pnpm --filter '!@obs-remote/backend' test
-        continue-on-error: true # integration tests require DB
+      - name: Run Database Migrations
+        run: pnpm --filter @obs-remote/database run migrate
+
+      - name: Unit Tests
+        run: pnpm test
+
+      - name: Integration Tests
+        run: pnpm test:integration
+
+      - name: Build All
+        run: pnpm build
 
   build-windows:
     name: Build Windows Installer
     runs-on: windows-latest
-    needs: lint-test
+    needs: verify
     env:
-      # Short path for pnpm store to avoid NSIS MAX_PATH issues on Windows CI
       PNPM_HOME: C:\p
     steps:
       - uses: actions/checkout@v4
@@ -69,36 +126,57 @@ jobs:
           pnpm config set store-dir C:\ps
           pnpm config set cache-dir C:\pc
 
-      - name: Bump version from tag
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          $VERSION = $env:GITHUB_REF_NAME.Substring(1)
-          npm pkg set version=$VERSION
-          npm pkg set version=$VERSION --prefix apps/desktop
-          Write-Host "Version set to: $VERSION"
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Build all packages
-        run: pnpm build
 
       - name: Generate icon assets
         run: node scripts/generate-icon.mjs
 
+      - name: Build Desktop and Workspace Dependencies
+        run: pnpm --filter @obs-remote/desktop... build
+
       - name: Package Windows NSIS installer
         run: pnpm --filter @obs-remote/desktop dist:win
         env:
-          CSC_LINK: '' # no code-signing in CI (optional)
+          CSC_LINK: ''
           CSC_KEY_PASSWORD: ''
 
-      - name: List release artifacts
-        run: dir apps\desktop\release\*.exe
+      - name: Validate Installer Artifact
+        run: |
+          $VERSION = $env:GITHUB_REF_NAME.Substring(1)
+          $ExePath = "apps\desktop\release\StreamerHub-Setup-${VERSION}.exe"
+          if (-Not (Test-Path $ExePath)) {
+            Write-Error "Installer not found at $ExePath"
+            exit 1
+          }
+          $ExeSize = (Get-Item $ExePath).Length
+          if ($ExeSize -lt 50000000) {
+            Write-Error "Installer is too small: $ExeSize bytes (expected > 50MB)"
+            exit 1
+          }
+          if (Test-Path "apps\desktop\release\*Portable*.exe") {
+            Write-Error "Portable installer found, should be disabled."
+            exit 1
+          }
+          if (Test-Path "apps\desktop\release\OBS Remote Control*.exe") {
+            Write-Error "Old OBS Remote Control exe found."
+            exit 1
+          }
+          if (Test-Path "apps\desktop\release\Streamly*.exe") {
+            Write-Error "Old Streamly exe found."
+            exit 1
+          }
+          $Count = (Get-ChildItem -Path "apps\desktop\release" -Filter "*.exe").Count
+          if ($Count -ne 1) {
+            Write-Error "Expected exactly 1 exe, found $Count."
+            exit 1
+          }
+          Write-Host "Installer validation passed!"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: StreamerHub-Windows-${{ github.ref_name || 'dev' }}
+          name: StreamerHub-Windows-${{ github.ref_name }}
           path: |
             apps/desktop/release/StreamerHub-Setup-*.exe
           retention-days: 30

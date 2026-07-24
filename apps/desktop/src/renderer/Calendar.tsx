@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@obs-remote/ui';
 
 export function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<Array<{ id: string; title: string; startAt: string; expectedDurationMinutes: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -18,7 +18,7 @@ export function Calendar() {
     fetchEvents();
   }, [currentDate]);
 
-  const fetchEvents = async () => {
+  async function fetchEvents() {
     setLoading(true);
     try {
       // Fetch for current month (simplified range for demo)

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fastify from 'fastify';
 import WebSocket from 'ws';
@@ -142,7 +143,7 @@ describe('Relay Transport & Moderator Flow Integration', () => {
     await app.close();
   });
 
-  it.skipIf(!process.env.DATABASE_URL || !process.env.REDIS_URL)(
+  it(
     'Complete Moderator Flow: Invite -> Accept -> Grant -> Connect -> Send Command',
     async () => {
       // 1. Streamer Invites Moderator

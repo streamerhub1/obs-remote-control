@@ -7,18 +7,20 @@ export class WebSocketRelayTransport implements RemoteTransport {
   private listeners: Set<(message: unknown) => void> = new Set();
   private sessionContext: {
     role: string;
+    remoteSessionId: string;
     moderatorAuthorization?: string;
     streamerAuthorization?: string;
   } | null = null;
   private url: string;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(url: string = 'ws://localhost:3000/api/v1/signaling/session') {
+  constructor(url: string) {
     this.url = url;
   }
 
   async connect(sessionContext: {
     role: string;
+    remoteSessionId: string;
     moderatorAuthorization?: string;
     streamerAuthorization?: string;
   }): Promise<void> {

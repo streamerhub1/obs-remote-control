@@ -60,7 +60,7 @@ class RemoteCommandGuard {
     if (Date.now() > session.expiresAt) throw new Error('Session expired');
 
     // Rate limiting (bucket)
-    let rl = this.rateLimits.get(remoteSessionId)!;
+    const rl = this.rateLimits.get(remoteSessionId)!;
     const now = Date.now();
     const elapsed = now - rl.lastRefill;
     if (elapsed > 1000) {

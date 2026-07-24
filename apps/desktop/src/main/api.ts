@@ -8,7 +8,7 @@ export const getApiUrl = () => {
     process.env.VITE_API_URL ||
     process.env.VITE_BACKEND_URL;
   if (!url) {
-    if (app.isPackaged) {
+    if (import.meta.env.PROD || app.isPackaged) {
       return 'https://api.streamerhub.app';
     }
     return 'http://localhost:3000';
@@ -19,7 +19,7 @@ export const getApiUrl = () => {
 export const getWsUrl = () => {
   const url = process.env.STREAMERHUB_WS_URL || process.env.VITE_WS_URL;
   if (!url) {
-    if (app.isPackaged) {
+    if (import.meta.env.PROD || app.isPackaged) {
       return 'wss://api.streamerhub.app';
     }
     return 'ws://localhost:3000';

@@ -46,7 +46,7 @@ export const feedRoutes: FastifyPluginAsync = async (appOriginal) => {
 
       const authorIds = [userId, ...myFollows.map((f) => f.followingId)];
 
-      let query = db
+      const query = db
         .select({
           id: posts.id,
           content: posts.content,
@@ -246,7 +246,7 @@ export const feedRoutes: FastifyPluginAsync = async (appOriginal) => {
       const { cursor, limit } = request.query;
       const db = getDb();
 
-      let query = db
+      const query = db
         .select({
           id: comments.id,
           content: comments.content,

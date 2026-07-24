@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import fastify from 'fastify';
 import authRoutes from './auth.js';
@@ -35,7 +36,7 @@ describe('Auth Routes Security Tests', () => {
       set: vi.fn(),
       del: vi.fn(),
     };
-    (getRedis as any).mockReturnValue(mockRedis);
+    (getRedis as import('vitest').Mock).mockReturnValue(mockRedis);
 
     mockDb = {
       select: vi.fn().mockReturnThis(),
@@ -48,7 +49,7 @@ describe('Auth Routes Security Tests', () => {
       set: vi.fn().mockReturnThis(),
       returning: vi.fn().mockReturnThis(),
     };
-    (getDb as any).mockReturnValue(mockDb);
+    (getDb as import('vitest').Mock).mockReturnValue(mockDb);
   });
 
   it('Device Identity: generate key pair, request challenge, sign, successful verify', async () => {

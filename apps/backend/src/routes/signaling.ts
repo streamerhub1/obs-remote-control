@@ -34,9 +34,7 @@ interface SessionClient {
 }
 
 export default async function signalingRoutes(app: FastifyInstance) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const server = app as any;
-  const globalClients = new Map<string, GlobalClient>(); // Keyed by deviceId
+    const globalClients = new Map<string, GlobalClient>(); // Keyed by deviceId
   const sessionRooms = new Map<string, Set<SessionClient>>(); // Keyed by remoteSessionId
 
   // Setup Redis PubSub for cross-node notifications
@@ -74,7 +72,7 @@ export default async function signalingRoutes(app: FastifyInstance) {
     }
   });
 
-  server.get(
+  app.get(
     '/signaling/global',
     { websocket: true },
     (
@@ -124,14 +122,7 @@ export default async function signalingRoutes(app: FastifyInstance) {
               }),
             );
           try {
-            const decoded = server.jwt.verify(parsed.appToken) as {
-              sub: string;
-              id: string;
-              deviceId?: string;
-              role?: string;
-              remoteSessionId?: string;
-              [key: string]: unknown;
-            };
+            const decoded = app.jwt.verify(parsed.appToken) as import('@fastify/jwt').FastifyJWT['payload'];
             const { sub: userId, deviceId } = decoded;
             if (!deviceId) throw new Error('No deviceId in app token');
 
@@ -194,7 +185,7 @@ export default async function signalingRoutes(app: FastifyInstance) {
     },
   );
 
-  server.get(
+  app.get(
     '/signaling/session',
     { websocket: true },
     (
@@ -254,14 +245,7 @@ export default async function signalingRoutes(app: FastifyInstance) {
               publicKey,
             );
 
-            const jwtPayload = payload as {
-              sub: string;
-              id: string;
-              deviceId?: string;
-              role?: string;
-              remoteSessionId?: string;
-              [key: string]: unknown;
-            };
+            const jwtPayload = payload as import('@fastify/jwt').FastifyJWT['payload'];
             const { remoteSessionId, role, deviceId, userId } = {
               remoteSessionId: jwtPayload.remoteSessionId as string,
               role: jwtPayload.role as 'streamer' | 'moderator',

@@ -6,8 +6,8 @@ export function Moderators({
 }: {
   onConnectRemote: (token: string) => void;
 }) {
-  const [asStreamer, setAsStreamer] = useState<any[]>([]);
-  const [asModerator, setAsModerator] = useState<any[]>([]);
+  const [asStreamer, setAsStreamer] = useState<Array<{ id: string; status: string; streamerId: string; moderatorId: string; streamerName: string; streamerLogin: string; moderatorName: string; moderatorLogin: string; permissions: unknown[]; permissionsVersion: number }>>([]);
+  const [asModerator, setAsModerator] = useState<Array<{ id: string; status: string; streamerId: string; moderatorId: string; streamerName: string; streamerLogin: string; moderatorName: string; moderatorLogin: string; permissions: unknown[]; permissionsVersion: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [inviteIdentifier, setInviteIdentifier] = useState('');
   const [managingPermsFor, setManagingPermsFor] = useState<string | null>(null);
@@ -28,6 +28,7 @@ export function Moderators({
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchRelationships();
   }, []);
 

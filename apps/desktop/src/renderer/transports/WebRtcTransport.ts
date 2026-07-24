@@ -124,15 +124,15 @@ export class WebRTCManager {
     };
   }
 
-  private async handleSignalingMessage(msg: { type: string; payload: any }) {
+  private async handleSignalingMessage(msg: { type: string; payload: unknown }) {
     if (!this.pc) return;
 
     if (msg.type === 'signaling.offer' && this.role === 'streamer') {
       await this.pc.setRemoteDescription(
-        new RTCSessionDescription(msg.payload),
+        new RTCSessionDescription(msg.payload as RTCSessionDescriptionInit),
       );
       for (const candidate of this.iceBuffer) {
-        await this.pc.addIceCandidate(new RTCIceCandidate(candidate));
+        await this.pc.addIceCandidate(new RTCIceCandidate(candidate as RTCIceCandidateInit));
       }
       this.iceBuffer = [];
       const answer = await this.pc.createAnswer();
@@ -143,17 +143,17 @@ export class WebRTCManager {
       });
     } else if (msg.type === 'signaling.answer' && this.role === 'moderator') {
       await this.pc.setRemoteDescription(
-        new RTCSessionDescription(msg.payload),
+        new RTCSessionDescription(msg.payload as RTCSessionDescriptionInit),
       );
       for (const candidate of this.iceBuffer) {
-        await this.pc.addIceCandidate(new RTCIceCandidate(candidate));
+        await this.pc.addIceCandidate(new RTCIceCandidate(candidate as RTCIceCandidateInit));
       }
       this.iceBuffer = [];
     } else if (msg.type === 'signaling.ice') {
       if (this.pc.remoteDescription) {
-        await this.pc.addIceCandidate(new RTCIceCandidate(msg.payload));
+        await this.pc.addIceCandidate(new RTCIceCandidate(msg.payload as RTCIceCandidateInit));
       } else {
-        this.iceBuffer.push(msg.payload);
+        this.iceBuffer.push(msg.payload as RTCIceCandidateInit);
       }
     }
   }

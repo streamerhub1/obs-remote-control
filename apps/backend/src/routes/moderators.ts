@@ -23,16 +23,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
   server.addHook('preHandler', async (request, reply) => {
     try {
       const decoded = await request.jwtVerify<JwtPayload>();
-      (
-        request as unknown as {
-          sub: string;
-          id: string;
-          deviceId?: string;
-          role?: string;
-          remoteSessionId?: string;
-          [key: string]: unknown;
-        }
-      ).user = decoded;
+      request.user = decoded;
     } catch (err) {
       reply.status(401).send({ error: 'Unauthorized' });
       return reply;
@@ -109,16 +100,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const streamerId = (
-        (
-          request as unknown as {
-            sub: string;
-            id: string;
-            deviceId?: string;
-            role?: string;
-            remoteSessionId?: string;
-            [key: string]: unknown;
-          }
-        ).user as JwtPayload
+        request.user as JwtPayload
       ).sub;
       const { moderatorId, permissions } = request.body;
       if (streamerId === moderatorId) {
@@ -194,16 +176,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
     },
     async (request) => {
       const userId = (
-        (
-          request as unknown as {
-            sub: string;
-            id: string;
-            deviceId?: string;
-            role?: string;
-            remoteSessionId?: string;
-            [key: string]: unknown;
-          }
-        ).user as JwtPayload
+        request.user as JwtPayload
       ).sub;
       const db = getDb();
       return await db
@@ -242,16 +215,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
     },
     async (request) => {
       const userId = (
-        (
-          request as unknown as {
-            sub: string;
-            id: string;
-            deviceId?: string;
-            role?: string;
-            remoteSessionId?: string;
-            [key: string]: unknown;
-          }
-        ).user as JwtPayload
+        request.user as JwtPayload
       ).sub;
       const db = getDb();
       return await db
@@ -282,16 +246,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const userId = (
-        (
-          request as unknown as {
-            sub: string;
-            id: string;
-            deviceId?: string;
-            role?: string;
-            remoteSessionId?: string;
-            [key: string]: unknown;
-          }
-        ).user as JwtPayload
+        request.user as JwtPayload
       ).sub;
       const { id } = request.params;
       const db = getDb();
@@ -341,16 +296,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const userId = (
-        (
-          request as unknown as {
-            sub: string;
-            id: string;
-            deviceId?: string;
-            role?: string;
-            remoteSessionId?: string;
-            [key: string]: unknown;
-          }
-        ).user as JwtPayload
+        request.user as JwtPayload
       ).sub;
       const { id } = request.params;
       const db = getDb();
@@ -400,16 +346,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const userId = (
-        (
-          request as unknown as {
-            sub: string;
-            id: string;
-            deviceId?: string;
-            role?: string;
-            remoteSessionId?: string;
-            [key: string]: unknown;
-          }
-        ).user as JwtPayload
+        request.user as JwtPayload
       ).sub;
       const { id } = request.params;
       const db = getDb();
@@ -465,16 +402,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
     },
     async (request) => {
       const streamerId = (
-        (
-          request as unknown as {
-            sub: string;
-            id: string;
-            deviceId?: string;
-            role?: string;
-            remoteSessionId?: string;
-            [key: string]: unknown;
-          }
-        ).user as JwtPayload
+        request.user as JwtPayload
       ).sub;
       const db = getDb();
 
@@ -502,16 +430,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const streamerId = (
-        (
-          request as unknown as {
-            sub: string;
-            id: string;
-            deviceId?: string;
-            role?: string;
-            remoteSessionId?: string;
-            [key: string]: unknown;
-          }
-        ).user as JwtPayload
+        request.user as JwtPayload
       ).sub;
       const { relationshipId } = request.params;
       const { status } = request.body;
@@ -564,16 +483,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const userId = (
-        (
-          request as unknown as {
-            sub: string;
-            id: string;
-            deviceId?: string;
-            role?: string;
-            remoteSessionId?: string;
-            [key: string]: unknown;
-          }
-        ).user as JwtPayload
+        request.user as JwtPayload
       ).sub;
       const { relationshipId } = request.params;
       const db = getDb();
@@ -623,16 +533,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const userId = (
-        (
-          request as unknown as {
-            sub: string;
-            id: string;
-            deviceId?: string;
-            role?: string;
-            remoteSessionId?: string;
-            [key: string]: unknown;
-          }
-        ).user as JwtPayload
+        request.user as JwtPayload
       ).sub;
       const { relationshipId } = request.params;
       const db = getDb();
@@ -679,16 +580,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const streamerId = (
-        (
-          request as unknown as {
-            sub: string;
-            id: string;
-            deviceId?: string;
-            role?: string;
-            remoteSessionId?: string;
-            [key: string]: unknown;
-          }
-        ).user as JwtPayload
+        request.user as JwtPayload
       ).sub;
       const { relationshipId } = request.params;
       const { permissions } = request.body;
@@ -759,16 +651,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
     },
     async (request) => {
       const moderatorId = (
-        (
-          request as unknown as {
-            sub: string;
-            id: string;
-            deviceId?: string;
-            role?: string;
-            remoteSessionId?: string;
-            [key: string]: unknown;
-          }
-        ).user as JwtPayload
+        request.user as JwtPayload
       ).sub;
       const db = getDb();
 

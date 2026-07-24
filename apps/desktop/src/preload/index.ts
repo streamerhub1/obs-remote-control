@@ -181,6 +181,5 @@ if (process.contextIsolated) {
     console.error(error);
   }
 } else {
-  // @ts-ignore
-  window.desktop = API;
+    window.desktop = API;
 }
