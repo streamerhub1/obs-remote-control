@@ -11,14 +11,7 @@ interface Post {
   author: { id: string; displayName: string; twitchLogin: string; avatarUrl: string | null };
 }
 
-async function apiFetch(path: string, opts?: RequestInit) {
-  const token = await window.desktop?.auth?.getToken?.();
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`http://localhost:3000${path}`, { ...opts, headers: { ...headers, ...(opts?.headers as Record<string, string> || {}) } });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res.json();
-}
+
 
 export function Feed() {
   const [posts, setPosts] = React.useState<Post[]>([]);
@@ -31,7 +24,7 @@ export function Feed() {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch('/api/v1/feed');
+      const data = await window.desktop.api.feed.list();
       setPosts(data.posts ?? data ?? []);
     } catch (e: any) {
       setError(e.message);
@@ -46,10 +39,7 @@ export function Feed() {
     if (!newPostContent.trim()) return;
     setPosting(true);
     try {
-      const post = await apiFetch('/api/v1/feed', {
-        method: 'POST',
-        body: JSON.stringify({ content: newPostContent.trim() }),
-      });
+      const post = await window.desktop.api.feed.create({ content: newPostContent.trim() });
       setPosts(prev => [post, ...prev]);
       setNewPostContent('');
     } catch (e: any) {
@@ -61,7 +51,7 @@ export function Feed() {
 
   const handleLike = async (postId: string) => {
     try {
-      await apiFetch(`/api/v1/feed/${postId}/like`, { method: 'POST' });
+      await window.desktop.api.feed.like(postId);
       setPosts(prev => prev.map(p => p.id === postId ? { ...p, likesCount: p.likesCount + 1 } : p));
     } catch { /* silent */ }
   };

@@ -57,6 +57,7 @@ export default function App() {
   const [obsPassword, setObsPassword] = React.useState('');
   
   const [currentRoute, setCurrentRoute] = React.useState<'home'|'feed'|'collabs'|'calendar'|'my_obs'|'remote_obs'|'moderators'|'notifications'|'profile'|'settings'>('home');
+  const [obsSettingsOpen, setObsSettingsOpen] = React.useState(false);
 
   const [localObsDataSource] = React.useState(() => new LocalObsDataSource());
   const [remoteObsDataSource, setRemoteObsDataSource] = React.useState<RemoteObsDataSource | null>(null);
@@ -194,11 +195,42 @@ export default function App() {
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="flex flex-col h-screen w-screen bg-[#0A0A0A] text-white items-center justify-center drag-region">
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent animate-pulse mb-4">
+          StreamerHub
+        </h1>
+        <div className="text-gray-500 text-sm">Загрузка...</div>
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return (
+      <div className="flex h-screen w-screen bg-[#0A0A0A] text-white items-center justify-center drag-region">
+        <div className="bg-[#161616] border border-gray-800 rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center no-drag">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent mb-2">
+            StreamerHub
+          </h1>
+          <p className="text-gray-400 text-sm mb-8">Единый центр управления стримами, коллаборациями и сообществом.</p>
+          <button 
+            onClick={handleTwitchLogin}
+            className="w-full py-3 px-4 bg-[#9146FF] hover:bg-[#772CE8] text-white rounded-xl font-semibold transition-all shadow-lg shadow-[#9146FF]/20 flex items-center justify-center gap-2"
+          >
+            <Tv size={20} />
+            Войти через Twitch
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-screen w-screen bg-[#0A0A0A] text-white font-sans overflow-hidden">
-      <aside className="w-64 bg-[#111111] border-r border-gray-800 flex flex-col">
-        <div className="p-6">
-          <h1 className="text-xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+    <div className="flex h-screen w-screen bg-[#0A0A0A] text-white font-sans overflow-hidden drag-region">
+      <aside className="w-64 bg-[#111111] border-r border-gray-800 flex flex-col no-drag">
+        <div className="p-6 drag-region">
+          <h1 className="text-xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent pointer-events-none">
             StreamerHub
           </h1>
         </div>
@@ -240,7 +272,10 @@ export default function App() {
         </div>
       )}
 
-      <main className="flex-1 overflow-y-auto p-8">
+      {/* Title Bar drag region for Windows when app is mostly no-drag */}
+      <div className="absolute top-0 left-0 right-0 h-8 drag-region pointer-events-none" />
+
+      <main className="flex-1 overflow-y-auto p-8 pt-12 no-drag">
         <div className="max-w-5xl mx-auto space-y-8">
           
           {currentRoute === 'my_obs' && (
@@ -250,43 +285,31 @@ export default function App() {
                 <p className="text-gray-400 mt-2">Локальное управление вашим OBS Studio.</p>
               </header>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="max-w-md mx-auto">
                 <div className="bg-[#161616] border border-gray-800 rounded-xl p-6 shadow-lg">
-                  <h3 className="text-lg font-medium flex items-center gap-2 mb-2"><Tv size={20} className="text-purple-400"/> Аккаунт Twitch</h3>
-                  <p className="text-gray-400 text-sm mb-4">Авторизация для стриминга и управления OBS.</p>
-                  
-                  {authLoading ? (
-                    <div className="animate-pulse h-10 bg-gray-800 rounded-lg"></div>
-                  ) : authenticated ? (
-                    <div className="flex gap-2">
-                      <div className="flex-1 py-2 px-4 bg-green-500/10 text-green-400 rounded-lg font-medium border border-green-500/20 text-center">Устройство авторизовано</div>
-                      <button onClick={handleLogout} className="py-2 px-4 bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-lg transition-colors border border-red-500/20">Выйти</button>
-                    </div>
-                  ) : (
-                    <button 
-                      onClick={handleTwitchLogin}
-                      className="w-full py-2 px-4 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-medium border border-purple-500/50 transition-all"
-                    >
-                      Войти через Twitch
-                    </button>
-                  )}
-                </div>
-
-                <div className="bg-[#161616] border border-gray-800 rounded-xl p-6 shadow-lg">
-                  <h3 className="text-lg font-medium flex items-center gap-2 mb-4"><Activity size={20} className={obsState === 'connected' ? 'text-green-400' : 'text-red-400'}/> Подключение OBS</h3>
+                  <h3 className="text-lg font-medium flex items-center gap-2 mb-4"><Activity size={20} className={obsState === 'connected' ? 'text-green-400' : 'text-red-400'}/> Подключение OBS Studio</h3>
                   {obsState === 'connected' ? (
                     <div className="space-y-4">
-                      <div className="py-2 px-4 bg-green-500/10 text-green-400 rounded-lg text-sm border border-green-500/20">Подключено к OBS</div>
+                      <div className="py-2 px-4 bg-green-500/10 text-green-400 rounded-lg text-sm border border-green-500/20 text-center">Успешно подключено к OBS</div>
                       <button onClick={() => window.desktop.obs.disconnect()} className="w-full py-2 bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-lg transition-colors border border-red-500/20">Отключиться</button>
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      <div className="flex gap-3">
-                        <input type="text" value={obsHost} onChange={(e) => setObsHost(e.target.value)} placeholder="IP" className="flex-1 bg-black border border-gray-800 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none" />
-                        <input type="number" value={obsPort} onChange={(e) => setObsPort(parseInt(e.target.value))} placeholder="Port" className="w-24 bg-black border border-gray-800 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none" />
+                    <div className="space-y-4">
+                      <p className="text-gray-400 text-sm mb-4">Нажмите кнопку ниже для подключения к локальному OBS Studio с параметрами по умолчанию (127.0.0.1:4455).</p>
+                      <button onClick={handleConnectOBS} className="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-lg text-white font-medium transition-colors shadow-lg shadow-blue-500/20">Подключить OBS</button>
+                      
+                      <div className="mt-4 pt-4 border-t border-gray-800">
+                        <button onClick={() => setObsSettingsOpen(!obsSettingsOpen)} className="text-sm text-gray-500 hover:text-gray-300">Расширенные настройки</button>
+                        {obsSettingsOpen && (
+                          <div className="space-y-3 mt-3">
+                            <div className="flex gap-3">
+                              <input type="text" value={obsHost} onChange={(e) => setObsHost(e.target.value)} placeholder="IP" className="flex-1 bg-black border border-gray-800 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none" />
+                              <input type="number" value={obsPort} onChange={(e) => setObsPort(parseInt(e.target.value))} placeholder="Port" className="w-24 bg-black border border-gray-800 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none" />
+                            </div>
+                            <input type="password" value={obsPassword} onChange={(e) => setObsPassword(e.target.value)} placeholder="Пароль (опционально)" className="w-full bg-black border border-gray-800 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none" />
+                          </div>
+                        )}
                       </div>
-                      <input type="password" value={obsPassword} onChange={(e) => setObsPassword(e.target.value)} placeholder="Password" className="w-full bg-black border border-gray-800 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none" />
-                      <button onClick={handleConnectOBS} className="w-full py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white font-medium transition-colors border border-blue-500/50">Подключить</button>
                     </div>
                   )}
                 </div>

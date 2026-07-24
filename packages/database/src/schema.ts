@@ -219,6 +219,7 @@ export const collaborations = pgTable('collaborations', {
   timezone: text('timezone').notNull(),
   maximumParticipants: integer('maximum_participants').notNull(),
   requirementsJson: jsonb('requirements_json').default({}).notNull(),
+  applicationMode: varchar('application_mode', { length: 20 }).default('approval').notNull(), // approval, open
   visibility: varchar('visibility', { length: 20 }).default('public').notNull(), // public, private, invite_only
   status: varchar('status', { length: 20 }).default('open').notNull(), // open, closed, cancelled, completed
   createdAt: timestamp('created_at').defaultNow().notNull(),

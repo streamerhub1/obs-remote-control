@@ -49,13 +49,22 @@ if not exist "node_modules\" (
     echo  [OK] node_modules present — skipping install.
 )
 
-:: ── 4. Launch dev desktop ────────────────────────────────────────────
+:: ── 4. Launch Infrastructure ──────────────────────────────────────────
 echo.
-echo  Starting StreamerHub desktop in development mode...
+echo  Starting Infrastructure (Redis, DB) using Docker Compose...
+pnpm infra:up
+if errorlevel 1 (
+    echo  [WARNING] Failed to start Docker Compose infrastructure.
+    echo  If you don't have Docker, make sure you are running Postgres and Redis manually.
+)
+
+:: ── 5. Launch dev stack (Desktop + Backend) ─────────────────────────
+echo.
+echo  Starting StreamerHub Desktop and Backend in development mode...
 echo  Press Ctrl+C to stop.
 echo.
 
-pnpm dev:desktop
+pnpm dev:stack
 if errorlevel 1 (
     echo.
     echo  [ERROR] StreamerHub exited with an error.

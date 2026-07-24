@@ -6,9 +6,10 @@ import {
   collaborationParticipants, 
   collaborationApplications, 
   collaborationInvitations,
-  calendarEvents
+  calendarEvents,
+  auditLogs
 } from '@obs-remote/database';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 
 export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
@@ -23,6 +24,7 @@ export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
         expectedDurationMinutes: z.number().int().min(1),
         timezone: z.string().default('UTC'),
         maximumParticipants: z.number().int().min(2).default(2),
+        applicationMode: z.enum(['approval', 'open']).default('approval'),
         visibility: z.enum(['public', 'private', 'invite_only']).default('public'),
       })
     }
@@ -40,8 +42,9 @@ export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
         expectedDurationMinutes: data.expectedDurationMinutes,
         timezone: data.timezone,
         maximumParticipants: data.maximumParticipants,
+        applicationMode: data.applicationMode,
         visibility: data.visibility,
-        status: 'open', // assuming it creates directly as open since there's no draft enum in schema (schema has open, closed, cancelled, completed)
+        status: 'open',
       }).returning();
 
       // Host is automatically a participant
@@ -168,6 +171,74 @@ export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
         });
       }
       return reply.send({ success: true, status: newStatus });
+    });
+  });
+
+  // Join public collaboration (open mode)
+  app.post('/collaborations/:id/join', {
+    schema: {
+      params: z.object({ id: z.string().uuid() })
+    }
+  }, async (request, reply) => {
+    const userId = (request.user as any).sub;
+    const { id } = request.params;
+    const db = getDb();
+
+    return await db.transaction(async (tx) => {
+      // 1. Lock the collaboration row to prevent concurrent participant limit breaches
+      const [collab] = await tx.select().from(collaborations)
+        .where(eq(collaborations.id, id))
+        .for('update');
+
+      if (!collab) return reply.status(404).send({ error: 'Not found' });
+      if (collab.status !== 'open') return reply.status(400).send({ error: 'Collaboration is not open' });
+      if (collab.applicationMode !== 'open') return reply.status(400).send({ error: 'Collaboration is not in open mode' });
+      if (collab.ownerId === userId) return reply.status(400).send({ error: 'Cannot join your own collaboration' });
+
+      // 2. Check if already joined
+      const [existing] = await tx.select().from(collaborationParticipants)
+        .where(and(eq(collaborationParticipants.collaborationId, id), eq(collaborationParticipants.userId, userId)));
+      if (existing) return reply.status(400).send({ error: 'Already a participant' });
+
+      // 3. Check capacity
+      const [{ count }] = await tx.select({ count: sql<number>`count(*)` }).from(collaborationParticipants)
+        .where(eq(collaborationParticipants.collaborationId, id));
+        
+      if (Number(count) >= collab.maximumParticipants) {
+        return reply.status(400).send({ error: 'Collaboration is full' });
+      }
+
+      // 4. Add participant
+      await tx.insert(collaborationParticipants).values({
+        collaborationId: id,
+        userId,
+        role: 'participant',
+      });
+
+      // 5. Add to calendar
+      const endAt = new Date(collab.startAt.getTime() + collab.expectedDurationMinutes * 60000);
+      await tx.insert(calendarEvents).values({
+        ownerId: userId,
+        title: collab.title,
+        description: collab.description,
+        startAt: collab.startAt,
+        endAt,
+        timezone: collab.timezone,
+        sourceType: 'collaboration',
+        sourceId: collab.id,
+      });
+
+      // 6. Audit log
+      await tx.insert(auditLogs).values({
+        actorUserId: userId,
+        targetUserId: userId,
+        action: 'join_collaboration_open',
+        resourceType: 'collaboration',
+        resourceId: collab.id,
+        success: true,
+      });
+
+      return reply.send({ success: true });
     });
   });
 };

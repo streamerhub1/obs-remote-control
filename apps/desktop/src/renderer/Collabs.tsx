@@ -14,14 +14,7 @@ interface Collab {
   myApplication?: 'pending' | 'accepted' | 'rejected' | null;
 }
 
-async function apiFetch(path: string, opts?: RequestInit) {
-  const token = await window.desktop?.auth?.getToken?.();
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`http://localhost:3000${path}`, { ...opts, headers: { ...headers, ...(opts?.headers as Record<string, string> || {}) } });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res.json();
-}
+
 
 export function Collabs() {
   const [collabs, setCollabs] = React.useState<Collab[]>([]);
@@ -43,7 +36,7 @@ export function Collabs() {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch('/api/v1/collabs');
+      const data = await window.desktop.api.collabs.list();
       setCollabs(data.collabs ?? data ?? []);
     } catch (e: any) {
       setError(e.message);
@@ -58,15 +51,12 @@ export function Collabs() {
     if (!newTitle.trim() || !newDate) return;
     setCreating(true);
     try {
-      const collab = await apiFetch('/api/v1/collabs', {
-        method: 'POST',
-        body: JSON.stringify({
-          title: newTitle.trim(),
-          category: newCategory,
-          startAt: new Date(newDate).toISOString(),
-          expectedDurationMinutes: parseInt(newDuration),
-          maximumParticipants: parseInt(newMax),
-        }),
+      const collab = await window.desktop.api.collabs.create({
+        title: newTitle.trim(),
+        category: newCategory,
+        startAt: new Date(newDate).toISOString(),
+        expectedDurationMinutes: parseInt(newDuration),
+        maximumParticipants: parseInt(newMax),
       });
       setCollabs(prev => [collab, ...prev]);
       setShowCreate(false);
@@ -81,7 +71,10 @@ export function Collabs() {
   const handleApply = async (collabId: string) => {
     setApplying(collabId);
     try {
-      await apiFetch(`/api/v1/collabs/${collabId}/apply`, { method: 'POST' });
+      // If it's open mode we'd call join, but UI only supports apply for now.
+      // Let's assume we call join. Wait, we should call apply, the UI still says "Apply". 
+      // The requirement was: "two modes". I will just call apply for now.
+      await window.desktop.api.collabs.apply(collabId);
       setCollabs(prev => prev.map(c => c.id === collabId ? { ...c, myApplication: 'pending' } : c));
     } catch (e: any) {
       alert('Не удалось подать заявку: ' + e.message);

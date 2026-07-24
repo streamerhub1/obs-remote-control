@@ -17,7 +17,10 @@
     "build:website": "pnpm --filter @obs-remote/website build",
     "build:desktop": "pnpm --filter @obs-remote/desktop build",
     "dist:desktop:win": "pnpm --filter @obs-remote/desktop dist:win",
-    "db:seed:demo": "pnpm --filter @obs-remote/database seed"
+    "db:seed:demo": "pnpm --filter @obs-remote/database seed",
+    "infra:up": "docker compose -f infrastructure/docker/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infrastructure/docker/docker-compose.yml down",
+    "dev:stack": "turbo run dev --filter @obs-remote/backend --filter @obs-remote/desktop"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

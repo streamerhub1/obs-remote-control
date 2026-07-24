@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { app, BrowserWindow, shell, ipcMain } from 'electron';
 
 vi.mock('electron', () => {
@@ -8,13 +8,18 @@ vi.mock('electron', () => {
       quit: vi.fn(),
       whenReady: vi.fn().mockResolvedValue(undefined),
       on: vi.fn(),
+      setAsDefaultProtocolClient: vi.fn(),
+      isDefaultProtocolClient: vi.fn().mockReturnValue(true),
+      getPath: vi.fn().mockReturnValue('mock-path'),
     },
     BrowserWindow: vi.fn().mockImplementation(() => ({
       on: vi.fn(),
       loadURL: vi.fn(),
       loadFile: vi.fn(),
+      isDestroyed: vi.fn().mockReturnValue(false),
       webContents: {
         on: vi.fn(),
+        send: vi.fn(),
         session: {
           webRequest: {
             onHeadersReceived: vi.fn(),
@@ -29,11 +34,17 @@ vi.mock('electron', () => {
     },
     ipcMain: {
       handle: vi.fn(),
+      on: vi.fn(),
     },
   };
 });
 
 describe('Main Process Security Settings', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+  });
+
   it('should have secure webPreferences when creating a window', async () => {
     // Import the index file to trigger createWindow when ready
     // We isolate imports to ensure fresh mock execution

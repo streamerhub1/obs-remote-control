@@ -50,6 +50,13 @@
       "when": 1784802898467,
       "tag": "0006_cool_groot",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784867337910,
+      "tag": "0007_dapper_marvex",
+      "breakpoints": true
     }
   ]
 }

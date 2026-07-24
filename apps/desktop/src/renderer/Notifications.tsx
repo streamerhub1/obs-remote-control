@@ -15,14 +15,7 @@ function cn(...classes: (string | false | undefined)[]) {
   return classes.filter(Boolean).join(' ');
 }
 
-async function apiFetch(path: string, opts?: RequestInit) {
-  const token = await window.desktop?.auth?.getToken?.();
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`http://localhost:3000${path}`, { ...opts, headers: { ...headers, ...(opts?.headers as Record<string, string> || {}) } });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res.json();
-}
+
 
 export function Notifications() {
   const [notifications, setNotifications] = React.useState<Notification[]>([]);
@@ -33,7 +26,7 @@ export function Notifications() {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch('/api/v1/notifications');
+      const data = await window.desktop.api.notifications.list();
       setNotifications(data.notifications ?? data ?? []);
     } catch (e: any) {
       setError(e.message);
@@ -46,14 +39,14 @@ export function Notifications() {
 
   const markAllRead = async () => {
     try {
-      await apiFetch('/api/v1/notifications/read-all', { method: 'POST' });
+      await window.desktop.api.notifications.markAllRead();
       setNotifications(prev => prev.map(n => ({ ...n, readAt: n.readAt ?? new Date().toISOString() })));
     } catch { /* silent */ }
   };
 
   const markRead = async (id: string) => {
     try {
-      await apiFetch(`/api/v1/notifications/${id}/read`, { method: 'POST' });
+      await window.desktop.api.notifications.markRead(id);
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, readAt: new Date().toISOString() } : n));
     } catch { /* silent */ }
   };

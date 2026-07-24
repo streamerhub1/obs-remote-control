@@ -19,8 +19,9 @@ import { feedRoutes } from './routes/feed.js';
 import { searchRoutes } from './routes/search.js';
 import { notificationsRoutes } from './routes/notifications.js';
 import fastifyWebsocket from '@fastify/websocket';
-import { initDb } from './db.js';
+import { initDb, getDb } from './db.js';
 import { initRedis } from './redis.js';
+import { sql } from 'drizzle-orm';
 
 export async function buildApp(): Promise<any> {
   const logger = createLogger({
@@ -75,6 +76,16 @@ export async function buildApp(): Promise<any> {
 
   app.get('/health', async (_request, _reply) => {
     return { status: 'ok', timestamp: new Date().toISOString() };
+  });
+
+  app.get('/ready', async (_request, reply) => {
+    try {
+      const db = getDb();
+      await db.execute(sql`SELECT 1`);
+      return { status: 'ready', timestamp: new Date().toISOString() };
+    } catch(e) {
+      reply.status(503).send({ status: 'not_ready', error: 'Database unavailable' });
+    }
   });
 
   await app.register(authRoutes, { prefix: '/api/v1/auth' });

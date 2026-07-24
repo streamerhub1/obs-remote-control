@@ -14,14 +14,7 @@ interface UserProfile {
   twitchUrl: string | null;
 }
 
-async function apiFetch(path: string, opts?: RequestInit) {
-  const token = await window.desktop?.auth?.getToken?.();
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`http://localhost:3000${path}`, { ...opts, headers: { ...headers, ...(opts?.headers as Record<string, string> || {}) } });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res.json();
-}
+
 
 export function Profile() {
   const [profile, setProfile] = React.useState<UserProfile | null>(null);
@@ -40,7 +33,7 @@ export function Profile() {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch('/api/v1/profile/me');
+      const data = await window.desktop.api.profile.getMe();
       setProfile(data);
       setBio(data.bio ?? '');
       setLanguages((data.languages ?? []).join(', '));
@@ -58,14 +51,11 @@ export function Profile() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const updated = await apiFetch('/api/v1/profile/me', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          bio: bio.trim() || null,
-          languages: languages.split(',').map(s => s.trim()).filter(Boolean),
-          categories: categories.split(',').map(s => s.trim()).filter(Boolean),
-          timezone: timezone.trim() || null,
-        }),
+      const updated = await window.desktop.api.profile.updateMe({
+        bio: bio.trim() || null,
+        languages: languages.split(',').map(s => s.trim()).filter(Boolean),
+        categories: categories.split(',').map(s => s.trim()).filter(Boolean),
+        timezone: timezone.trim() || null,
       });
       setProfile(updated);
       setEditing(false);

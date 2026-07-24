@@ -4,6 +4,7 @@ import { setupAuthHandlers, handleDeepLink } from './auth';
 import { setupObsHandlers } from './obs';
 import { setupSignaling } from './signaling';
 import { setupRemoteSessions } from './remote-sessions';
+import { setupApiHandlers } from './api';
 
 // Prevent multiple instances
 const gotTheLock = app.requestSingleInstanceLock();
@@ -25,7 +26,13 @@ if (!gotTheLock) {
       minHeight: 600,
       show: false,
       autoHideMenuBar: true,
-      title: 'StreamerHub',
+      titleBarStyle: 'hidden',
+      titleBarOverlay: {
+        color: '#0A0A0A',
+        symbolColor: '#E5E7EB',
+        height: 32,
+      },
+      backgroundColor: '#0A0A0A',
       webPreferences: {
         preload: join(__dirname, '../preload/index.cjs'),
         sandbox: true,
@@ -112,6 +119,7 @@ if (!gotTheLock) {
       setupObsHandlers(mainWindow);
       setupSignaling();
       setupRemoteSessions();
+      setupApiHandlers();
     }
 
     app.on('activate', function () {

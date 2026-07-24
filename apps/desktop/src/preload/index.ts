@@ -10,7 +10,6 @@ const API = {
     login: () => ipcRenderer.invoke('auth:login'),
     logout: () => ipcRenderer.invoke('auth:logout'),
     getState: () => ipcRenderer.invoke('auth:getState'),
-    getToken: () => ipcRenderer.invoke('auth:getToken'),
     getProfile: () => ipcRenderer.invoke('auth:getProfile'),
     subscribe: (callback: (state: unknown) => void) => {
       ipcRenderer.on('auth:state-changed', (_, state) => callback(state));
@@ -76,6 +75,34 @@ const API = {
       };
     },
     saveSettings: (settings: unknown) => ipcRenderer.invoke('obs:saveSettings', settings)
+  },
+  api: {
+    feed: {
+      list: () => ipcRenderer.invoke('api:feed:list'),
+      create: (data: unknown) => ipcRenderer.invoke('api:feed:create', data),
+      like: (id: string) => ipcRenderer.invoke('api:feed:like', id)
+    },
+    collabs: {
+      list: () => ipcRenderer.invoke('api:collabs:list'),
+      create: (data: unknown) => ipcRenderer.invoke('api:collabs:create', data),
+      apply: (id: string, message?: string) => ipcRenderer.invoke('api:collabs:apply', id, message),
+      join: (id: string) => ipcRenderer.invoke('api:collabs:join', id)
+    },
+    calendar: {
+      list: (start?: string, end?: string) => ipcRenderer.invoke('api:calendar:list', start, end),
+      create: (data: unknown) => ipcRenderer.invoke('api:calendar:create', data),
+      update: (id: string, data: unknown) => ipcRenderer.invoke('api:calendar:update', id, data),
+      delete: (id: string) => ipcRenderer.invoke('api:calendar:delete', id)
+    },
+    profile: {
+      getMe: () => ipcRenderer.invoke('api:profile:getMe'),
+      updateMe: (data: unknown) => ipcRenderer.invoke('api:profile:updateMe', data)
+    },
+    notifications: {
+      list: () => ipcRenderer.invoke('api:notifications:list'),
+      markAllRead: () => ipcRenderer.invoke('api:notifications:markAllRead'),
+      markRead: (id: string) => ipcRenderer.invoke('api:notifications:markRead', id)
+    }
   }
 };
 

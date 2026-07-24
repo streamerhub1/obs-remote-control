@@ -1,0 +1,1 @@
+ALTER TABLE "collaborations" ADD COLUMN "application_mode" varchar(20) DEFAULT 'approval' NOT NULL;

@@ -35,7 +35,7 @@
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.2.0",
     "autoprefixer": "^10.5.4",
-    "electron": "^30.0.0",
+    "electron": "30.0.0",
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
     "postcss": "^8.5.22",
