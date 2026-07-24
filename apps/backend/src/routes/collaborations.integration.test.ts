@@ -28,8 +28,9 @@ describe('Collaborations API Integration', () => {
 
     // Mock user for requests
     app.addHook('onRequest', async (request: any) => {
-      request.jwtVerify = async () => ({ sub: streamerId });
-      request.user = { sub: streamerId };
+      const mockId = request.headers['x-mock-user-id'] || streamerId;
+      request.jwtVerify = async () => ({ sub: mockId });
+      request.user = { sub: mockId };
     });
 
     await app.register(collaborationsRoutes);
@@ -96,22 +97,11 @@ describe('Collaborations API Integration', () => {
     const createdCollab = JSON.parse(createRes.payload);
     expect(createdCollab.title).toBe('Epic Stream Collab');
 
-    // 2. Open it
-    const openRes = await app.inject({
-      method: 'POST',
-      url: `/collaborations/${createdCollab.id}/open`,
-    });
-    expect(openRes.statusCode).toBe(200);
-
     // 3. Join it as participant
-    app.addHook('onRequest', async (request: any) => {
-      request.jwtVerify = async () => ({ sub: participantId });
-      request.user = { sub: participantId };
-    });
-
     const joinRes = await app.inject({
       method: 'POST',
       url: `/collaborations/${createdCollab.id}/join`,
+      headers: { 'x-mock-user-id': participantId },
     });
     expect(joinRes.statusCode).toBe(200);
   });

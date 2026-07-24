@@ -1,4 +1,4 @@
-import { FastifyInstance, FastifyPluginAsync } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { getDb } from '../db.js';
 import { users, devices, sessions } from '@obs-remote/database';
 import { eq } from 'drizzle-orm';
@@ -14,7 +14,7 @@ interface JwtPayload {
 export default async function apiRoutes(app: FastifyInstance) {
   const server = app.withTypeProvider<ZodTypeProvider>();
 
-  server.addHook('preHandler', async (request, _reply) => {
+  server.addHook('preHandler', async (request, reply) => {
     try {
       const decoded = await request.jwtVerify<JwtPayload>();
       request.user = decoded;
@@ -40,7 +40,7 @@ export default async function apiRoutes(app: FastifyInstance) {
         },
       },
     },
-    async (request, _reply) => {
+    async (request, reply) => {
       const userId = (request.user as JwtPayload).sub;
       const db = getDb();
 
@@ -110,7 +110,7 @@ export default async function apiRoutes(app: FastifyInstance) {
         },
       },
     },
-    async (request, _reply) => {
+    async (request, reply) => {
       const userId = (request.user as JwtPayload).sub;
       const { deviceId } = request.params;
       const db = getDb();
@@ -157,7 +157,7 @@ export default async function apiRoutes(app: FastifyInstance) {
         },
       },
     },
-    async (request, _reply) => {
+    async (request, reply) => {
       const userId = (request.user as JwtPayload).sub;
       const db = getDb();
 
