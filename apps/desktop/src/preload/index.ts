@@ -175,7 +175,10 @@ const API = {
     check: () => ipcRenderer.send('updater:check'),
     install: () => ipcRenderer.send('updater:install'),
     onStateChanged: (callback: (state: string, data?: any) => void) => {
-      const handler = (_event: Electron.IpcRendererEvent, payload: { state: string, data?: any }) => callback(payload.state, payload.data);
+      const handler = (
+        _event: Electron.IpcRendererEvent,
+        payload: { state: string; data?: any },
+      ) => callback(payload.state, payload.data);
       ipcRenderer.on('updater:state', handler);
       return () => ipcRenderer.removeListener('updater:state', handler);
     },

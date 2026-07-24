@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import fastify from 'fastify';
+import { describe, it, expect, vi, beforeEach, afterEach, Mock } from 'vitest';
+import fastify, { FastifyInstance } from 'fastify';
 import authRoutes from './auth.js';
 import { getRedis } from '../redis.js';
 import { getDb } from '../db.js';
@@ -14,10 +13,28 @@ vi.mock('../db.js', () => ({
   getDb: vi.fn(),
 }));
 
+interface MockRedis {
+  get: Mock;
+  set: Mock;
+  del: Mock;
+}
+
+interface MockDb {
+  select: Mock;
+  from: Mock;
+  where: Mock;
+  transaction: Mock;
+  insert: Mock;
+  values: Mock;
+  update: Mock;
+  set: Mock;
+  returning: Mock;
+}
+
 describe('Auth Routes Security Tests', () => {
-  let app: any;
-  let mockRedis: any;
-  let mockDb: any;
+  let app: FastifyInstance;
+  let mockRedis: MockRedis;
+  let mockDb: MockDb;
 
   beforeEach(async () => {
     app = fastify();
@@ -27,7 +44,9 @@ describe('Auth Routes Security Tests', () => {
     app.setValidatorCompiler(validatorCompiler);
     app.setSerializerCompiler(serializerCompiler);
 
-    app.jwt = { sign: vi.fn().mockReturnValue('mock-jwt') };
+    app.decorate('jwt', {
+      sign: vi.fn().mockReturnValue('mock-jwt'),
+    } as unknown as import('@fastify/jwt').JWT);
 
     const fastifyCookie = (await import('@fastify/cookie')).default;
     await app.register(fastifyCookie);
@@ -38,7 +57,7 @@ describe('Auth Routes Security Tests', () => {
       set: vi.fn(),
       del: vi.fn(),
     };
-    (getRedis as import('vitest').Mock).mockReturnValue(mockRedis);
+    (getRedis as Mock).mockReturnValue(mockRedis);
 
     mockDb = {
       select: vi.fn().mockReturnThis(),
@@ -51,7 +70,7 @@ describe('Auth Routes Security Tests', () => {
       set: vi.fn().mockReturnThis(),
       returning: vi.fn().mockReturnThis(),
     };
-    (getDb as import('vitest').Mock).mockReturnValue(mockDb);
+    (getDb as Mock).mockReturnValue(mockDb);
   });
 
   it('Device Identity: generate key pair, request challenge, sign, successful verify', async () => {
@@ -90,8 +109,6 @@ describe('Auth Routes Security Tests', () => {
       .sign(null, Buffer.from(challenge), privateKey)
       .toString('base64');
 
-    // Simulate refresh endpoint (which handles the verify)
-    // Wait, let's mock the session
     mockDb.where.mockResolvedValueOnce([
       {
         id: 'session1',
@@ -253,16 +270,19 @@ describe('Auth Routes Security Tests', () => {
 });
 
 describe('Twitch OAuth Flow', () => {
-  let app: any;
-  let mockRedis: any;
-  let mockDb: any;
-  let fetchMock: any;
+  let app: FastifyInstance;
+  let mockRedis: MockRedis;
+  let mockDb: MockDb;
+  let fetchMock: Mock;
+  const originalEnv = { ...process.env };
+  const originalFetch = global.fetch;
 
   beforeEach(async () => {
     process.env.TWITCH_CLIENT_ID = 'test-client-id';
     process.env.TWITCH_CLIENT_SECRET = 'test-secret';
     process.env.TWITCH_REDIRECT_URI = 'http://test-redirect';
-    process.env.TOKEN_ENCRYPTION_KEY = 'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90';
+    process.env.TOKEN_ENCRYPTION_KEY =
+      'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90';
     process.env.DESKTOP_DEEP_LINK = 'streamerhub://auth/callback';
 
     app = fastify();
@@ -271,7 +291,9 @@ describe('Twitch OAuth Flow', () => {
       await import('fastify-type-provider-zod');
     app.setValidatorCompiler(validatorCompiler);
     app.setSerializerCompiler(serializerCompiler);
-    app.jwt = { sign: vi.fn().mockReturnValue('mock-jwt') };
+    app.decorate('jwt', {
+      sign: vi.fn().mockReturnValue('mock-jwt'),
+    } as unknown as import('@fastify/jwt').JWT);
 
     const fastifyCookie = (await import('@fastify/cookie')).default;
     await app.register(fastifyCookie);
@@ -282,7 +304,7 @@ describe('Twitch OAuth Flow', () => {
       set: vi.fn(),
       del: vi.fn(),
     };
-    (getRedis as import('vitest').Mock).mockReturnValue(mockRedis);
+    (getRedis as Mock).mockReturnValue(mockRedis);
 
     mockDb = {
       select: vi.fn().mockReturnThis(),
@@ -295,10 +317,15 @@ describe('Twitch OAuth Flow', () => {
       set: vi.fn().mockReturnThis(),
       returning: vi.fn().mockReturnThis(),
     };
-    (getDb as import('vitest').Mock).mockReturnValue(mockDb);
+    (getDb as Mock).mockReturnValue(mockDb);
 
     fetchMock = vi.fn();
     global.fetch = fetchMock;
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+    global.fetch = originalFetch;
   });
 
   it('1 & 2. authorize URL contains correct redirect_uri, state, and no PKCE', async () => {
@@ -307,16 +334,17 @@ describe('Twitch OAuth Flow', () => {
       url: '/desktop/login',
     });
 
-    if (response.statusCode !== 302) console.log(response.payload);
     expect(response.statusCode).toBe(302);
     const location = new URL(response.headers.location as string);
     expect(location.hostname).toBe('id.twitch.tv');
     expect(location.pathname).toBe('/oauth2/authorize');
     expect(location.searchParams.get('client_id')).toBe('test-client-id');
-    expect(location.searchParams.get('redirect_uri')).toBe('http://test-redirect');
+    expect(location.searchParams.get('redirect_uri')).toBe(
+      'http://test-redirect',
+    );
     expect(location.searchParams.get('response_type')).toBe('code');
     expect(location.searchParams.get('state')).toBeTruthy();
-    
+
     // NO PKCE
     expect(location.searchParams.has('code_challenge')).toBe(false);
     expect(location.searchParams.has('code_challenge_method')).toBe(false);
@@ -325,21 +353,21 @@ describe('Twitch OAuth Flow', () => {
       expect.stringContaining('auth:state:'),
       expect.stringContaining('"flow":"desktop"'),
       'EX',
-      600
+      600,
     );
   });
 
   it('3, 4, 5, 6, 8. token request format is correct and successful flow creates exchange code', async () => {
     mockRedis.get.mockResolvedValueOnce(JSON.stringify({ flow: 'desktop' }));
-    
+
     // Mock Token Response
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         access_token: 'mock-access',
         refresh_token: 'mock-refresh',
-        expires_in: 3600
-      })
+        expires_in: 3600,
+      }),
     });
 
     // Mock Validate Response
@@ -347,16 +375,23 @@ describe('Twitch OAuth Flow', () => {
       ok: true,
       json: async () => ({
         client_id: 'test-client-id',
-        user_id: '123'
-      })
+        user_id: '123',
+      }),
     });
 
     // Mock User Response
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        data: [{ id: '123', login: 'testuser', display_name: 'TestUser', profile_image_url: 'img' }]
-      })
+        data: [
+          {
+            id: '123',
+            login: 'testuser',
+            display_name: 'TestUser',
+            profile_image_url: 'img',
+          },
+        ],
+      }),
     });
 
     mockDb.where.mockResolvedValueOnce([]); // No existing user
@@ -367,7 +402,7 @@ describe('Twitch OAuth Flow', () => {
     const response = await app.inject({
       method: 'GET',
       url: '/twitch/callback?code=test-code&state=test-state',
-      cookies: { oauth_state: 'test-state' }
+      cookies: { oauth_state: 'test-state' },
     });
 
     // Validate fetch calls
@@ -376,7 +411,9 @@ describe('Twitch OAuth Flow', () => {
     const tokenCall = fetchMock.mock.calls[0];
     expect(tokenCall[0]).toBe('https://id.twitch.tv/oauth2/token');
     expect(tokenCall[1].method).toBe('POST');
-    expect(tokenCall[1].headers['Content-Type']).toBe('application/x-www-form-urlencoded');
+    expect(tokenCall[1].headers['Content-Type']).toBe(
+      'application/x-www-form-urlencoded',
+    );
     expect(tokenCall[1].headers['Authorization']).toBeUndefined(); // No basic auth
 
     const body = tokenCall[1].body as URLSearchParams;
@@ -386,36 +423,38 @@ describe('Twitch OAuth Flow', () => {
     expect(body.get('grant_type')).toBe('authorization_code');
     expect(body.get('redirect_uri')).toBe('http://test-redirect'); // matches exactly
 
-    if (response.statusCode !== 200) console.log(response.payload);
     expect(response.statusCode).toBe(200);
-    expect(response.payload).toContain('window.location.href = "streamerhub://auth/callback?code=');
+    expect(response.payload).toContain(
+      'window.location.href = "streamerhub://auth/callback?code=',
+    );
     expect(mockRedis.set).toHaveBeenCalledWith(
       expect.stringContaining('auth:exchange:'),
       expect.stringContaining('"userId":"new-user-id"'),
       'EX',
-      300
+      300,
     );
   });
 
   it('7. Twitch error is handled gracefully', async () => {
     mockRedis.get.mockResolvedValueOnce(JSON.stringify({ flow: 'desktop' }));
-    
+
     // Mock Token Error Response
     fetchMock.mockResolvedValueOnce({
       ok: false,
       status: 401,
-      json: async () => ({ message: 'Invalid token' })
+      json: async () => ({ message: 'Invalid token' }),
     });
 
     const response = await app.inject({
       method: 'GET',
       url: '/twitch/callback?code=test-code&state=test-state',
-      cookies: { oauth_state: 'test-state' }
+      cookies: { oauth_state: 'test-state' },
     });
 
     expect(response.statusCode).toBe(200); // Renders HTML error page
     expect(response.payload).toContain('Authorization Failed');
-    expect(response.payload).toContain('Token exchange failed');
+    expect(response.payload).toContain(
+      'We could not validate your Twitch login',
+    );
   });
 });
-

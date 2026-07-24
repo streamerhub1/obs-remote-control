@@ -1,4 +1,4 @@
-import { FastifyInstance, FastifyPluginAsync } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { fetchTwitchUser } from '../services/twitch.js';
 import { getDb } from '../db.js';
 import { getRedis } from '../redis.js';
@@ -104,7 +104,9 @@ export default async function authRoutes(app: FastifyInstance) {
       });
 
       if (!tokenResponse.ok) {
-        throw new Error(`Token exchange failed with status ${tokenResponse.status}`);
+        throw new Error(
+          `Token exchange failed with status ${tokenResponse.status}`,
+        );
       }
 
       const tokenData = await tokenResponse.json();
@@ -112,27 +114,32 @@ export default async function authRoutes(app: FastifyInstance) {
       refreshToken = tokenData.refresh_token || null;
       expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
 
-      const validateResponse = await fetch('https://id.twitch.tv/oauth2/validate', {
-        headers: {
-          Authorization: `OAuth ${accessToken}`,
+      const validateResponse = await fetch(
+        'https://id.twitch.tv/oauth2/validate',
+        {
+          headers: {
+            Authorization: `OAuth ${accessToken}`,
+          },
         },
-      });
+      );
 
       if (!validateResponse.ok) {
-        throw new Error(`Token validation failed with status ${validateResponse.status}`);
+        throw new Error(
+          `Token validation failed with status ${validateResponse.status}`,
+        );
       }
       const validateData = await validateResponse.json();
       if (validateData.client_id !== process.env.TWITCH_CLIENT_ID) {
         throw new Error('Client ID mismatch');
       }
-    } catch (err: any) {
-      request.log.error({ error: err.message }, 'Twitch OAuth failed');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      request.log.error({ error: errorMessage }, 'Twitch OAuth failed');
       return reply.type('text/html').send(`
         <html>
           <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #0A0A0A; color: white;">
             <h2>Authorization Failed</h2>
             <p>We could not validate your Twitch login. Please try again.</p>
-            <p>Error details: ${err.message || 'Unknown error'}</p>
           </body>
         </html>
       `);

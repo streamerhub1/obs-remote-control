@@ -27,10 +27,17 @@ async function runSmokeTest() {
     const readyRes = await fetch(`${PROD_URL}/ready`);
     if (!readyRes.ok) throw new Error(`HTTP ${readyRes.status}`);
     const readyData = await readyRes.json();
-    if (readyData.status === 'ready' && readyData.checks?.db === 'ok' && readyData.checks?.redis === 'ok') {
+    if (
+      readyData.status === 'ready' &&
+      readyData.checks?.db === 'ok' &&
+      readyData.checks?.redis === 'ok'
+    ) {
       console.log('✅ /ready is OK (DB and Redis connected)');
     } else {
-      console.error('❌ /ready returned unexpected status or missing checks', readyData);
+      console.error(
+        '❌ /ready returned unexpected status or missing checks',
+        readyData,
+      );
       hasErrors = true;
     }
   } catch (e) {
@@ -41,17 +48,25 @@ async function runSmokeTest() {
   // 3. Test /api/v1/auth/desktop/login (Redirect)
   console.log(`\n[3] Testing GET ${PROD_URL}/api/v1/auth/desktop/login`);
   try {
-    const loginRes = await fetch(`${PROD_URL}/api/v1/auth/desktop/login`, { redirect: 'manual' });
+    const loginRes = await fetch(`${PROD_URL}/api/v1/auth/desktop/login`, {
+      redirect: 'manual',
+    });
     if (loginRes.status >= 300 && loginRes.status < 400) {
       const location = loginRes.headers.get('location');
       if (location && location.includes('id.twitch.tv/oauth2/authorize')) {
         console.log('✅ /desktop/login correctly redirects to Twitch OAuth');
       } else {
-        console.error('❌ /desktop/login redirected to unexpected URL:', location);
+        console.error(
+          '❌ /desktop/login redirected to unexpected URL:',
+          location,
+        );
         hasErrors = true;
       }
     } else {
-      console.error('❌ /desktop/login did not return a redirect. Status:', loginRes.status);
+      console.error(
+        '❌ /desktop/login did not return a redirect. Status:',
+        loginRes.status,
+      );
       hasErrors = true;
     }
   } catch (e) {

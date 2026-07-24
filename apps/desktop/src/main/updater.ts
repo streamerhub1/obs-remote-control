@@ -21,7 +21,9 @@ export function setupUpdater(mainWindow: BrowserWindow) {
 
   autoUpdater.on('checking-for-update', () => notifyState('checking'));
   autoUpdater.on('update-available', (info) => notifyState('available', info));
-  autoUpdater.on('update-not-available', (info) => notifyState('not-available', info));
+  autoUpdater.on('update-not-available', (info) =>
+    notifyState('not-available', info),
+  );
   autoUpdater.on('error', (err) => {
     // Only send the message, not the full stack trace
     notifyState('error', { message: err?.message || 'Unknown updater error' });
@@ -29,14 +31,16 @@ export function setupUpdater(mainWindow: BrowserWindow) {
   autoUpdater.on('download-progress', (progressObj) => {
     notifyState('downloading', progressObj);
   });
-  autoUpdater.on('update-downloaded', (info) => notifyState('downloaded', info));
+  autoUpdater.on('update-downloaded', (info) =>
+    notifyState('downloaded', info),
+  );
 
   ipcMain.handle('updater:getState', () => {
     return 'idle';
   });
 
   ipcMain.on('updater:check', () => {
-    autoUpdater.checkForUpdates().catch(err => {
+    autoUpdater.checkForUpdates().catch((err) => {
       console.error('Check for updates failed', err);
     });
   });
@@ -51,7 +55,10 @@ export function setupUpdater(mainWindow: BrowserWindow) {
   }, 10000);
 
   // Check every 6 hours
-  setInterval(() => {
-    autoUpdater.checkForUpdates().catch(console.error);
-  }, 6 * 60 * 60 * 1000);
+  setInterval(
+    () => {
+      autoUpdater.checkForUpdates().catch(console.error);
+    },
+    6 * 60 * 60 * 1000,
+  );
 }
