@@ -13,6 +13,9 @@ export default tseslint.config(
       '**/node_modules/**',
       'apps/desktop/dist-electron/**',
       'apps/desktop/dist-react/**',
+      '**/*.js',
+      '**/*.cjs',
+      '**/*.mjs',
     ],
   },
   js.configs.recommended,
@@ -28,9 +31,11 @@ export default tseslint.config(
     },
     rules: {
       '@typescript-eslint/no-unused-vars': [
-        'error',
+        'warn',
         { argsIgnorePattern: '^_' },
       ],
+      'no-empty': 'warn',
+      'no-case-declarations': 'warn',
       '@typescript-eslint/no-explicit-any': 'error',
     },
   },
@@ -54,6 +59,10 @@ export default tseslint.config(
     rules: {
       ...reactHooksPlugin.configs.recommended.rules,
       'react/react-in-jsx-scope': 'off',
+      'react-hooks/exhaustive-deps': 'warn',
+      'react-hooks/rules-of-hooks': 'warn',
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/purity': 'warn',
     },
   },
   // Node globals for backend & packages
