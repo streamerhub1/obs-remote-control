@@ -18,7 +18,7 @@ describe('Collaborations API', () => {
     if (app) await app.close();
   });
 
-  it.skipIf(!process.env.DATABASE_URL || !process.env.REDIS_URL)('should require authentication to create a collaboration', async () => {
+  it('should require authentication to create a collaboration', async () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/collaborations',

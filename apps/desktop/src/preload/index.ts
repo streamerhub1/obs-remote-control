@@ -77,6 +77,7 @@ const API = {
     saveSettings: (settings: unknown) => ipcRenderer.invoke('obs:saveSettings', settings)
   },
   api: {
+    getWsUrl: () => ipcRenderer.invoke('api:getWsUrl'),
     feed: {
       list: () => ipcRenderer.invoke('api:feed:list'),
       create: (data: unknown) => ipcRenderer.invoke('api:feed:create', data),
@@ -102,6 +103,17 @@ const API = {
       list: () => ipcRenderer.invoke('api:notifications:list'),
       markAllRead: () => ipcRenderer.invoke('api:notifications:markAllRead'),
       markRead: (id: string) => ipcRenderer.invoke('api:notifications:markRead', id)
+    },
+    relationships: {
+      list: () => ipcRenderer.invoke('api:relationships:list'),
+      invite: (data: unknown) => ipcRenderer.invoke('api:relationships:invite', data),
+      respond: (id: string, data: unknown) => ipcRenderer.invoke('api:relationships:respond', id, data),
+      revoke: (id: string) => ipcRenderer.invoke('api:relationships:revoke', id),
+      getPermissions: (id: string) => ipcRenderer.invoke('api:relationships:getPermissions', id),
+      setPermissions: (id: string, data: unknown) => ipcRenderer.invoke('api:relationships:setPermissions', id, data)
+    },
+    remoteSessions: {
+      create: (data: unknown) => ipcRenderer.invoke('api:remoteSessions:create', data)
     }
   }
 };

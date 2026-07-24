@@ -23,7 +23,7 @@ export const searchRoutes: FastifyPluginAsync = async (appOriginal) => {
     // For more advanced search, tsvector/tsquery can be used, but ILIKE is sufficient for MVP.
     const searchPattern = `%${q}%`;
 
-    const results: any = { users: [], collaborations: [] };
+    const results: Record<string, unknown> = { users: [], collaborations: [] };
 
     if (type === 'all' || type === 'users') {
       results.users = await db.select({

@@ -31,7 +31,7 @@ export function ObsDashboard({ dataSource }: { dataSource: ObsDataSource }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataSource]);
 
-  const execute = (cmd: any) => dataSource.execute(cmd);
+  const execute = (cmd: unknown) => dataSource.execute(cmd);
 
   if (obsState !== 'connected' || !snapshot) {
     return <div className="p-8 text-center text-gray-500 animate-pulse">Ожидание состояния OBS...</div>;
@@ -83,7 +83,7 @@ export function ObsDashboard({ dataSource }: { dataSource: ObsDataSource }) {
           <h3 className="text-lg font-medium flex items-center gap-2 mb-4"><Layers size={20} className="text-purple-400"/> Источники ({snapshot.currentProgramScene})</h3>
           <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
             {snapshot.sceneItems?.[snapshot.currentProgramScene]?.length > 0 ? 
-              snapshot.sceneItems[snapshot.currentProgramScene].map((item: any) => (
+              snapshot.sceneItems[snapshot.currentProgramScene].map((item: unknown) => (
                 <div key={item.sceneItemId} className="flex items-center justify-between p-3 bg-black border border-gray-800 rounded-lg">
                   <span className="text-sm truncate mr-2">{item.sourceName}</span>
                   <button 

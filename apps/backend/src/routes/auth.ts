@@ -170,7 +170,7 @@ export default async function authRoutes(app: FastifyInstance) {
       const exchangeCode = crypto.randomBytes(32).toString('hex');
       await redis.set(`auth:exchange:${exchangeCode}`, JSON.stringify({ userId: userId! }), 'EX', 300);
       
-      const deepLink = `obsremote://auth/callback?code=${exchangeCode}`;
+      const deepLink = `streamerhub://auth/callback?code=${exchangeCode}`;
       
       return reply.type('text/html').send(`
         <html>

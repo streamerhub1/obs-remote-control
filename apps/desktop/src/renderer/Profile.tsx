@@ -39,7 +39,7 @@ export function Profile() {
       setLanguages((data.languages ?? []).join(', '));
       setCategories((data.categories ?? []).join(', '));
       setTimezone(data.timezone ?? '');
-    } catch (e: any) {
+    } catch (e: unknown) {
       setError(e.message);
     } finally {
       setLoading(false);
@@ -59,7 +59,7 @@ export function Profile() {
       });
       setProfile(updated);
       setEditing(false);
-    } catch (e: any) {
+    } catch (e: unknown) {
       alert('Не удалось сохранить: ' + e.message);
     } finally {
       setSaving(false);

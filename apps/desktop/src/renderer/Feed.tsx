@@ -26,7 +26,7 @@ export function Feed() {
     try {
       const data = await window.desktop.api.feed.list();
       setPosts(data.posts ?? data ?? []);
-    } catch (e: any) {
+    } catch (e: unknown) {
       setError(e.message);
     } finally {
       setLoading(false);
@@ -42,7 +42,7 @@ export function Feed() {
       const post = await window.desktop.api.feed.create({ content: newPostContent.trim() });
       setPosts(prev => [post, ...prev]);
       setNewPostContent('');
-    } catch (e: any) {
+    } catch (e: unknown) {
       alert('Не удалось опубликовать: ' + e.message);
     } finally {
       setPosting(false);

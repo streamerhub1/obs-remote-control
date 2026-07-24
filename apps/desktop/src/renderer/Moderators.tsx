@@ -11,14 +11,10 @@ export function Moderators({ onConnectRemote }: { onConnectRemote: (token: strin
 
   const fetchRelationships = async () => {
     try {
-      const token = await window.desktop.auth.getToken();
-      const response = await fetch('http://localhost:3000/api/v1/relationships', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setAsStreamer(data.asStreamer);
-        setAsModerator(data.asModerator);
+      const response = await window.desktop.api.relationships.list();
+      if (response) {
+        setAsStreamer(response.asStreamer);
+        setAsModerator(response.asModerator);
       }
     } catch (e) {
       console.error(e);
@@ -34,42 +30,21 @@ export function Moderators({ onConnectRemote }: { onConnectRemote: (token: strin
   const handleInvite = async () => {
     if (!inviteIdentifier) return;
     try {
-      const token = await window.desktop.auth.getToken();
-      
       const isCode = inviteIdentifier.toUpperCase().startsWith('PH-');
       const body = isCode ? { inviteCode: inviteIdentifier } : { twitchLogin: inviteIdentifier };
 
-      const response = await fetch('http://localhost:3000/api/v1/relationships/invite', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        },
-        body: JSON.stringify(body)
-      });
-      if (response.ok) {
-        setInviteIdentifier('');
-        fetchRelationships();
-      } else {
-        const err = await response.json();
-        alert('Failed to invite: ' + err.error);
-      }
-    } catch (e) {
+      await window.desktop.api.relationships.invite(body);
+      setInviteIdentifier('');
+      fetchRelationships();
+    } catch (e: unknown) {
+      alert('Failed to invite: ' + e.message);
       console.error(e);
     }
   };
 
   const handleRespond = async (id: string, action: 'accept' | 'reject') => {
     try {
-      const token = await window.desktop.auth.getToken();
-      await fetch(`http://localhost:3000/api/v1/relationships/${id}/respond`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        },
-        body: JSON.stringify({ action })
-      });
+      await window.desktop.api.relationships.respond(id, { action });
       fetchRelationships();
     } catch (e) {
       console.error(e);
@@ -78,11 +53,7 @@ export function Moderators({ onConnectRemote }: { onConnectRemote: (token: strin
 
   const handleRevoke = async (id: string) => {
     try {
-      const token = await window.desktop.auth.getToken();
-      await fetch(`http://localhost:3000/api/v1/relationships/${id}/revoke`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await window.desktop.api.relationships.revoke(id);
       fetchRelationships();
     } catch (e) {
       console.error(e);
@@ -91,13 +62,9 @@ export function Moderators({ onConnectRemote }: { onConnectRemote: (token: strin
 
   const openPermissionsModal = async (id: string) => {
     try {
-      const token = await window.desktop.auth.getToken();
-      const response = await fetch(`http://localhost:3000/api/v1/relationships/${id}/permissions`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const perms = await response.json();
+      const perms = await window.desktop.api.relationships.getPermissions(id);
       const map: Record<string, boolean> = {};
-      perms.forEach((p: any) => map[p.permissionKey] = p.allowed);
+      perms.forEach((p: unknown) => map[p.permissionKey] = p.allowed);
       setCurrentPerms(map);
       setManagingPermsFor(id);
     } catch (e) {
@@ -108,15 +75,7 @@ export function Moderators({ onConnectRemote }: { onConnectRemote: (token: strin
   const savePermissions = async () => {
     if (!managingPermsFor) return;
     try {
-      const token = await window.desktop.auth.getToken();
-      await fetch(`http://localhost:3000/api/v1/relationships/${managingPermsFor}/permissions`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        },
-        body: JSON.stringify({ permissions: currentPerms })
-      });
+      await window.desktop.api.relationships.setPermissions(managingPermsFor, { permissions: currentPerms });
       alert('Permissions updated');
       setManagingPermsFor(null);
     } catch (e) {
@@ -216,18 +175,13 @@ export function Moderators({ onConnectRemote }: { onConnectRemote: (token: strin
                   {rel.status === 'active' && (
                     <>
                       <button onClick={async () => {
-                        const token = await window.desktop.auth.getToken();
-                        const res = await fetch(`http://localhost:3000/api/v1/remote-sessions`, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                          body: JSON.stringify({ relationshipId: rel.id })
-                        });
-                        if (res.ok) {
-                          const data = await res.json();
-                          onConnectRemote(data.authorizationToken);
-                        } else {
-                          const err = await res.json();
-                          alert('Failed to connect: ' + err.error);
+                        try {
+                          const data = await window.desktop.api.remoteSessions.create({ relationshipId: rel.id });
+                          if (data && data.authorizationToken) {
+                            onConnectRemote(data.authorizationToken);
+                          }
+                        } catch (e: unknown) {
+                          alert('Failed to connect: ' + e.message);
                         }
                       }} className="px-3 py-1 bg-blue-600/20 text-blue-400 rounded hover:bg-blue-600/30 text-xs border border-blue-500/20">
                         Управлять OBS

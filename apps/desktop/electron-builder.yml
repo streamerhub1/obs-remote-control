@@ -32,3 +32,8 @@ nsis:
   artifactName: StreamerHub-Setup-${version}.${ext}
   createDesktopShortcut: true
   createStartMenuShortcut: true
+
+protocols:
+  - name: StreamerHub Deep Link
+    schemes:
+      - streamerhub

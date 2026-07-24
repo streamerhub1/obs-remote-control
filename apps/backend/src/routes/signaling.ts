@@ -65,7 +65,7 @@ export default async function signalingRoutes(app: FastifyInstance) {
     }
   });
 
-  server.get('/signaling/global', { websocket: true }, (connection: any, request: any) => {
+  server.get('/signaling/global', { websocket: true }, (connection: import("@fastify/websocket").SocketStream, request: import("fastify").FastifyRequest) => {
     const socket = connection.socket as WebSocket;
     let clientCtx: GlobalClient | null = null;
     let rateLimitTokens = 100;
@@ -106,8 +106,8 @@ export default async function signalingRoutes(app: FastifyInstance) {
           }));
 
           socket.send(JSON.stringify({ type: 'signaling.authenticated' }));
-        } catch (err: any) {
-          return socket.send(JSON.stringify({ type: 'signaling.error', error: err.message }));
+        } catch (err: unknown) {
+          return socket.send(JSON.stringify({ type: 'signaling.error', error: (err as Error).message }));
         }
         return;
       }
@@ -129,7 +129,7 @@ export default async function signalingRoutes(app: FastifyInstance) {
     });
   });
 
-  server.get('/signaling/session', { websocket: true }, (connection: any, request: any) => {
+  server.get('/signaling/session', { websocket: true }, (connection: import("@fastify/websocket").SocketStream, request: import("fastify").FastifyRequest) => {
     const socket = connection.socket as WebSocket;
     let clientCtx: SessionClient | null = null;
     let rateLimitTokens = 100;
@@ -185,8 +185,8 @@ export default async function signalingRoutes(app: FastifyInstance) {
               client.socket.send(JSON.stringify({ type: 'signaling.ready', role: clientCtx.role }));
             }
           }
-        } catch (err: any) {
-          return socket.send(JSON.stringify({ type: 'signaling.error', error: err.message }));
+        } catch (err: unknown) {
+          return socket.send(JSON.stringify({ type: 'signaling.error', error: (err as Error).message }));
         }
         return;
       }

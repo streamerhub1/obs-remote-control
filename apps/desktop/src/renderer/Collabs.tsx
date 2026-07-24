@@ -38,7 +38,7 @@ export function Collabs() {
     try {
       const data = await window.desktop.api.collabs.list();
       setCollabs(data.collabs ?? data ?? []);
-    } catch (e: any) {
+    } catch (e: unknown) {
       setError(e.message);
     } finally {
       setLoading(false);
@@ -61,7 +61,7 @@ export function Collabs() {
       setCollabs(prev => [collab, ...prev]);
       setShowCreate(false);
       setNewTitle(''); setNewDate('');
-    } catch (e: any) {
+    } catch (e: unknown) {
       alert('Не удалось создать: ' + e.message);
     } finally {
       setCreating(false);
@@ -76,7 +76,7 @@ export function Collabs() {
       // The requirement was: "two modes". I will just call apply for now.
       await window.desktop.api.collabs.apply(collabId);
       setCollabs(prev => prev.map(c => c.id === collabId ? { ...c, myApplication: 'pending' } : c));
-    } catch (e: any) {
+    } catch (e: unknown) {
       alert('Не удалось подать заявку: ' + e.message);
     } finally {
       setApplying(null);

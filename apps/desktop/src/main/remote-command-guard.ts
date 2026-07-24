@@ -14,7 +14,7 @@ class RemoteCommandGuard {
   private dedupCache = new LRUCache<string, boolean>({ max: 1000, ttl: 1000 * 60 });
   private rateLimits = new Map<string, { tokens: number; lastRefill: number }>();
 
-  registerSession(remoteSessionId: string, payload: any) {
+  registerSession(remoteSessionId: string, payload: { role: 'streamer' | 'moderator', permissions?: string[], exp: number }) {
     this.sessions.set(remoteSessionId, {
       remoteSessionId,
       role: payload.role,
@@ -32,7 +32,7 @@ class RemoteCommandGuard {
     }
   }
 
-  async execute(remoteSessionId: string, commandMsg: any) {
+  async execute(remoteSessionId: string, commandMsg: { command: string, args?: unknown, seq: number }) {
     const session = this.sessions.get(remoteSessionId);
     if (!session) throw new Error('Session not found or invalid');
     if (session.role !== 'streamer') throw new Error('Only streamer can execute commands');
@@ -79,21 +79,21 @@ class RemoteCommandGuard {
         case 'GetCurrentProgramScene':
         case 'GetCurrentPreviewScene':
           cmdAuth(['scenes.read', 'obs.manage']);
-          return { status: 'success', data: await obs.call(command as any, args) };
+          return { status: 'success', data: await obs.call(command as keyof import('obs-websocket-js').OBSRequestTypes, args) };
         case 'SetCurrentProgramScene':
         case 'SetCurrentPreviewScene':
           cmdAuth(['scenes.switch', 'obs.manage']);
-          await obs.call(command as any, args);
+          await obs.call(command as keyof import('obs-websocket-js').OBSRequestTypes, args);
           return { status: 'success' };
         
         // Scene Items
         case 'GetSceneItemList':
         case 'GetSceneItemId':
           cmdAuth(['sceneItems.read', 'obs.manage']);
-          return { status: 'success', data: await obs.call(command as any, args) };
+          return { status: 'success', data: await obs.call(command as keyof import('obs-websocket-js').OBSRequestTypes, args) };
         case 'SetSceneItemEnabled':
           cmdAuth(['sceneItems.visibility', 'obs.manage']);
-          await obs.call(command as any, args);
+          await obs.call(command as keyof import('obs-websocket-js').OBSRequestTypes, args);
           return { status: 'success' };
         
         // Audio
@@ -101,50 +101,50 @@ class RemoteCommandGuard {
         case 'GetInputMute':
         case 'GetInputVolume':
           cmdAuth(['audio.read', 'obs.manage']);
-          return { status: 'success', data: await obs.call(command as any, args) };
+          return { status: 'success', data: await obs.call(command as keyof import('obs-websocket-js').OBSRequestTypes, args) };
         case 'SetInputMute':
         case 'ToggleInputMute':
           cmdAuth(['audio.mute', 'obs.manage']);
-          await obs.call(command as any, args);
+          await obs.call(command as keyof import('obs-websocket-js').OBSRequestTypes, args);
           return { status: 'success' };
         case 'SetInputVolume':
           cmdAuth(['audio.volume', 'obs.manage']);
-          await obs.call(command as any, args);
+          await obs.call(command as keyof import('obs-websocket-js').OBSRequestTypes, args);
           return { status: 'success' };
         
         // Streaming
         case 'GetStreamStatus':
           cmdAuth(['stream.read', 'obs.manage']);
-          return { status: 'success', data: await obs.call(command as any, args) };
+          return { status: 'success', data: await obs.call(command as keyof import('obs-websocket-js').OBSRequestTypes, args) };
         case 'StartStream':
           cmdAuth(['stream.start', 'obs.manage']);
-          await obs.call(command as any, args);
+          await obs.call(command as keyof import('obs-websocket-js').OBSRequestTypes, args);
           return { status: 'success' };
         case 'StopStream':
           cmdAuth(['stream.stop', 'obs.manage']);
-          await obs.call(command as any, args);
+          await obs.call(command as keyof import('obs-websocket-js').OBSRequestTypes, args);
           return { status: 'success' };
           
         // Recording
         case 'GetRecordStatus':
           cmdAuth(['record.read', 'obs.manage']);
-          return { status: 'success', data: await obs.call(command as any, args) };
+          return { status: 'success', data: await obs.call(command as keyof import('obs-websocket-js').OBSRequestTypes, args) };
         case 'StartRecord':
           cmdAuth(['record.start', 'obs.manage']);
-          await obs.call(command as any, args);
+          await obs.call(command as keyof import('obs-websocket-js').OBSRequestTypes, args);
           return { status: 'success' };
         case 'StopRecord':
         case 'PauseRecord':
         case 'ResumeRecord':
           cmdAuth(['record.stop', 'obs.manage']);
-          await obs.call(command as any, args);
+          await obs.call(command as keyof import('obs-websocket-js').OBSRequestTypes, args);
           return { status: 'success' };
 
         default:
           throw new Error('Command not allowed or unknown');
       }
-    } catch (e: any) {
-      throw new Error(`OBS Error: ${e.message}`);
+    } catch (e: unknown) {
+      throw new Error(`OBS Error: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 }

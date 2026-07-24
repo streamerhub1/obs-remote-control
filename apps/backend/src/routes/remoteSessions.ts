@@ -26,7 +26,7 @@ export default async function remoteSessionsRoutes(app: FastifyInstance) {
     }
   });
 
-  const logAudit = async (tx: any, action: string, streamerId: string, moderatorId: string, success: boolean, meta?: any, relationshipId?: string, remoteSessionId?: string) => {
+  const logAudit = async (tx: any, action: string, streamerId: string, moderatorId: string, success: boolean, meta?: unknown, relationshipId?: string, remoteSessionId?: string) => {
     await tx.insert(auditLogs).values({
       actorUserId: moderatorId,
       targetUserId: streamerId,

@@ -28,7 +28,7 @@ export function Notifications() {
     try {
       const data = await window.desktop.api.notifications.list();
       setNotifications(data.notifications ?? data ?? []);
-    } catch (e: any) {
+    } catch (e: unknown) {
       setError(e.message);
     } finally {
       setLoading(false);

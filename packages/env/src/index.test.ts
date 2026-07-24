@@ -10,7 +10,7 @@ describe('env', () => {
       TWITCH_CLIENT_ID: 'id',
       TWITCH_CLIENT_SECRET: 'secret',
       TWITCH_REDIRECT_URI: 'http://localhost',
-      DESKTOP_DEEP_LINK: 'obsremote://auth/callback',
+      DESKTOP_DEEP_LINK: 'streamerhub://auth/callback',
       JWT_SECRET: 'jwt-secret-123',
       SESSION_SECRET: 'session-secret-123',
       TOKEN_ENCRYPTION_KEY: '1234567890123456789012345678901234567890123456789012345678901234'

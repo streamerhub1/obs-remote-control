@@ -8,6 +8,7 @@ import { getRemoteCommandGuard } from './remote-command-guard.js';
 import { app, safeStorage } from 'electron';
 import fs from 'fs';
 import path from 'path';
+import { getApiUrl, getWsUrl } from './api.js';
 
 function loadDeviceIdentity() {
   try {
@@ -47,7 +48,7 @@ export function setupRemoteSessions() {
     }
   });
 
-  ipcMain.on('remoteSessions:sendSignal', (_, remoteSessionId: string, msg: any) => {
+  ipcMain.on('remoteSessions:sendSignal', (_, remoteSessionId: string, msg: unknown) => {
     const ws = activeSessions.get(remoteSessionId);
     if (ws?.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(msg));
@@ -75,14 +76,14 @@ export function setupRemoteSessions() {
     return isValid;
   });
 
-  ipcMain.handle('remoteSessions:executeCommand', async (_, remoteSessionId: string, command: any) => {
+  ipcMain.handle('remoteSessions:executeCommand', async (_, remoteSessionId: string, command: unknown) => {
     return getRemoteCommandGuard().execute(remoteSessionId, command);
   });
 }
 
 async function fetchBackendPublicKey() {
   if (backendPublicKey) return backendPublicKey;
-  const res = await fetch('http://localhost:3000/api/v1/auth/desktop/public-key');
+  const res = await fetch(`${getApiUrl()}/api/v1/auth/desktop/public-key`);
   if (!res.ok) throw new Error('Failed to fetch public key');
   const data = await res.json();
   backendPublicKey = crypto.createPublicKey(data.publicKey);
@@ -99,13 +100,13 @@ export async function connectSession(authorizationToken: string): Promise<Sessio
     throw new Error('Invalid token type');
   }
 
-  const { remoteSessionId, role, streamerDeviceId, moderatorDeviceId, permissions } = payload as any;
+  const { remoteSessionId, role, streamerDeviceId, moderatorDeviceId, permissions } = payload as { remoteSessionId: string, role: 'streamer' | 'moderator', streamerDeviceId: string, moderatorDeviceId: string, permissions: string[] };
   const peerDeviceId = role === 'streamer' ? moderatorDeviceId : streamerDeviceId;
 
   const appToken = getAccessToken();
   if (!appToken) throw new Error('Not logged in');
 
-  const ws = new WebSocket('ws://localhost:3000/api/v1/signaling/session');
+  const ws = new WebSocket(`${getWsUrl()}/api/v1/signaling/session`);
   
   ws.on('open', () => {
     ws.send(JSON.stringify({
@@ -134,7 +135,7 @@ export async function connectSession(authorizationToken: string): Promise<Sessio
   activeSessions.set(remoteSessionId, ws);
 
   // Register session with RemoteCommandGuard
-  getRemoteCommandGuard().registerSession(remoteSessionId, payload as any);
+  getRemoteCommandGuard().registerSession(remoteSessionId, payload as { role: 'streamer' | 'moderator', permissions?: string[], exp: number });
 
   return {
     remoteSessionId,

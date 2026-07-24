@@ -106,7 +106,7 @@ export class WebRTCManager {
     };
   }
 
-  private async handleSignalingMessage(msg: any) {
+  private async handleSignalingMessage(msg: unknown) {
     if (!this.pc) return;
 
     if (msg.type === 'signaling.offer' && this.role === 'streamer') {
@@ -149,7 +149,7 @@ export class WebRTCManager {
       try {
         const signatureHex = await window.desktop.remoteSessions.signChallenge(this.remoteSessionId, payload.challenge);
         this.sendP2PMessage('handshake.proof', { proof: signatureHex });
-      } catch (err: any) {
+      } catch (err: unknown) {
         this.sendP2PMessage('error', { code: 'SIGN_FAILED', message: err.message });
       }
     } else if (msg.type === 'handshake.proof' && this.role === 'streamer') {
@@ -195,7 +195,7 @@ export class WebRTCManager {
           result: result.data,
           revision: this.currentRevision
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         this.sendP2PMessage('command.result', { 
           commandId: payload.commandId, 
           success: false, 
@@ -226,7 +226,7 @@ export class WebRTCManager {
 
   public sendP2PMessage(
     type: P2PPayload['type'],
-    payload: any
+    payload: unknown
   ) {
     if (!this.controlChannel || this.controlChannel.readyState !== 'open') return;
     this.sequenceCounter++;
@@ -235,7 +235,7 @@ export class WebRTCManager {
     this.controlChannel.send(raw);
   }
 
-  public broadcastEvent(event: any) {
+  public broadcastEvent(event: unknown) {
     if (this.role === 'streamer') {
       this.currentRevision++;
       this.sendP2PMessage('state.patch', { revision: this.currentRevision, event });

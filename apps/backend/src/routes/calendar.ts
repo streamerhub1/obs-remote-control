@@ -29,14 +29,14 @@ export const calendarRoutes: FastifyPluginAsync = async (appOriginal) => {
       
     // Fetch associated collaborations if sourceType = 'collaboration'
     const collabIds = events.filter(e => e.sourceType === 'collaboration' && e.sourceId).map(e => e.sourceId!);
-    let collabs: any[] = [];
+    let collabs: unknown[] = [];
     if (collabIds.length > 0) {
       collabs = await db.select().from(collaborations).where(inArray(collaborations.id, collabIds));
     }
 
     const result = events.map(e => {
       if (e.sourceType === 'collaboration' && e.sourceId) {
-        const collab = collabs.find(c => c.id === e.sourceId);
+        const collab = collabs.find(c => (c as any).id === e.sourceId);
         return { ...e, collaboration: collab };
       }
       return e;

@@ -26,7 +26,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
   });
 
   // Helper for audit logs
-  const logAudit = async (tx: any, action: string, streamerId: string, moderatorId: string, success: boolean, meta?: any, relationshipId?: string) => {
+  const logAudit = async (tx: any, action: string, streamerId: string, moderatorId: string, success: boolean, meta?: unknown, relationshipId?: string) => {
     await tx.insert(auditLogs).values({
       actorUserId: streamerId,
       targetUserId: moderatorId,
@@ -243,7 +243,7 @@ export default async function moderatorsRoutes(app: FastifyInstance) {
       const [rel] = await tx.select().from(moderatorRelationships).where(and(eq(moderatorRelationships.id, relationshipId), eq(moderatorRelationships.streamerId, streamerId)));
       if (!rel) { reply.status(404); throw new Error('Relationship not found'); }
       
-      const updateData: any = { status };
+      const updateData: Record<string, unknown> = { status };
       if (status === 'paused') updateData.pausedAt = new Date();
       if (status === 'revoked') updateData.revokedAt = new Date();
       

@@ -26,6 +26,7 @@ import { Profile } from './Profile';
 import { Notifications } from './Notifications';
 import { Settings } from './Settings';
 import { Home as HomeView } from './Home';
+import { AuthGate } from './AuthGate';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -48,9 +49,6 @@ function NavItem({ icon, label, active = false, onClick }: { icon: React.ReactNo
 export default function App() {
   const version = window.desktop?.appVersion || '1.0.0';
 
-  const [authLoading, setAuthLoading] = React.useState(true);
-  const [authenticated, setAuthenticated] = React.useState(false);
-
   const [obsState, setObsState] = React.useState<string>('disconnected');
   const [obsHost, setObsHost] = React.useState('127.0.0.1');
   const [obsPort, setObsPort] = React.useState(4455);
@@ -65,20 +63,8 @@ export default function App() {
   const [incomingSession, setIncomingSession] = React.useState<any>(null);
 
   React.useEffect(() => {
-    if (!window.desktop?.auth) return;
-    window.desktop.auth.getState().then((state: any) => {
-      setAuthenticated(state.authenticated);
-      setAuthLoading(false);
-    });
-    return window.desktop.auth.subscribe((state: any) => {
-      if (state.loading !== undefined) setAuthLoading(state.loading);
-      if (state.authenticated !== undefined) setAuthenticated(state.authenticated);
-    });
-  }, []);
-
-  React.useEffect(() => {
     if (!window.desktop?.obs) return;
-    const cleanup = window.desktop.obs.subscribe((event: any) => {
+    const cleanup = window.desktop.obs.subscribe((event: unknown) => {
       setObsState(event.state);
     });
     window.desktop.obs.getStatus().then(setObsState);
@@ -88,10 +74,13 @@ export default function App() {
   React.useEffect(() => {
     if (!window.desktop?.remoteSessions) return;
     
-    // Connect to global signaling for presence when authenticated
-    if (authenticated) {
-      window.desktop.signaling.connect();
-    }
+    // We only connect signaling if we know we are authenticated.
+    // AuthGate handles authentication state, but we need to check it here.
+    window.desktop.auth.getState().then((state: unknown) => {
+       if (state.authenticated) {
+         window.desktop.signaling.connect();
+       }
+    });
 
     const cleanupIncoming = window.desktop.remoteSessions.onIncoming((session: any) => {
       console.log('Incoming session', session);
@@ -101,7 +90,7 @@ export default function App() {
     return () => {
       cleanupIncoming();
     };
-  }, [authenticated]);
+  }, []);
 
   const acceptSession = async () => {
     if (!incomingSession) return;
@@ -113,7 +102,8 @@ export default function App() {
       const ctx = await window.desktop.remoteSessions.connect(sessionInfo.streamerAuthorization);
       
       // 2. Start WebSocket Relay Transport
-      const transport = new WebSocketRelayTransport('ws://localhost:3000/api/v1/signaling/session');
+      const wsUrl = await window.desktop.api.getWsUrl();
+      const transport = new WebSocketRelayTransport(`${wsUrl}/api/v1/signaling/session`);
       await transport.connect({
         remoteSessionId: ctx.remoteSessionId,
         role: 'streamer',
@@ -121,14 +111,14 @@ export default function App() {
       });
 
       // Broadcast OBS snapshot when connected
-      const cleanupObsEvent = window.desktop.obs.subscribe((event: any) => {
+      const cleanupObsEvent = window.desktop.obs.subscribe((event: unknown) => {
         if (event.state === 'connected' && event.snapshot) {
            transport.send({ type: 'snapshot', payload: event.snapshot });
         }
       });
 
       // Handle incoming commands from the transport and pass them to the secure Main guard
-      const unsubTransport = transport.subscribe(async (msg: any) => {
+      const unsubTransport = transport.subscribe(async (msg: unknown) => {
         if (msg.type === 'command.request') {
           try {
             const result = await window.desktop.remoteSessions.executeCommand(ctx.remoteSessionId, {
@@ -144,7 +134,7 @@ export default function App() {
                 data: result.data,
               }
             });
-          } catch (e: any) {
+          } catch (e: unknown) {
              transport.send({
               type: 'command.response',
               payload: {
@@ -158,13 +148,12 @@ export default function App() {
       });
 
       // Cleanup logic should be stored if we want to cancel the session later
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Failed to accept session', e);
       alert('Failed to connect: ' + e.message);
     }
   };
 
-  const handleTwitchLogin = () => window.desktop?.auth?.login();
   const handleLogout = () => window.desktop?.auth?.logout();
 
   const handleConnectOBS = async () => {
@@ -181,7 +170,8 @@ export default function App() {
     try {
       const ctx = await window.desktop.remoteSessions.connect(token);
       
-      const transport = new WebSocketRelayTransport('ws://localhost:3000/api/v1/signaling/session');
+      const wsUrl = await window.desktop.api.getWsUrl();
+      const transport = new WebSocketRelayTransport(`${wsUrl}/api/v1/signaling/session`);
       await transport.connect({
         remoteSessionId: ctx.remoteSessionId,
         role: 'moderator',
@@ -190,44 +180,14 @@ export default function App() {
       
       setRemoteObsDataSource(new RemoteObsDataSource(transport));
       setCurrentRoute('remote_obs');
-    } catch (e: any) {
+    } catch (e: unknown) {
       alert('Failed to connect to session: ' + e.message);
     }
   };
 
-  if (authLoading) {
-    return (
-      <div className="flex flex-col h-screen w-screen bg-[#0A0A0A] text-white items-center justify-center drag-region">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent animate-pulse mb-4">
-          StreamerHub
-        </h1>
-        <div className="text-gray-500 text-sm">Загрузка...</div>
-      </div>
-    );
-  }
-
-  if (!authenticated) {
-    return (
-      <div className="flex h-screen w-screen bg-[#0A0A0A] text-white items-center justify-center drag-region">
-        <div className="bg-[#161616] border border-gray-800 rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center no-drag">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent mb-2">
-            StreamerHub
-          </h1>
-          <p className="text-gray-400 text-sm mb-8">Единый центр управления стримами, коллаборациями и сообществом.</p>
-          <button 
-            onClick={handleTwitchLogin}
-            className="w-full py-3 px-4 bg-[#9146FF] hover:bg-[#772CE8] text-white rounded-xl font-semibold transition-all shadow-lg shadow-[#9146FF]/20 flex items-center justify-center gap-2"
-          >
-            <Tv size={20} />
-            Войти через Twitch
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex h-screen w-screen bg-[#0A0A0A] text-white font-sans overflow-hidden drag-region">
+    <AuthGate>
+      <div className="flex h-screen w-screen bg-[#0A0A0A] text-white font-sans overflow-hidden drag-region">
       <aside className="w-64 bg-[#111111] border-r border-gray-800 flex flex-col no-drag">
         <div className="p-6 drag-region">
           <h1 className="text-xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent pointer-events-none">
@@ -360,5 +320,6 @@ export default function App() {
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #555; }
       `}</style>
     </div>
+    </AuthGate>
   );
 }

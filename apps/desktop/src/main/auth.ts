@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { app } from 'electron';
+import { getApiUrl } from './api.js';
 
 let mainWindowRef: Electron.BrowserWindow | null = null;
 let accessToken: string | null = null;
@@ -51,14 +52,14 @@ export function setupAuthHandlers(mainWindow: Electron.BrowserWindow) {
   mainWindowRef = mainWindow;
 
   ipcMain.handle('auth:login', async () => {
-    shell.openExternal(`${process.env.VITE_BACKEND_URL || 'http://localhost:3000'}/api/v1/auth/desktop/login`);
+    shell.openExternal(`${getApiUrl()}/api/v1/auth/desktop/login`);
   });
 
   ipcMain.handle('auth:logout', async () => {
     try {
       const identity = loadDeviceIdentity();
       if (identity?.refreshToken) {
-        await fetch(`${process.env.VITE_BACKEND_URL || 'http://localhost:3000'}/api/v1/auth/logout`, {
+        await fetch(`${getApiUrl()}/api/v1/auth/logout`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refreshToken: identity.refreshToken })
@@ -88,7 +89,7 @@ export function setupAuthHandlers(mainWindow: Electron.BrowserWindow) {
   ipcMain.handle('auth:getProfile', async () => {
     if (!accessToken) return null;
     try {
-      const res = await fetch(`${process.env.VITE_BACKEND_URL || 'http://localhost:3000'}/api/v1/auth/me`, {
+      const res = await fetch(`${getApiUrl()}/api/v1/auth/me`, {
         headers: { Authorization: `Bearer ${accessToken}` }
       });
       if (res.ok) {
@@ -114,7 +115,7 @@ async function refreshAccessToken() {
 
   try {
     // 1. Refresh flow with Proof-of-Possession challenge
-    const challengeRes = await fetch(`${process.env.VITE_BACKEND_URL || 'http://localhost:3000'}/api/v1/auth/desktop/challenge`, {
+    const challengeRes = await fetch(`${getApiUrl()}/api/v1/auth/desktop/challenge`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ deviceId: identity.deviceId })
@@ -127,7 +128,7 @@ async function refreshAccessToken() {
     const signature = crypto.sign(null, Buffer.from(challenge), identity.privateKey).toString('base64');
 
     // 2. Exchange refresh token + signature for new tokens
-    const refreshRes = await fetch(`${process.env.VITE_BACKEND_URL || 'http://localhost:3000'}/api/v1/auth/desktop/refresh`, {
+    const refreshRes = await fetch(`${getApiUrl()}/api/v1/auth/desktop/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -177,7 +178,7 @@ async function exchangeCode(code: string) {
     const pubKeyPem = publicKey.export({ type: 'spki', format: 'pem' }) as string;
     const privKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' }) as string;
 
-    const response = await fetch(`${process.env.VITE_BACKEND_URL || 'http://localhost:3000'}/api/v1/auth/desktop/exchange`, {
+    const response = await fetch(`${getApiUrl()}/api/v1/auth/desktop/exchange`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

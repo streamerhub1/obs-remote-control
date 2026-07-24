@@ -89,10 +89,10 @@ if (!gotTheLock) {
     // Register Deep Link
     if (process.defaultApp) {
       if (process.argv.length >= 2) {
-        app.setAsDefaultProtocolClient('obsremote', process.execPath, [path.resolve(process.argv[1])])
+        app.setAsDefaultProtocolClient('streamerhub', process.execPath, [path.resolve(process.argv[1])])
       }
     } else {
-      app.setAsDefaultProtocolClient('obsremote')
+      app.setAsDefaultProtocolClient('streamerhub')
     }
 
     // Register IPC handlers
@@ -140,7 +140,7 @@ if (!gotTheLock) {
       mainWindow.focus();
     }
     const url = commandLine.pop();
-    if (url && url.startsWith('obsremote://')) {
+    if (url && url.startsWith('streamerhub://')) {
       handleDeepLink(url);
     }
   });

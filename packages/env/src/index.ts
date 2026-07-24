@@ -27,7 +27,15 @@ const desktopSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'production', 'test'])
     .default('development'),
-  VITE_API_URL: z.string().url(),
+  STREAMERHUB_API_URL: z.string().url().optional(),
+  STREAMERHUB_WS_URL: z.string().url().optional(),
+}).refine(data => {
+  if (data.NODE_ENV === 'production') {
+    return !!data.STREAMERHUB_API_URL && !!data.STREAMERHUB_WS_URL;
+  }
+  return true;
+}, {
+  message: "STREAMERHUB_API_URL and STREAMERHUB_WS_URL are required in production",
 });
 
 export function parseEnv<T extends z.ZodTypeAny>(

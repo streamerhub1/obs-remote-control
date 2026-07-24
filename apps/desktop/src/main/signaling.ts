@@ -2,6 +2,7 @@ import { ipcMain } from 'electron';
 import WebSocket from 'ws';
 import { getAccessToken } from './auth.js';
 import { getMainWindow } from './index.js';
+import { getWsUrl } from './api.js';
 
 let globalWs: WebSocket | null = null;
 let reconnectTimer: NodeJS.Timeout | null = null;
@@ -26,7 +27,7 @@ export function connectSignaling() {
   const token = getAccessToken();
   if (!token) return;
 
-  const url = `ws://localhost:3000/api/v1/signaling/global`;
+  const url = `${getWsUrl()}/api/v1/signaling/global`;
   globalWs = new WebSocket(url);
 
   globalWs.on('open', () => {

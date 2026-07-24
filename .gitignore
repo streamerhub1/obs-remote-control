@@ -5,3 +5,9 @@ dist/
 .env
 .env.local
 .DS_Store
+
+# Executables and builds
+*.exe
+apps/desktop/release/
+apps/desktop/dist/
+apps/desktop/out/

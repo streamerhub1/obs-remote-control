@@ -26,7 +26,7 @@ export function Calendar() {
       const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString();
       const data = await window.desktop.api.calendar.list(start, end);
       setEvents(Array.isArray(data) ? data : []);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
       // Fallback empty array on error
       setEvents([]);
@@ -54,7 +54,7 @@ export function Calendar() {
       setStartAt('');
       setEndAt('');
       fetchEvents();
-    } catch (e: any) {
+    } catch (e: unknown) {
       alert('Ошибка при создании события: ' + e.message);
     }
   };

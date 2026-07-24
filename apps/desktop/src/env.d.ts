@@ -16,8 +16,8 @@ interface Window {
     };
     signaling: {
       connect: () => Promise<void>;
-      send: (msg: any) => void;
-      subscribe: (callback: (msg: any) => void) => () => void;
+      send: (msg: unknown) => void;
+      subscribe: (callback: (msg: unknown) => void) => () => void;
       onConnected: (callback: () => void) => () => void;
       onDisconnected: (callback: () => void) => () => void;
     };

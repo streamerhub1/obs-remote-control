@@ -21,7 +21,7 @@ export function getSessionPublicKey(): string {
   return publicKey.export({ type: 'spki', format: 'pem' }) as string;
 }
 
-export async function signSessionToken(payload: any): Promise<string> {
+export async function signSessionToken(payload: jose.JWTPayload): Promise<string> {
   if (!privateKey) initSessionKeys();
   const alg = 'EdDSA';
   return new jose.SignJWT(payload)
