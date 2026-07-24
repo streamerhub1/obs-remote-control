@@ -23,6 +23,7 @@ describe('Calendar API Integration', () => {
 
     // Mock user for requests
     app.addHook('onRequest', async (request: any) => {
+      request.jwtVerify = async () => ({ sub: testUserId });
       request.user = { sub: testUserId };
     });
 

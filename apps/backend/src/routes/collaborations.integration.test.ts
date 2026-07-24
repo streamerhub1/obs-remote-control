@@ -28,6 +28,7 @@ describe('Collaborations API Integration', () => {
 
     // Mock user for requests
     app.addHook('onRequest', async (request: any) => {
+      request.jwtVerify = async () => ({ sub: streamerId });
       request.user = { sub: streamerId };
     });
 
@@ -76,7 +77,7 @@ describe('Collaborations API Integration', () => {
     await db.delete(users).where(eq(users.id, participantId));
   });
 
-  it('should create a collaboration, add a participant, and list them', async () => {
+  it('should create a collaboration, open it, and join', async () => {
     // 1. Create a collaboration
     const createRes = await app.inject({
       method: 'POST',
@@ -87,6 +88,7 @@ describe('Collaborations API Integration', () => {
         startAt: new Date(Date.now() + 86400000).toISOString(),
         expectedDurationMinutes: 60,
         visibility: 'public',
+        applicationMode: 'open',
       },
     });
 
@@ -94,41 +96,23 @@ describe('Collaborations API Integration', () => {
     const createdCollab = JSON.parse(createRes.payload);
     expect(createdCollab.title).toBe('Epic Stream Collab');
 
-    // 2. Add participant
-    const inviteRes = await app.inject({
+    // 2. Open it
+    const openRes = await app.inject({
       method: 'POST',
-      url: `/collaborations/${createdCollab.id}/participants`,
-      payload: {
-        twitchLogin: 'collabparticipant',
-        role: 'co_host',
-      },
+      url: `/collaborations/${createdCollab.id}/open`,
+    });
+    expect(openRes.statusCode).toBe(200);
+
+    // 3. Join it as participant
+    app.addHook('onRequest', async (request) => {
+      request.jwtVerify = async () => ({ sub: participantId });
+      request.user = { sub: participantId };
     });
 
-    expect(inviteRes.statusCode).toBe(200);
-
-    // 3. List collaborations
-    const listRes = await app.inject({
-      method: 'GET',
-      url: '/collaborations',
+    const joinRes = await app.inject({
+      method: 'POST',
+      url: `/collaborations/${createdCollab.id}/join`,
     });
-
-    expect(listRes.statusCode).toBe(200);
-    const collabs = JSON.parse(listRes.payload);
-    expect(collabs.length).toBeGreaterThan(0);
-
-    const ourCollab = collabs.find((c: any) => c.id === createdCollab.id);
-    expect(ourCollab).toBeDefined();
-
-    // Verify participant was added
-    const participantsRes = await app.inject({
-      method: 'GET',
-      url: `/collaborations/${createdCollab.id}/participants`,
-    });
-
-    expect(participantsRes.statusCode).toBe(200);
-    const participants = JSON.parse(participantsRes.payload);
-    expect(participants.length).toBe(1);
-    expect(participants[0].userId).toBe(participantId);
-    expect(participants[0].role).toBe('co_host');
+    expect(joinRes.statusCode).toBe(200);
   });
 });

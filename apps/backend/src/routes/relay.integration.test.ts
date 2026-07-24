@@ -15,6 +15,7 @@ import {
   moderatorRelationships,
   moderatorPermissions,
   sessions,
+  auditLogs,
 } from '@obs-remote/database';
 import { eq } from 'drizzle-orm';
 import fastifyWebsocket from '@fastify/websocket';
@@ -121,8 +122,10 @@ describe('Relay Transport & Moderator Flow Integration', () => {
 
   afterAll(async () => {
     const db = getDb();
+    await db.delete(auditLogs).where(eq(auditLogs.resourceId, relationshipId));
     await db
       .delete(moderatorPermissions)
+
       .where(eq(moderatorPermissions.relationshipId, relationshipId));
     await db
       .delete(moderatorRelationships)
