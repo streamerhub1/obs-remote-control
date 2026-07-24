@@ -13,8 +13,7 @@ WORKDIR /app
 COPY . .
 
 # Install all dependencies (devDependencies needed for TypeScript build)
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    NODE_ENV=development pnpm install --frozen-lockfile
+RUN NODE_ENV=development pnpm install --frozen-lockfile
 
 # Build backend and all its workspace dependencies
 RUN pnpm --filter @obs-remote/backend... build
