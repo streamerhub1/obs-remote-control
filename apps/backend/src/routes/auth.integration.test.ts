@@ -18,12 +18,7 @@ describe('Real Integration Tests', () => {
   let app: any;
 
   beforeAll(async () => {
-    if (!process.env.DATABASE_URL || !process.env.REDIS_URL) {
-      console.warn(
-        'Skipping real integration tests because DATABASE_URL or REDIS_URL are missing.',
-      );
-      return;
-    }
+
 
     initDb(process.env.DATABASE_URL!);
     initRedis(process.env.REDIS_URL!);
@@ -41,7 +36,7 @@ describe('Real Integration Tests', () => {
   });
 
   afterAll(async () => {
-    if (!process.env.DATABASE_URL || !process.env.REDIS_URL) return;
+
     const redis = getRedis();
     await redis.quit();
   });

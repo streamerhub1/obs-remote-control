@@ -7,12 +7,7 @@ describe('Collaborations API', () => {
   let app: any;
 
   beforeAll(async () => {
-    if (!process.env.DATABASE_URL || !process.env.REDIS_URL) {
-      console.warn(
-        'Skipping collaborations test because DATABASE_URL or REDIS_URL are missing.',
-      );
-      return;
-    }
+
     process.env.JWT_SECRET = 'test-secret';
     app = await buildApp();
   });

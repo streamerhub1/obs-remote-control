@@ -12,6 +12,17 @@ import crypto from 'crypto';
 
 export const relationshipsRoutes: FastifyPluginAsync = async (appOriginal) => {
   const app = appOriginal.withTypeProvider<ZodTypeProvider>();
+
+  app.addHook('preHandler', async (request, reply) => {
+    try {
+      const decoded = await request.jwtVerify<{ sub: string; deviceId?: string; role?: string; remoteSessionId?: string }>();
+      request.user = decoded;
+    } catch (err) {
+      reply.status(401).send({ error: 'Unauthorized' });
+      return reply;
+    }
+  });
+
   // Get all relationships for the current user
   app.get('/relationships', async (request, reply) => {
     const userId = (

@@ -14,6 +14,17 @@ import { ZodTypeProvider } from 'fastify-type-provider-zod';
 
 export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
   const app = appOriginal.withTypeProvider<ZodTypeProvider>();
+
+  app.addHook('preHandler', async (request, reply) => {
+    try {
+      const decoded = await request.jwtVerify<{ sub: string; deviceId?: string; role?: string; remoteSessionId?: string }>();
+      request.user = decoded;
+    } catch (err) {
+      reply.status(401).send({ error: 'Unauthorized' });
+      return reply;
+    }
+  });
+
   // Create Collaboration
   app.post(
     '/collaborations',

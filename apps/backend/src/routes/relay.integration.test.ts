@@ -30,12 +30,7 @@ describe('Relay Transport & Moderator Flow Integration', () => {
   let relationshipId: string;
 
   beforeAll(async () => {
-    if (!process.env.DATABASE_URL || !process.env.REDIS_URL) {
-      console.warn(
-        'Skipping real integration tests because DATABASE_URL or REDIS_URL are missing.',
-      );
-      return;
-    }
+
 
     initDb(process.env.DATABASE_URL!);
     initRedis(process.env.REDIS_URL!);
@@ -127,7 +122,7 @@ describe('Relay Transport & Moderator Flow Integration', () => {
   });
 
   afterAll(async () => {
-    if (!process.env.DATABASE_URL || !process.env.REDIS_URL) return;
+
     const db = getDb();
     await db
       .delete(moderatorPermissions)

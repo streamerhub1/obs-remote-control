@@ -85,6 +85,7 @@ describe('Collaborations API Integration', () => {
         title: 'Epic Stream Collab',
         description: 'Playing games together',
         startAt: new Date(Date.now() + 86400000).toISOString(),
+        expectedDurationMinutes: 60,
         visibility: 'public',
       },
     });
