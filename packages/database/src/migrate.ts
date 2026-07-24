@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-async function main() {
+export async function main() {
   if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL is required for migrations');
   }
@@ -24,4 +24,9 @@ async function main() {
   await migrationClient.end();
 }
 
-// Removed auto-execution so it can be imported safely
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}
