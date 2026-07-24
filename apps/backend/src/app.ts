@@ -86,7 +86,7 @@ export async function buildApp() {
       const db = getDb();
       await db.execute(sql`SELECT 1`);
       return { status: 'ready', timestamp: new Date().toISOString() };
-    } catch (e) {
+    } catch (_e) {
       reply
         .status(503)
         .send({ status: 'not_ready', error: 'Database unavailable' });

@@ -4,13 +4,7 @@ import fastify from 'fastify';
 import authRoutes from './auth.js';
 import { initDb, getDb } from '../db.js';
 import { initRedis, getRedis } from '../redis.js';
-import {
-  sessions,
-  devices,
-  users,
-  moderatorRelationships,
-  moderatorPermissions,
-} from '@obs-remote/database';
+import { sessions, devices, users } from '@obs-remote/database';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 
@@ -84,7 +78,7 @@ describe('Real Integration Tests', () => {
     expect(challenge).toBeDefined();
 
     // 4. Verify Signature (Mock session to allow refresh)
-    const [session] = await db
+    await db
       .insert(sessions)
       .values({
         userId: user.id,

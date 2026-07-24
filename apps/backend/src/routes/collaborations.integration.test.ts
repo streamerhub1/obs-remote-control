@@ -104,7 +104,7 @@ describe('Collaborations API Integration', () => {
     expect(openRes.statusCode).toBe(200);
 
     // 3. Join it as participant
-    app.addHook('onRequest', async (request) => {
+    app.addHook('onRequest', async (request: any) => {
       request.jwtVerify = async () => ({ sub: participantId });
       request.user = { sub: participantId };
     });

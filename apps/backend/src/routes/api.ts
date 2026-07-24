@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { getDb } from '../db.js';
 import { users, devices, sessions } from '@obs-remote/database';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { generateInviteCode } from '../utils/crypto.js';
@@ -14,11 +14,11 @@ interface JwtPayload {
 export default async function apiRoutes(app: FastifyInstance) {
   const server = app.withTypeProvider<ZodTypeProvider>();
 
-  server.addHook('preHandler', async (request, reply) => {
+  server.addHook('preHandler', async (request, _reply) => {
     try {
       const decoded = await request.jwtVerify<JwtPayload>();
       request.user = decoded;
-    } catch (err) {
+    } catch (_err) {
       reply.status(401).send({ error: 'Unauthorized' });
       return reply; // stop handler execution
     }
@@ -40,7 +40,7 @@ export default async function apiRoutes(app: FastifyInstance) {
         },
       },
     },
-    async (request, reply) => {
+    async (request, _reply) => {
       const userId = (request.user as JwtPayload).sub;
       const db = getDb();
 
@@ -77,7 +77,7 @@ export default async function apiRoutes(app: FastifyInstance) {
         },
       },
     },
-    async (request, reply) => {
+    async (request, _reply) => {
       const userId = (request.user as JwtPayload).sub;
       const db = getDb();
 
@@ -110,7 +110,7 @@ export default async function apiRoutes(app: FastifyInstance) {
         },
       },
     },
-    async (request, reply) => {
+    async (request, _reply) => {
       const userId = (request.user as JwtPayload).sub;
       const { deviceId } = request.params;
       const db = getDb();
@@ -157,7 +157,7 @@ export default async function apiRoutes(app: FastifyInstance) {
         },
       },
     },
-    async (request, reply) => {
+    async (request, _reply) => {
       const userId = (request.user as JwtPayload).sub;
       const db = getDb();
 
