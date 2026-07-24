@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 @source "../../../../packages/ui";
 
 @layer base {
@@ -6,7 +6,7 @@
     margin: 0;
     padding: 0;
     overflow: hidden;
-    background-color: #0A0A0A;
+    background-color: #0a0a0a;
     color: white;
   }
 }

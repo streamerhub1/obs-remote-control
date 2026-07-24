@@ -9,14 +9,14 @@ function replaceAny(dir) {
       replaceAny(fullPath);
     } else if (fullPath.endsWith('.ts') || fullPath.endsWith('.tsx')) {
       let content = fs.readFileSync(fullPath, 'utf8');
-      
+
       // Basic replacement for common patterns:
       // (event: any) => (event: unknown)
       // (e: any) => (e: unknown)
       // data: any => data: unknown
       // : any[] => : unknown[]
       // : any = => : unknown =
-      
+
       const original = content;
       content = content.replace(/\(e: any\)/g, '(e: unknown)');
       content = content.replace(/\(err: any\)/g, '(err: unknown)');
@@ -28,12 +28,27 @@ function replaceAny(dir) {
       content = content.replace(/\(c: any\)/g, '(c: unknown)');
       content = content.replace(/\(cmd: any\)/g, '(cmd: unknown)');
       content = content.replace(/let app: any;/g, 'let app: FastifyInstance;');
-      content = content.replace(/let mockRedis: any;/g, 'let mockRedis: unknown;');
+      content = content.replace(
+        /let mockRedis: any;/g,
+        'let mockRedis: unknown;',
+      );
       content = content.replace(/let mockDb: any;/g, 'let mockDb: unknown;');
-      content = content.replace(/let collabs: any\[\]/g, 'let collabs: unknown[]');
-      content = content.replace(/const updateData: any/g, 'const updateData: Record<string, unknown>');
-      content = content.replace(/const results: any/g, 'const results: Record<string, unknown>');
-      content = content.replace(/\(connection: any, request: any\)/g, '(connection: import("@fastify/websocket").SocketStream, request: import("fastify").FastifyRequest)');
+      content = content.replace(
+        /let collabs: any\[\]/g,
+        'let collabs: unknown[]',
+      );
+      content = content.replace(
+        /const updateData: any/g,
+        'const updateData: Record<string, unknown>',
+      );
+      content = content.replace(
+        /const results: any/g,
+        'const results: Record<string, unknown>',
+      );
+      content = content.replace(
+        /\(connection: any, request: any\)/g,
+        '(connection: import("@fastify/websocket").SocketStream, request: import("fastify").FastifyRequest)',
+      );
       content = content.replace(/meta\?: any/g, 'meta?: unknown');
       content = content.replace(/payload: any/g, 'payload: unknown');
       content = content.replace(/request: any/g, 'request: unknown');

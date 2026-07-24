@@ -31,18 +31,18 @@ jobs:
 
       - name: Format check
         run: pnpm format:check
-        continue-on-error: true   # formatting warnings should not block release
+        continue-on-error: true # formatting warnings should not block release
 
       - name: Lint
         run: pnpm --filter '!@obs-remote/backend' lint
-        continue-on-error: true   # eslint-plugin-react-hooks v4 incompatibility on ESLint 9
+        continue-on-error: true # eslint-plugin-react-hooks v4 incompatibility on ESLint 9
 
       - name: Typecheck
         run: pnpm typecheck
 
       - name: Unit tests (no DB required)
         run: pnpm --filter '!@obs-remote/backend' test
-        continue-on-error: true   # integration tests require DB
+        continue-on-error: true # integration tests require DB
 
   build-windows:
     name: Build Windows Installer
@@ -89,8 +89,8 @@ jobs:
       - name: Package Windows NSIS installer
         run: pnpm --filter @obs-remote/desktop dist:win
         env:
-          CSC_LINK: ""           # no code-signing in CI (optional)
-          CSC_KEY_PASSWORD: ""
+          CSC_LINK: '' # no code-signing in CI (optional)
+          CSC_KEY_PASSWORD: ''
 
       - name: List release artifacts
         run: dir apps\desktop\release\*.exe

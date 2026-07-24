@@ -35,7 +35,8 @@ console.log('✓ icon.svg');
 
 // ─── ICO (BMP-based, 32-bit BGRA) ───────────────────────────────────────────
 function makeBGRA(size) {
-  const cx = size / 2, cy = size / 2;
+  const cx = size / 2,
+    cy = size / 2;
   const pixels = Buffer.alloc(size * size * 4);
 
   for (let row = 0; row < size; row++) {
@@ -58,14 +59,14 @@ function makeBGRA(size) {
 
       // Gradient t from top-left to bottom-right
       const t = (x + (size - y)) / (2 * size);
-      const fR = Math.round(0x3B + (0x93 - 0x3B) * t);
+      const fR = Math.round(0x3b + (0x93 - 0x3b) * t);
       const fG = Math.round(0x82 + (0x33 - 0x82) * t);
-      const fB = Math.round(0xF6 + (0xEA - 0xF6) * t);
+      const fB = Math.round(0xf6 + (0xea - 0xf6) * t);
 
       // Pixel occupancy for letter "SH"
       // Normalised coords relative to glyph box
-      const gx = (x / size - 0.12) / 0.76;  // 0..1 across glyph
-      const gy = (y / size - 0.18) / 0.64;  // 0..1 across glyph (0=bottom)
+      const gx = (x / size - 0.12) / 0.76; // 0..1 across glyph
+      const gy = (y / size - 0.18) / 0.64; // 0..1 across glyph (0=bottom)
       const inGlyph = gx >= 0 && gx <= 1 && gy >= 0 && gy <= 1;
 
       // Letter S occupies gx 0..0.45, letter H occupies gx 0.55..1
@@ -73,35 +74,36 @@ function makeBGRA(size) {
       let onLetter = false;
 
       if (inGlyph) {
-        const lx = gx;  // normalised x in glyph
+        const lx = gx; // normalised x in glyph
 
         // H (right side gx: 0.55..1.0)
         if (lx >= 0.55) {
-          const hx = (lx - 0.55) / 0.45;  // 0..1 in H
+          const hx = (lx - 0.55) / 0.45; // 0..1 in H
           const hy = gy;
-          onLetter = (hx < sw * 2) || (hx > 1 - sw * 2) ||
-                     (Math.abs(hy - 0.5) < sw);
+          onLetter = hx < sw * 2 || hx > 1 - sw * 2 || Math.abs(hy - 0.5) < sw;
         }
 
         // S (left side gx: 0..0.45)
         if (lx <= 0.45) {
-          const sx = lx / 0.45;   // 0..1 in S
+          const sx = lx / 0.45; // 0..1 in S
           const sy = gy;
           // top bar, middle bar, bottom bar + two half-verticals
-          const topBar   = sy > 1 - sw * 2;
-          const midBar   = Math.abs(sy - 0.5) < sw;
-          const botBar   = sy < sw * 2;
+          const topBar = sy > 1 - sw * 2;
+          const midBar = Math.abs(sy - 0.5) < sw;
+          const botBar = sy < sw * 2;
           const topRight = sy > 0.5 && sx > 1 - sw * 2;
-          const botLeft  = sy < 0.5 && sx < sw * 2;
+          const botLeft = sy < 0.5 && sx < sw * 2;
           onLetter = topBar || midBar || botBar || topRight || botLeft;
         }
       }
 
-      const bgR = 10, bgG = 10, bgB = 10;
-      pixels[i + 0] = onLetter ? fB : bgB;  // B
-      pixels[i + 1] = onLetter ? fG : bgG;  // G
-      pixels[i + 2] = onLetter ? fR : bgR;  // R
-      pixels[i + 3] = alpha;                 // A
+      const bgR = 10,
+        bgG = 10,
+        bgB = 10;
+      pixels[i + 0] = onLetter ? fB : bgB; // B
+      pixels[i + 1] = onLetter ? fG : bgG; // G
+      pixels[i + 2] = onLetter ? fR : bgR; // R
+      pixels[i + 3] = alpha; // A
     }
   }
 
@@ -109,7 +111,7 @@ function makeBGRA(size) {
   const hdr = Buffer.alloc(40);
   hdr.writeInt32LE(40, 0);
   hdr.writeInt32LE(size, 4);
-  hdr.writeInt32LE(size * 2, 8);  // positive height * 2 for ICO (XOR + AND)
+  hdr.writeInt32LE(size * 2, 8); // positive height * 2 for ICO (XOR + AND)
   hdr.writeInt16LE(1, 12);
   hdr.writeInt16LE(32, 14);
   hdr.writeInt32LE(0, 16);
@@ -123,7 +125,7 @@ function makeBGRA(size) {
 }
 
 const sizes = [16, 32, 48, 64, 128, 256];
-const images = sizes.map(s => ({ size: s, data: makeBGRA(s) }));
+const images = sizes.map((s) => ({ size: s, data: makeBGRA(s) }));
 
 // ICONDIR
 const dir = Buffer.alloc(6);
@@ -132,12 +134,14 @@ dir.writeUInt16LE(1, 2);
 dir.writeUInt16LE(sizes.length, 4);
 
 let offset = 6 + 16 * sizes.length;
-const entries = images.map(img => {
+const entries = images.map((img) => {
   const e = Buffer.alloc(16);
   e.writeUInt8(img.size >= 256 ? 0 : img.size, 0);
   e.writeUInt8(img.size >= 256 ? 0 : img.size, 1);
-  e.writeUInt8(0, 2); e.writeUInt8(0, 3);
-  e.writeUInt16LE(1, 4); e.writeUInt16LE(32, 6);
+  e.writeUInt8(0, 2);
+  e.writeUInt8(0, 3);
+  e.writeUInt16LE(1, 4);
+  e.writeUInt16LE(32, 6);
   e.writeUInt32LE(img.data.length, 8);
   e.writeUInt32LE(offset, 12);
   offset += img.data.length;
@@ -145,16 +149,23 @@ const entries = images.map(img => {
 });
 
 const icoPath = path.join(BUILD, 'icon.ico');
-fs.writeFileSync(icoPath, Buffer.concat([dir, ...entries, ...images.map(i => i.data)]));
+fs.writeFileSync(
+  icoPath,
+  Buffer.concat([dir, ...entries, ...images.map((i) => i.data)]),
+);
 console.log('✓ icon.ico (' + sizes.join('/') + 'px)');
 
 // Also write a minimal 256x256 PNG using the last image data converted
 // (electron-builder will use icon.ico for win, but we need icon.png for mac/linux CI)
 // For now, copy the SVG as png filename — CI has rsvg-convert or similar
-fs.writeFileSync(path.join(BUILD, 'icon.png'), Buffer.from(
-  '89504e470d0a1a0a0000000d49484452000000100000001008060000001ff3ff6100000' +
-  '0264944415478016360f8cfc0c0c0c00000000affff1f0c1818183030307060606060e0e' +
-  '0e1c1c1c383838707070e0e0c1c1c10000001849454e44ae426082', 'hex'
-));
+fs.writeFileSync(
+  path.join(BUILD, 'icon.png'),
+  Buffer.from(
+    '89504e470d0a1a0a0000000d49484452000000100000001008060000001ff3ff6100000' +
+      '0264944415478016360f8cfc0c0c0c00000000affff1f0c1818183030307060606060e0e' +
+      '0e1c1c1c383838707070e0e0c1c1c10000001849454e44ae426082',
+    'hex',
+  ),
+);
 console.log('✓ icon.png (placeholder — CI will use icon.ico for Windows)');
 console.log('\nDone. Assets in:', BUILD);
