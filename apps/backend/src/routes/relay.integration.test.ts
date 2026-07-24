@@ -48,7 +48,8 @@ describe('Relay Transport & Moderator Flow Integration', () => {
     app.setSerializerCompiler(serializerCompiler);
 
     // We mock jwt signing with a simple predictable format, or register fastify-jwt
-    app.register(require('@fastify/jwt'), { secret: 'test-secret' });
+    const fastifyJwt = await import('@fastify/jwt');
+    app.register(fastifyJwt.default || fastifyJwt, { secret: 'test-secret' });
     app.register(fastifyWebsocket);
 
     await app.register(authRoutes, { prefix: '/api/v1/auth' });
