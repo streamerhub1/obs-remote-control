@@ -10,7 +10,12 @@ export const profilesRoutes: FastifyPluginAsync = async (appOriginal) => {
 
   app.addHook('preHandler', async (request, reply) => {
     try {
-      const decoded = await request.jwtVerify<{ sub: string; deviceId?: string; role?: string; remoteSessionId?: string }>();
+      const decoded = await request.jwtVerify<{
+        sub: string;
+        deviceId?: string;
+        role?: string;
+        remoteSessionId?: string;
+      }>();
       request.user = decoded;
     } catch (err) {
       reply.status(401).send({ error: 'Unauthorized' });

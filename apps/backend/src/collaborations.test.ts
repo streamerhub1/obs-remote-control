@@ -7,7 +7,6 @@ describe('Collaborations API', () => {
   let app: any;
 
   beforeAll(async () => {
-
     process.env.JWT_SECRET = 'test-secret';
     app = await buildApp();
   });

@@ -30,8 +30,6 @@ describe('Relay Transport & Moderator Flow Integration', () => {
   let relationshipId: string;
 
   beforeAll(async () => {
-
-
     initDb(process.env.DATABASE_URL!);
     initRedis(process.env.REDIS_URL!);
 
@@ -122,7 +120,6 @@ describe('Relay Transport & Moderator Flow Integration', () => {
   });
 
   afterAll(async () => {
-
     const db = getDb();
     await db
       .delete(moderatorPermissions)

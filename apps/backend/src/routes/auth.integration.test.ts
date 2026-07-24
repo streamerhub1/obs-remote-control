@@ -18,8 +18,6 @@ describe('Real Integration Tests', () => {
   let app: any;
 
   beforeAll(async () => {
-
-
     initDb(process.env.DATABASE_URL!);
     initRedis(process.env.REDIS_URL!);
 
@@ -36,7 +34,6 @@ describe('Real Integration Tests', () => {
   });
 
   afterAll(async () => {
-
     const redis = getRedis();
     await redis.quit();
   });
