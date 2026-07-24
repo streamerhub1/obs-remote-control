@@ -53,7 +53,7 @@ export function Collabs() {
       const data = await window.desktop.api.collabs.list();
       setCollabs(data.collabs ?? data ?? []);
     } catch (e: unknown) {
-      setError(e.message);
+      setError((e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -79,7 +79,7 @@ export function Collabs() {
       setNewTitle('');
       setNewDate('');
     } catch (e: unknown) {
-      alert('Не удалось создать: ' + e.message);
+      alert('Не удалось создать: ' + (e as Error).message);
     } finally {
       setCreating(false);
     }
@@ -98,7 +98,7 @@ export function Collabs() {
         ),
       );
     } catch (e: unknown) {
-      alert('Не удалось подать заявку: ' + e.message);
+      alert('Не удалось подать заявку: ' + (e as Error).message);
     } finally {
       setApplying(null);
     }

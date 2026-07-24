@@ -14,7 +14,7 @@ export const relationshipsRoutes: FastifyPluginAsync = async (appOriginal) => {
   const app = appOriginal.withTypeProvider<ZodTypeProvider>();
   // Get all relationships for the current user
   app.get('/relationships', async (request, reply) => {
-    const userId = (request.user as any).sub;
+    const userId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
     const db = getDb();
 
     // As Streamer (I have invited moderators)
@@ -64,7 +64,7 @@ export const relationshipsRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const streamerId = (request.user as any).sub;
+      const streamerId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
       const { twitchLogin, inviteCode } = request.body;
 
       const db = getDb();
@@ -160,7 +160,7 @@ export const relationshipsRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const moderatorId = (request.user as any).sub;
+      const moderatorId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
       const { id } = request.params;
       const { action } = request.body;
 
@@ -198,7 +198,7 @@ export const relationshipsRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (request.user as any).sub;
+      const userId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
       const { id } = request.params;
 
       const db = getDb();
@@ -238,7 +238,7 @@ export const relationshipsRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (request.user as any).sub;
+      const userId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
       const { id } = request.params;
 
       const db = getDb();
@@ -269,7 +269,7 @@ export const relationshipsRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (request.user as any).sub;
+      const userId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
       const { id } = request.params;
       const { permissions } = request.body;
 

@@ -26,7 +26,7 @@ export default async function remoteSessionsRoutes(app: FastifyInstance) {
   server.addHook('preHandler', async (request, reply) => {
     try {
       const decoded = await request.jwtVerify<JwtPayload>();
-      (request as any).user = decoded;
+      (request as unknown as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).user = decoded;
     } catch (err) {
       reply.status(401).send({ error: 'Unauthorized' });
       return reply;
@@ -34,7 +34,7 @@ export default async function remoteSessionsRoutes(app: FastifyInstance) {
   });
 
   const logAudit = async (
-    tx: any,
+    tx: Parameters<Parameters<ReturnType<typeof getDb>['transaction']>[0]>[0],
     action: string,
     streamerId: string,
     moderatorId: string,
@@ -71,8 +71,8 @@ export default async function remoteSessionsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const moderatorUserId = ((request as any).user as JwtPayload).sub;
-      const moderatorDeviceId = ((request as any).user as JwtPayload).deviceId;
+      const moderatorUserId = ((request as unknown as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).user as JwtPayload).sub;
+      const moderatorDeviceId = ((request as unknown as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).user as JwtPayload).deviceId;
       if (!moderatorDeviceId) {
         reply.status(403);
         throw new Error('Device ID required');
@@ -250,7 +250,7 @@ export default async function remoteSessionsRoutes(app: FastifyInstance) {
       },
     },
     async (request) => {
-      const userId = ((request as any).user as JwtPayload).sub;
+      const userId = ((request as unknown as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).user as JwtPayload).sub;
       const db = getDb();
 
       const sessions = await db
@@ -292,7 +292,7 @@ export default async function remoteSessionsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const userId = ((request as any).user as JwtPayload).sub;
+      const userId = ((request as unknown as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).user as JwtPayload).sub;
       const { id } = request.params;
       const db = getDb();
 
@@ -332,7 +332,7 @@ export default async function remoteSessionsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const userId = ((request as any).user as JwtPayload).sub;
+      const userId = ((request as unknown as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).user as JwtPayload).sub;
       const { id } = request.params;
       const db = getDb();
 

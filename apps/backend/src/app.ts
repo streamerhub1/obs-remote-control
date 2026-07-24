@@ -23,7 +23,7 @@ import { initDb, getDb } from './db.js';
 import { initRedis } from './redis.js';
 import { sql } from 'drizzle-orm';
 
-export async function buildApp(): Promise<any> {
+export async function buildApp() {
   const logger = createLogger({
     env:
       (process.env.NODE_ENV as 'development' | 'production' | 'test') ||

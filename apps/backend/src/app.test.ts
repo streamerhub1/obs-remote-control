@@ -3,7 +3,7 @@ import { buildApp } from './app.js';
 import { FastifyInstance } from 'fastify';
 
 describe('App', () => {
-  let app: FastifyInstance;
+  let app: any;
 
   beforeAll(async () => {
     process.env.JWT_SECRET = 'test-secret';

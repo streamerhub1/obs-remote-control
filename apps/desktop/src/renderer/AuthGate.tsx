@@ -11,15 +11,15 @@ export function AuthGate({ children }: AuthGateProps) {
 
   React.useEffect(() => {
     if (!window.desktop?.auth) return;
-    window.desktop.auth.getState().then((state: unknown) => {
+    window.desktop.auth.getState().then((state: { authenticated: boolean; loading?: boolean }) => {
       setAuthenticated(state.authenticated);
       setAuthLoading(false);
     });
-    return window.desktop.auth.subscribe((state: unknown) => {
+    return window.desktop.auth.subscribe(((state: { authenticated: boolean; loading?: boolean }) => {
       if (state.loading !== undefined) setAuthLoading(state.loading);
       if (state.authenticated !== undefined)
         setAuthenticated(state.authenticated);
-    });
+    }) as (state: unknown) => void);
   }, []);
 
   const handleTwitchLogin = () => window.desktop?.auth?.login();

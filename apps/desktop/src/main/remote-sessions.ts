@@ -112,7 +112,10 @@ export function setupRemoteSessions() {
   ipcMain.handle(
     'remoteSessions:executeCommand',
     async (_, remoteSessionId: string, command: unknown) => {
-      return getRemoteCommandGuard().execute(remoteSessionId, command);
+      return getRemoteCommandGuard().execute(
+        remoteSessionId,
+        command as { command: string; args?: unknown; seq: number },
+      );
     },
   );
 }

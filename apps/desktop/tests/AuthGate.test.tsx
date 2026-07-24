@@ -9,7 +9,7 @@ describe('AuthGate', () => {
     vi.clearAllMocks();
 
     // Setup window.desktop mock
-    (window as any).desktop = {
+    (window as unknown).desktop = {
       auth: {
         getState: vi.fn().mockResolvedValue({ authenticated: false }),
         subscribe: vi.fn(),
@@ -25,7 +25,7 @@ describe('AuthGate', () => {
 
   it('shows loading state initially', () => {
     // We delay the promise to keep it in loading state
-    (window as any).desktop.auth.getState = vi
+    (window as unknown).desktop.auth.getState = vi
       .fn()
       .mockImplementation(() => new Promise(() => {}));
 
@@ -40,7 +40,7 @@ describe('AuthGate', () => {
   });
 
   it('shows login screen when not authenticated', async () => {
-    (window as any).desktop.auth.getState = vi
+    (window as unknown).desktop.auth.getState = vi
       .fn()
       .mockResolvedValue({ authenticated: false });
 
@@ -57,7 +57,7 @@ describe('AuthGate', () => {
   });
 
   it('shows children when authenticated', async () => {
-    (window as any).desktop.auth.getState = vi
+    (window as unknown).desktop.auth.getState = vi
       .fn()
       .mockResolvedValue({ authenticated: true });
 

@@ -144,7 +144,8 @@ describe('ObsAdapter', () => {
   it('should return error for invalid command type', async () => {
     await adapter.connect({ host: '127.0.0.1', port: 4455 });
     const result = await adapter.executeCommand({
-      type: 'unknown.command' as any,
+      // @ts-expect-error Testing invalid command
+      type: 'unknown.command',
       payload: {},
     });
 

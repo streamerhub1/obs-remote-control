@@ -4,16 +4,16 @@ import { P2PMessage, P2PMessageSchema } from '@obs-remote/remote-protocol';
 export class WebSocketRelayTransport implements RemoteTransport {
   private ws: WebSocket | null = null;
   private state: TransportState = 'disconnected';
-  private listeners: Set<(message: any) => void> = new Set();
-  private sessionContext: any = null;
+  private listeners: Set<(message: unknown) => void> = new Set();
+  private sessionContext: { role: string; moderatorAuthorization?: string; streamerAuthorization?: string } | null = null;
   private url: string;
-  private reconnectTimer: any = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(url: string = 'ws://localhost:3000/api/v1/signaling/session') {
     this.url = url;
   }
 
-  async connect(sessionContext: any): Promise<void> {
+  async connect(sessionContext: { role: string; moderatorAuthorization?: string; streamerAuthorization?: string }): Promise<void> {
     this.sessionContext = sessionContext;
     this.state = 'connecting';
 
@@ -66,7 +66,7 @@ export class WebSocketRelayTransport implements RemoteTransport {
         // Basic reconnect logic
         if (this.sessionContext) {
           this.reconnectTimer = setTimeout(
-            () => this.connect(this.sessionContext),
+            () => this.connect(this.sessionContext!),
             3000,
           );
         }
@@ -74,7 +74,7 @@ export class WebSocketRelayTransport implements RemoteTransport {
     });
   }
 
-  async send(message: any): Promise<void> {
+  async send(message: unknown): Promise<void> {
     if (this.state !== 'connected' || !this.ws) {
       throw new Error('Transport not connected');
     }
@@ -87,7 +87,7 @@ export class WebSocketRelayTransport implements RemoteTransport {
     );
   }
 
-  subscribe(listener: (message: any) => void): () => void {
+  subscribe(listener: (message: unknown) => void): () => void {
     this.listeners.add(listener);
     return () => {
       this.listeners.delete(listener);
@@ -96,7 +96,7 @@ export class WebSocketRelayTransport implements RemoteTransport {
 
   async disconnect(reason?: string): Promise<void> {
     if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
+      clearTimeout(this.reconnectTimer as unknown as number);
       this.reconnectTimer = null;
     }
     this.sessionContext = null;

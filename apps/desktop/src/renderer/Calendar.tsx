@@ -63,7 +63,7 @@ export function Calendar() {
       setEndAt('');
       fetchEvents();
     } catch (e: unknown) {
-      alert('Ошибка при создании события: ' + e.message);
+      alert('Ошибка при создании события: ' + (e as Error).message);
     }
   };
 

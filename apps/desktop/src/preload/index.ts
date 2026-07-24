@@ -172,6 +172,8 @@ const API = {
   },
 };
 
+export type DesktopAPI = typeof API;
+
 if (process.contextIsolated) {
   try {
     contextBridge.exposeInMainWorld('desktop', API);

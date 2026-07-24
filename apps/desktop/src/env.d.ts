@@ -22,7 +22,7 @@ interface Window {
         authenticated: boolean;
         error?: string;
       }>;
-      getProfile: () => Promise<any>;
+      getProfile: () => Promise<unknown>;
       subscribe: (
         callback: (state: {
           loading?: boolean;

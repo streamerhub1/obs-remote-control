@@ -18,7 +18,7 @@ export class WebRTCManager {
   private iceBuffer: RTCIceCandidateInit[] = [];
 
   private latencyStart: Map<string, number> = new Map();
-  private heartbeatInterval: any;
+  private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     role: 'streamer' | 'moderator',
@@ -32,7 +32,7 @@ export class WebRTCManager {
     // Listen to signaling messages
     window.desktop.remoteSessions.onMessage(
       this.remoteSessionId,
-      this.handleSignalingMessage.bind(this),
+      (this.handleSignalingMessage.bind(this) as (msg: unknown) => void),
     );
   }
 
@@ -107,9 +107,8 @@ export class WebRTCManager {
       this.sendP2PMessage('heartbeat.ping', { timestamp: Date.now() });
     }, 5000);
   }
-
   private stopHeartbeat() {
-    if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
+    if (this.heartbeatInterval !== null) clearInterval(this.heartbeatInterval as unknown as number);
   }
 
   private setupDataChannel(channel: RTCDataChannel) {
@@ -124,7 +123,7 @@ export class WebRTCManager {
     };
   }
 
-  private async handleSignalingMessage(msg: unknown) {
+  private async handleSignalingMessage(msg: { type: string; payload: any }) {
     if (!this.pc) return;
 
     if (msg.type === 'signaling.offer' && this.role === 'streamer') {
@@ -189,7 +188,7 @@ export class WebRTCManager {
       } catch (err: unknown) {
         this.sendP2PMessage('error', {
           code: 'SIGN_FAILED',
-          message: err.message,
+          message: (err as Error).message,
         });
       }
     } else if (msg.type === 'handshake.proof' && this.role === 'streamer') {
@@ -246,7 +245,7 @@ export class WebRTCManager {
           this.remoteSessionId,
           {
             command: payload.command.type,
-            args: payload.command.payload,
+            args: payload.command.payload as never,
             seq: msg.sequence,
           },
         );
@@ -264,7 +263,7 @@ export class WebRTCManager {
         this.sendP2PMessage('command.result', {
           commandId: payload.commandId,
           success: false,
-          error: { code: 'EXECUTION_FAILED', message: err.message },
+          error: { code: 'EXECUTION_FAILED', message: (err as Error).message },
         } as Extract<P2PPayload, { type: 'command.result' }>['payload']);
       }
     } else if (msg.type === 'state.snapshot' && this.role === 'moderator') {
@@ -294,7 +293,7 @@ export class WebRTCManager {
     }
   }
 
-  public sendCommand(command: any) {
+  public sendCommand(command: unknown) {
     this.sendP2PMessage('command.request', {
       commandId: crypto.randomUUID(),
       command,
@@ -309,7 +308,7 @@ export class WebRTCManager {
       this.remoteSessionId,
       this.sequenceCounter,
       type,
-      payload,
+      payload as never,
     );
     const raw = JSON.stringify(msg);
     this.controlChannel.send(raw);

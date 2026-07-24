@@ -3,7 +3,7 @@ import { buildApp } from './app.js';
 import { FastifyInstance } from 'fastify';
 
 describe('Collaborations API', () => {
-  let app: FastifyInstance;
+  let app: any;
 
   beforeAll(async () => {
     if (!process.env.DATABASE_URL || !process.env.REDIS_URL) {

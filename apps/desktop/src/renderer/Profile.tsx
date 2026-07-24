@@ -53,7 +53,7 @@ export function Profile() {
       setCategories((data.categories ?? []).join(', '));
       setTimezone(data.timezone ?? '');
     } catch (e: unknown) {
-      setError(e.message);
+      setError((e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -81,7 +81,7 @@ export function Profile() {
       setProfile(updated);
       setEditing(false);
     } catch (e: unknown) {
-      alert('Не удалось сохранить: ' + e.message);
+      alert('Не удалось сохранить: ' + (e as Error).message);
     } finally {
       setSaving(false);
     }

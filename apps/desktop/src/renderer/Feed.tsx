@@ -45,7 +45,7 @@ export function Feed() {
       const data = await window.desktop.api.feed.list();
       setPosts(data.posts ?? data ?? []);
     } catch (e: unknown) {
-      setError(e.message);
+      setError((e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -65,7 +65,7 @@ export function Feed() {
       setPosts((prev) => [post, ...prev]);
       setNewPostContent('');
     } catch (e: unknown) {
-      alert('Не удалось опубликовать: ' + e.message);
+      alert('Не удалось опубликовать: ' + (e as Error).message);
     } finally {
       setPosting(false);
     }

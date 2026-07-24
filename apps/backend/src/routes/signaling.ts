@@ -34,6 +34,7 @@ interface SessionClient {
 }
 
 export default async function signalingRoutes(app: FastifyInstance) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const server = app as any;
   const globalClients = new Map<string, GlobalClient>(); // Keyed by deviceId
   const sessionRooms = new Map<string, Set<SessionClient>>(); // Keyed by remoteSessionId
@@ -123,7 +124,7 @@ export default async function signalingRoutes(app: FastifyInstance) {
               }),
             );
           try {
-            const decoded = server.jwt.verify(parsed.appToken) as any;
+            const decoded = server.jwt.verify(parsed.appToken) as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown };
             const { sub: userId, deviceId } = decoded;
             if (!deviceId) throw new Error('No deviceId in app token');
 
@@ -246,7 +247,13 @@ export default async function signalingRoutes(app: FastifyInstance) {
               publicKey,
             );
 
-            const { remoteSessionId, role, deviceId, userId } = payload as any;
+            const jwtPayload = payload as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown };
+            const { remoteSessionId, role, deviceId, userId } = {
+              remoteSessionId: jwtPayload.remoteSessionId as string,
+              role: jwtPayload.role as 'streamer' | 'moderator',
+              deviceId: jwtPayload.deviceId as string,
+              userId: jwtPayload.sub,
+            };
             if (payload.tokenType !== 'remote-session')
               throw new Error('Invalid token type');
 
@@ -305,9 +312,11 @@ export default async function signalingRoutes(app: FastifyInstance) {
         }
 
         if (parsed.type === 'heartbeat.pong' || parsed.type === 'heartbeat') {
-          clientCtx.isAlive = true;
+          if (clientCtx) clientCtx.isAlive = true;
           return;
         }
+
+        if (!clientCtx) return;
 
         app.log.info(
           {

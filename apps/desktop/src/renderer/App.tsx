@@ -85,12 +85,14 @@ export default function App() {
   const [remoteObsDataSource, setRemoteObsDataSource] =
     React.useState<RemoteObsDataSource | null>(null);
 
-  const [incomingSession, setIncomingSession] = React.useState<any>(null);
+  const [incomingSession, setIncomingSession] = React.useState<{
+    remoteSessionId: string;
+  } | null>(null);
 
   React.useEffect(() => {
     if (!window.desktop?.obs) return;
     const cleanup = window.desktop.obs.subscribe((event: unknown) => {
-      setObsState(event.state);
+      setObsState((event as any).state);
     });
     window.desktop.obs.getStatus().then(setObsState);
     return cleanup;
@@ -102,15 +104,15 @@ export default function App() {
     // We only connect signaling if we know we are authenticated.
     // AuthGate handles authentication state, but we need to check it here.
     window.desktop.auth.getState().then((state: unknown) => {
-      if (state.authenticated) {
+      if ((state as any).authenticated) {
         window.desktop.signaling.connect();
       }
     });
 
     const cleanupIncoming = window.desktop.remoteSessions.onIncoming(
-      (session: any) => {
+      (session: unknown) => {
         console.log('Incoming session', session);
-        setIncomingSession(session);
+        setIncomingSession(session as any);
       },
     );
 
@@ -127,7 +129,7 @@ export default function App() {
     try {
       // 1. Authenticate with backend and verify token in Main
       const ctx = await window.desktop.remoteSessions.connect(
-        sessionInfo.streamerAuthorization,
+        (sessionInfo as any).streamerAuthorization,
       );
 
       // 2. Start WebSocket Relay Transport
@@ -138,32 +140,40 @@ export default function App() {
       await transport.connect({
         remoteSessionId: ctx.remoteSessionId,
         role: 'streamer',
-        streamerAuthorization: sessionInfo.streamerAuthorization,
-      });
+        streamerAuthorization: (sessionInfo as any).streamerAuthorization,
+      } as any);
 
       // Broadcast OBS snapshot when connected
       const cleanupObsEvent = window.desktop.obs.subscribe((event: unknown) => {
-        if (event.state === 'connected' && event.snapshot) {
-          transport.send({ type: 'snapshot', payload: event.snapshot });
+        if ((event as any).state === 'connected' && (event as any).snapshot) {
+          transport.send({ type: 'snapshot', payload: (event as any).snapshot });
         }
       });
 
       // Handle incoming commands from the transport and pass them to the secure Main guard
       const unsubTransport = transport.subscribe(async (msg: unknown) => {
-        if (msg.type === 'command.request') {
+        type CommandMsg = {
+          type: string;
+          payload: {
+            commandId: string;
+            command: { commandName: string; commandData: unknown };
+          };
+        };
+        const m = msg as CommandMsg;
+        if (m.type === 'command.request') {
           try {
             const result = await window.desktop.remoteSessions.executeCommand(
               ctx.remoteSessionId,
               {
-                command: msg.payload.command.commandName,
-                args: msg.payload.command.commandData,
+                command: m.payload.command.commandName,
+                args: m.payload.command.commandData,
                 seq: 0, // Mock sequence for now
               },
             );
             transport.send({
               type: 'command.response',
               payload: {
-                commandId: msg.payload.commandId,
+                commandId: m.payload.commandId,
                 status: result.status,
                 data: result.data,
               },
@@ -172,9 +182,9 @@ export default function App() {
             transport.send({
               type: 'command.response',
               payload: {
-                commandId: msg.payload.commandId,
+                commandId: m.payload.commandId,
                 status: 'error',
-                error: e.message,
+                error: (e as Error).message,
               },
             });
           }
@@ -184,7 +194,7 @@ export default function App() {
       // Cleanup logic should be stored if we want to cancel the session later
     } catch (e: unknown) {
       console.error('Failed to accept session', e);
-      alert('Failed to connect: ' + e.message);
+      alert('Failed to connect: ' + (e as Error).message);
     }
   };
 
@@ -216,12 +226,12 @@ export default function App() {
         remoteSessionId: ctx.remoteSessionId,
         role: 'moderator',
         moderatorAuthorization: token,
-      });
+      } as any);
 
       setRemoteObsDataSource(new RemoteObsDataSource(transport));
       setCurrentRoute('remote_obs');
     } catch (e: unknown) {
-      alert('Failed to connect to session: ' + e.message);
+      alert('Failed to connect to session: ' + (e as Error).message);
     }
   };
 
@@ -471,7 +481,7 @@ export default function App() {
             )}
 
             {currentRoute === 'home' && (
-              <HomeView obsState={obsState} navigate={setCurrentRoute as any} />
+              <HomeView obsState={obsState} navigate={setCurrentRoute as (r: string) => void} />
             )}
 
             {currentRoute === 'feed' && <Feed />}

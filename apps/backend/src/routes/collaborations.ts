@@ -34,7 +34,7 @@ export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (request.user as any).sub;
+      const userId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
       const data = request.body;
       const db = getDb();
 
@@ -91,7 +91,7 @@ export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (request.user as any).sub;
+      const userId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
       const { id } = request.params;
       const db = getDb();
 
@@ -127,7 +127,7 @@ export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (request.user as any).sub;
+      const userId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
       const { id } = request.params;
       const { message } = request.body;
       const db = getDb();
@@ -185,7 +185,7 @@ export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (request.user as any).sub;
+      const userId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
       const { id, appId } = request.params;
       const { action } = request.body;
       const db = getDb();
@@ -250,7 +250,7 @@ export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (request.user as any).sub;
+      const userId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
       const { id } = request.params;
       const db = getDb();
 

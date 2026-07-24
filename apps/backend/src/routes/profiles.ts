@@ -9,7 +9,7 @@ export const profilesRoutes: FastifyPluginAsync = async (appOriginal) => {
   const app = appOriginal.withTypeProvider<ZodTypeProvider>();
   // Get current user profile
   app.get('/profiles/me', async (request, reply) => {
-    const userId = (request.user as any).sub;
+    const userId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
     const db = getDb();
 
     let [profile] = await db
@@ -50,7 +50,7 @@ export const profilesRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (request.user as any).sub;
+      const userId = (request.user as { sub: string; id: string; deviceId?: string; role?: string; remoteSessionId?: string; [key: string]: unknown }).sub;
       const updates = request.body;
       const db = getDb();
 

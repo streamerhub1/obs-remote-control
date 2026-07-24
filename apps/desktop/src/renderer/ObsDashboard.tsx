@@ -16,16 +16,18 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { ObsDataSource } from './data-sources';
 
+import { ObsSnapshot, ObsCommand } from '@obs-remote/obs-contracts';
+
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 export function ObsDashboard({ dataSource }: { dataSource: ObsDataSource }) {
-  const [snapshot, setSnapshot] = React.useState<any>(null);
+  const [snapshot, setSnapshot] = React.useState<ObsSnapshot | null>(null);
   const [obsState, setObsState] = React.useState<string>('disconnected');
 
   React.useEffect(() => {
-    let cleanup = dataSource.subscribe((event) => {
+    let cleanup = dataSource.subscribe((event: { state?: string; snapshot?: ObsSnapshot; event?: { type: string; payload: ObsSnapshot } }) => {
       if (event.state) setObsState(event.state);
       if (event.snapshot) setSnapshot(event.snapshot);
       if (event.event && snapshot) {
@@ -46,7 +48,7 @@ export function ObsDashboard({ dataSource }: { dataSource: ObsDataSource }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataSource]);
 
-  const execute = (cmd: unknown) => dataSource.execute(cmd);
+  const execute = (cmd: ObsCommand) => dataSource.execute(cmd as any);
 
   if (obsState !== 'connected' || !snapshot) {
     return (
@@ -136,7 +138,7 @@ export function ObsDashboard({ dataSource }: { dataSource: ObsDataSource }) {
           <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
             {snapshot.sceneItems?.[snapshot.currentProgramScene]?.length > 0 ? (
               snapshot.sceneItems[snapshot.currentProgramScene].map(
-                (item: unknown) => (
+                (item: { sceneItemId: number; sourceName: string; sceneItemEnabled: boolean }) => (
                   <div
                     key={item.sceneItemId}
                     className="flex items-center justify-between p-3 bg-black border border-gray-800 rounded-lg"

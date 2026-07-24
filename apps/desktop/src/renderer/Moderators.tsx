@@ -43,7 +43,7 @@ export function Moderators({
       setInviteIdentifier('');
       fetchRelationships();
     } catch (e: unknown) {
-      alert('Failed to invite: ' + e.message);
+      alert('Failed to invite: ' + (e as Error).message);
       console.error(e);
     }
   };
@@ -70,7 +70,7 @@ export function Moderators({
     try {
       const perms = await window.desktop.api.relationships.getPermissions(id);
       const map: Record<string, boolean> = {};
-      perms.forEach((p: unknown) => (map[p.permissionKey] = p.allowed));
+      perms.forEach((p: { permissionKey: string; allowed: boolean }) => (map[p.permissionKey] = p.allowed));
       setCurrentPerms(map);
       setManagingPermsFor(id);
     } catch (e) {
@@ -249,7 +249,7 @@ export function Moderators({
                               onConnectRemote(data.authorizationToken);
                             }
                           } catch (e: unknown) {
-                            alert('Failed to connect: ' + e.message);
+                            alert('Failed to connect: ' + (e as Error).message);
                           }
                         }}
                         className="px-3 py-1 bg-blue-600/20 text-blue-400 rounded hover:bg-blue-600/30 text-xs border border-blue-500/20"

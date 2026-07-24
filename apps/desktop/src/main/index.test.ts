@@ -84,24 +84,24 @@ describe('Main Process Security Settings', () => {
     vi.mocked(shell.openExternal).mockClear();
 
     // Allowed URL
-    const result1 = handler({} as any, 'https://github.com/streamerhub1');
+    const result1 = handler({} as unknown, 'https://github.com/streamerhub1');
     expect(result1).toBe(true);
     expect(shell.openExternal).toHaveBeenCalledWith(
       'https://github.com/streamerhub1',
     );
 
     // Disallowed URL
-    const result2 = handler({} as any, 'https://example.com');
+    const result2 = handler({} as unknown, 'https://example.com');
     expect(result2).toBe(false);
     expect(shell.openExternal).toHaveBeenCalledTimes(1); // Not called again
 
     // Invalid URL format
-    const result3 = handler({} as any, 'javascript:alert(1)');
+    const result3 = handler({} as unknown, 'javascript:alert(1)');
     expect(result3).toBe(false);
     expect(shell.openExternal).toHaveBeenCalledTimes(1); // Still not called
 
     // Allowed protocol check (twitch)
-    const result4 = handler({} as any, 'https://twitch.tv/somechannel');
+    const result4 = handler({} as unknown, 'https://twitch.tv/somechannel');
     expect(result4).toBe(true);
     expect(shell.openExternal).toHaveBeenCalledTimes(2);
   });

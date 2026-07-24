@@ -3,7 +3,8 @@ import { RemoteTransport } from './transports/RemoteTransport';
 
 export interface ObsDataSource {
   execute(command: ObsCommand): void;
-  subscribe(callback: (event: unknown) => void): () => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  subscribe(callback: (event: any) => void): () => void;
   getSnapshot(): Promise<ObsSnapshot>;
   disconnect(): void;
   type: 'local' | 'remote';
@@ -53,7 +54,7 @@ export class RemoteObsDataSource implements ObsDataSource {
 
   subscribe(callback: (event: unknown) => void) {
     if (!this.unsubTransport) {
-      this.unsubTransport = this.transport.subscribe((msg: unknown) => {
+      this.unsubTransport = this.transport.subscribe((msg: { type: string; payload: unknown }) => {
         if (msg.type === 'snapshot') {
           callback({ state: 'connected', snapshot: msg.payload });
         } else if (msg.type === 'event') {
@@ -71,7 +72,7 @@ export class RemoteObsDataSource implements ObsDataSource {
   }
 
   async getSnapshot(): Promise<ObsSnapshot> {
-    return {} as any;
+    return {} as ObsSnapshot;
   }
 
   disconnect() {
