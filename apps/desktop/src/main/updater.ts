@@ -13,7 +13,7 @@ export function setupUpdater(mainWindow: BrowserWindow) {
   autoUpdater.autoInstallOnAppQuit = false; // We want to control installation
 
   // Expose states to renderer
-  const notifyState = (state: string, data?: any) => {
+  const notifyState = (state: string, data?: unknown) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('updater:state', { state, data });
     }
