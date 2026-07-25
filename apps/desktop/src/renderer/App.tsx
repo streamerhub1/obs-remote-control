@@ -58,7 +58,7 @@ function UpdateBanner() {
           let newState = { ...prev, status } as UpdaterState;
           if (status === 'available' || status === 'downloaded') {
             newState = {
-              status: status as any,
+              status: status as 'available' | 'downloaded',
               version: payload?.version as string,
             };
           } else if (status === 'downloading') {
