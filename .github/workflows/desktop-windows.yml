@@ -145,7 +145,7 @@ jobs:
         run: |
           Write-Host "Starting unpacked runtime smoke test..."
           $env:ELECTRON_ENABLE_LOGGING = "1"
-          
+
           $ProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
           $ProcessInfo.FileName = "apps\desktop\release\win-unpacked\StreamerHub.exe"
           $ProcessInfo.Arguments = "--enable-logging"
@@ -153,15 +153,15 @@ jobs:
           $ProcessInfo.RedirectStandardError = $true
           $ProcessInfo.UseShellExecute = $false
           $ProcessInfo.CreateNoWindow = $true
-          
+
           $Process = New-Object System.Diagnostics.Process
           $Process.StartInfo = $ProcessInfo
           $Process.Start() | Out-Null
-          
+
           $LogOutput = ""
           $Ready = $false
           $ErrorDetected = $false
-          
+
           # We wait up to 30 seconds for the app to start and load renderer.
           for ($i = 0; $i -lt 30; $i++) {
             Start-Sleep -Seconds 1
@@ -186,25 +186,25 @@ jobs:
               break
             }
           }
-          
+
           if (-not $Process.HasExited) {
             $Process.Kill()
           }
-          
+
           Write-Host "=== SMOKE TEST LOGS ==="
           Write-Host $LogOutput
           Write-Host "======================="
-          
+
           if ($ErrorDetected) {
             Write-Error "Smoke test failed: Critical error found in logs."
             exit 1
           }
-          
+
           if ($Process.HasExited -and $Process.ExitCode -ne 0) {
             Write-Error "Smoke test failed: Application exited unexpectedly with code $($Process.ExitCode)."
             exit 1
           }
-          
+
           Write-Host "Runtime smoke test passed!"
 
       - name: Package Windows NSIS installer

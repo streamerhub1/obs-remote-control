@@ -18,8 +18,8 @@ export default defineConfig({
         exclude: [
           '@obs-remote/obs-adapter',
           '@obs-remote/obs-contracts',
-          '@obs-remote/remote-protocol'
-        ]
+          '@obs-remote/remote-protocol',
+        ],
       },
       rollupOptions: {
         input: {
