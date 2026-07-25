@@ -122,9 +122,11 @@ export class ObsAdapter {
     return this.snapshot;
   }
 
-  public async connect(config: ObsConnectionConfig): Promise<boolean> {
+  public async connect(
+    config: ObsConnectionConfig,
+  ): Promise<{ success: boolean; error?: string }> {
     this.config = config;
-    this.shouldReconnect = true;
+    this.shouldReconnect = false; // Only reconnect if we successfully connect first
 
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
@@ -143,15 +145,20 @@ export class ObsAdapter {
       await Promise.race([connectPromise, timeoutPromise]);
 
       this.reconnectAttempts = 0;
+      this.shouldReconnect = true; // Safe to auto-reconnect now
       this.changeState('connected');
 
       await this.fullResync();
 
-      return true;
+      return { success: true };
     } catch (e: unknown) {
       this.changeState('error');
       this.handleDisconnect();
-      return false;
+      const msg = e instanceof Error ? e.message : 'Connection failed';
+      if (msg.includes('ECONNREFUSED')) {
+        return { success: false, error: 'obs_not_running' };
+      }
+      return { success: false, error: msg };
     }
   }
 

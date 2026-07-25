@@ -80,7 +80,10 @@ export function Feed() {
           post.id === postId
             ? {
                 ...post,
-                likesCount: Math.max(0, post.likesCount + (result.liked ? 1 : -1)),
+                likesCount: Math.max(
+                  0,
+                  post.likesCount + (result.liked ? 1 : -1),
+                ),
               }
             : post,
         ),

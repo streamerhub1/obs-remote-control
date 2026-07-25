@@ -85,7 +85,8 @@ if (!gotTheLock) {
         type: 'warning',
         title: 'Приложение не отвечает',
         message: 'Процесс отрисовки перестал отвечать.',
-        detail: 'Вы можете подождать или перезагрузить приложение прямо сейчас.',
+        detail:
+          'Вы можете подождать или перезагрузить приложение прямо сейчас.',
         buttons: ['Перезагрузить', 'Подождать'],
         defaultId: 0,
       });
@@ -139,6 +140,8 @@ if (!gotTheLock) {
     }
 
     // Register IPC handlers
+    ipcMain.handle('app:getVersion', () => app.getVersion());
+
     ipcMain.handle('shell:openExternal', (event, url: string) => {
       const allowlist = ['github.com', 'twitch.tv'];
       try {
@@ -166,7 +169,10 @@ if (!gotTheLock) {
       setupSignaling();
       setupRemoteSessions();
       setupApiHandlers();
-      setupUpdater(mainWindow);
+      void setupUpdater(mainWindow).catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('Updater initialization failed:', message);
+      });
     }
 
     app.on('activate', function () {

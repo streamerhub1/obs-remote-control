@@ -88,9 +88,11 @@ export function setupAuthHandlers(mainWindow: Electron.BrowserWindow) {
 
   ipcMain.handle('auth:getState', async () => {
     if (!accessToken) {
-      await refreshAccessToken();
+      const res = await refreshAccessToken();
+      if (res === 'offline') return { authenticated: false, error: 'offline' };
+      return { authenticated: res === 'success' };
     }
-    return { authenticated: !!accessToken };
+    return { authenticated: true };
   });
 
   ipcMain.handle('auth:getProfile', async () => {
@@ -109,18 +111,35 @@ export function setupAuthHandlers(mainWindow: Electron.BrowserWindow) {
   });
 
   // Automatically attempt restore on startup
-  refreshAccessToken().then((success) => {
+  refreshAccessToken().then((result) => {
     if (mainWindowRef) {
-      mainWindowRef.webContents.send('auth:state-changed', {
-        authenticated: success,
-      });
+      if (result === 'offline') {
+        mainWindowRef.webContents.send('auth:state-changed', {
+          authenticated: false,
+          error: 'offline',
+        });
+      } else {
+        mainWindowRef.webContents.send('auth:state-changed', {
+          authenticated: result === 'success',
+        });
+      }
     }
   });
 }
 
-async function refreshAccessToken() {
+let refreshPromise: Promise<'success' | 'failed' | 'offline'> | null = null;
+
+async function refreshAccessToken(): Promise<'success' | 'failed' | 'offline'> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = performRefresh().finally(() => {
+    refreshPromise = null;
+  });
+  return refreshPromise;
+}
+
+async function performRefresh(): Promise<'success' | 'failed' | 'offline'> {
   const identity = loadDeviceIdentity();
-  if (!identity || !identity.refreshToken) return false;
+  if (!identity || !identity.refreshToken) return 'failed';
 
   try {
     // 1. Refresh flow with Proof-of-Possession challenge
@@ -156,18 +175,21 @@ async function refreshAccessToken() {
     );
 
     if (!refreshRes.ok) {
-      deleteDeviceIdentity();
-      return false;
+      if (refreshRes.status === 401) {
+        deleteDeviceIdentity();
+        return 'failed';
+      }
+      return 'offline'; // Some other backend error (502, 503)
     }
 
     const tokens = await refreshRes.json();
     accessToken = tokens.accessToken;
     identity.refreshToken = tokens.refreshToken;
     saveDeviceIdentity(identity);
-    return true;
+    return 'success';
   } catch (e) {
-    console.error('Refresh token error', e);
-    return false;
+    // e.g. fetch failed / ECONNREFUSED
+    return 'offline';
   }
 }
 

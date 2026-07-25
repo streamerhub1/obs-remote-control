@@ -11,7 +11,10 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export class ErrorBoundary extends React.Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -45,14 +48,19 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       const isRoute = this.props.fallbackType === 'route';
 
       return (
-        <div className={`flex flex-col items-center justify-center p-8 text-center ${isRoute ? 'h-full bg-transparent' : 'h-screen w-screen bg-[#0A0A0A]'}`}>
+        <div
+          className={`flex flex-col items-center justify-center p-8 text-center ${isRoute ? 'h-full bg-transparent' : 'h-screen w-screen bg-[#0A0A0A]'}`}
+        >
           <div className="max-w-md space-y-6">
             <h1 className="text-2xl font-bold text-red-500">
-              {isRoute ? 'В этом разделе произошла ошибка' : 'Произошла критическая ошибка'}
+              {isRoute
+                ? 'В этом разделе произошла ошибка'
+                : 'Произошла критическая ошибка'}
             </h1>
-            
+
             <p className="text-gray-400">
-              Приложение столкнулось с непредвиденной проблемой. Вы можете перезагрузить страницу или вернуться на главную.
+              Приложение столкнулось с непредвиденной проблемой. Вы можете
+              перезагрузить страницу или вернуться на главную.
             </p>
 
             {isDev && this.state.error && (
@@ -80,10 +88,10 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 }
 
-export const RootErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <ErrorBoundary fallbackType="root">{children}</ErrorBoundary>
-);
+export const RootErrorBoundary: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => <ErrorBoundary fallbackType="root">{children}</ErrorBoundary>;
 
-export const RouteErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <ErrorBoundary fallbackType="route">{children}</ErrorBoundary>
-);
+export const RouteErrorBoundary: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => <ErrorBoundary fallbackType="route">{children}</ErrorBoundary>;

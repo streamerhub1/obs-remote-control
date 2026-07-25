@@ -8,8 +8,9 @@ import {
   collaborationInvitations,
   calendarEvents,
   auditLogs,
+  users,
 } from '@obs-remote/database';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, desc } from 'drizzle-orm';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 
 export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
@@ -29,6 +30,130 @@ export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
       return reply;
     }
   });
+
+  // Get Collaborations
+  app.get(
+    '/collaborations',
+    {
+      schema: {
+        querystring: z.object({
+          status: z
+            .enum(['open', 'closed', 'cancelled', 'completed'])
+            .default('open'),
+          limit: z.coerce.number().int().min(1).max(50).default(20),
+          cursor: z.string().optional(), // We'll just use simple limit for now if cursor isn't strictly implemented, but let's accept it
+        }),
+      },
+    },
+    async (request, reply) => {
+      const userId = (request.user as { sub: string }).sub;
+      const { status, limit } = request.query;
+      const db = getDb();
+
+      // Get collabs
+      const collabs = await db
+        .select()
+        .from(collaborations)
+        .where(eq(collaborations.status, status))
+        .orderBy(desc(collaborations.createdAt))
+        .limit(limit);
+
+      if (collabs.length === 0) {
+        return reply.send({ data: [], nextCursor: null });
+      }
+
+      const collabIds = collabs.map((c) => c.id);
+
+      // Get hosts
+      const hosts = await db
+        .select({
+          id: users.id,
+          displayName: users.displayName,
+          avatarUrl: users.avatarUrl,
+        })
+        .from(users)
+        .where(
+          sql`${users.id} IN (SELECT "ownerId" FROM collaborations WHERE id IN ${collabIds})`,
+        );
+
+      // Get participants count
+      const participants = await db
+        .select({
+          collaborationId: collaborationParticipants.collaborationId,
+          count: sql<number>`count(*)`,
+        })
+        .from(collaborationParticipants)
+        .where(
+          sql`${collaborationParticipants.collaborationId} IN ${collabIds}`,
+        )
+        .groupBy(collaborationParticipants.collaborationId);
+
+      // Get my applications
+      const myApps = await db
+        .select()
+        .from(collaborationApplications)
+        .where(
+          and(
+            sql`${collaborationApplications.collaborationId} IN ${collabIds}`,
+            eq(collaborationApplications.userId, userId),
+          ),
+        );
+
+      // Get my participations (to know if I joined)
+      const myParticipations = await db
+        .select()
+        .from(collaborationParticipants)
+        .where(
+          and(
+            sql`${collaborationParticipants.collaborationId} IN ${collabIds}`,
+            eq(collaborationParticipants.userId, userId),
+          ),
+        );
+
+      const data = collabs.map((c) => {
+        const host = hosts.find((h) => h.id === c.ownerId);
+        const participantCount =
+          participants.find((p) => p.collaborationId === c.id)?.count || 0;
+        const myApp = myApps.find((a) => a.collaborationId === c.id);
+        const isParticipant = myParticipations.some(
+          (p) => p.collaborationId === c.id,
+        );
+
+        // Either I have a pending/rejected application, or I'm already a participant (accepted)
+        const myApplication = isParticipant
+          ? { status: 'accepted' }
+          : myApp
+            ? { status: myApp.status }
+            : null;
+
+        return {
+          id: c.id,
+          title: c.title,
+          description: c.description,
+          category: c.category,
+          startAt: c.startAt.toISOString(),
+          expectedDurationMinutes: c.expectedDurationMinutes,
+          maximumParticipants: c.maximumParticipants,
+          currentParticipants: Number(participantCount),
+          applicationMode: c.applicationMode,
+          visibility: c.visibility,
+          host: host
+            ? {
+                id: host.id,
+                displayName: host.displayName,
+                avatarUrl: host.avatarUrl,
+              }
+            : null,
+          myApplication,
+        };
+      });
+
+      return reply.send({
+        data,
+        nextCursor: null, // Simplified pagination for now
+      });
+    },
+  );
 
   // Create Collaboration
   app.post(

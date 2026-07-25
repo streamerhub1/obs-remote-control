@@ -56,13 +56,27 @@ export function setupObsHandlers(mainWindow: Electron.BrowserWindow) {
   ipcMain.handle('obs:connect', async (_, configRaw: unknown) => {
     const parsed = ObsConnectionConfigSchema.safeParse(configRaw);
     if (!parsed.success) {
-      return false; // Validation failed
+      return {
+        success: false,
+        error: 'Invalid connection configuration format',
+      };
     }
 
-    // Save to safe storage
-    saveObsSettings(parsed.data);
+    const result = await obs.connect(parsed.data);
+    if (result.success) {
+      saveObsSettings(parsed.data);
+    }
+    return result;
+  });
 
-    return await obs.connect(parsed.data);
+  ipcMain.handle('obs:clearSettings', async () => {
+    try {
+      const storePath = getObsSettingsPath();
+      if (fs.existsSync(storePath)) {
+        fs.unlinkSync(storePath);
+      }
+    } catch (e) {}
+    return true;
   });
 
   ipcMain.handle('obs:disconnect', async () => {

@@ -90,12 +90,12 @@ describe('ObsAdapter', () => {
   });
 
   it('should connect and full resync successfully', async () => {
-    const success = await adapter.connect({
+    const result = await adapter.connect({
       host: '127.0.0.1',
       port: 4455,
       password: 'test',
     });
-    expect(success).toBe(true);
+    expect(result.success).toBe(true);
     expect(mockConnect).toHaveBeenCalledWith('ws://127.0.0.1:4455', 'test');
     expect(adapter.getState()).toBe('connected');
 
@@ -108,13 +108,13 @@ describe('ObsAdapter', () => {
 
   it('should return false on connection error without logging password', async () => {
     mockConnect.mockRejectedValue(new Error('Connection refused'));
-    const success = await adapter.connect({
+    const result = await adapter.connect({
       host: '127.0.0.1',
       port: 4455,
       password: 'secretpassword123',
     });
-    expect(success).toBe(false);
-    expect(adapter.getState()).toBe('connecting'); // Because it immediately tries to reconnect
+    expect(result.success).toBe(false);
+    expect(adapter.getState()).toBe('disconnected');
 
     // Cleanup
     await adapter.disconnect();

@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react';
+import {
+  render,
+  screen,
+  waitFor,
+  cleanup,
+  fireEvent,
+} from '@testing-library/react';
 import React from 'react';
 import { Feed } from '../src/renderer/Feed';
 import { RouteErrorBoundary } from '../src/renderer/ErrorBoundary';
@@ -8,14 +14,14 @@ import { RouteErrorBoundary } from '../src/renderer/ErrorBoundary';
 describe('Feed', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (window as unknown as { desktop: any }).desktop = {
+    (window as unknown as { desktop: unknown }).desktop = {
       api: {
         feed: {
           list: vi.fn(),
           create: vi.fn(),
           like: vi.fn(),
-        }
-      }
+        },
+      },
     };
   });
 
@@ -24,7 +30,9 @@ describe('Feed', () => {
   });
 
   it('shows empty state when no posts', async () => {
-    (window as unknown as { desktop: any }).desktop.api.feed.list.mockResolvedValue({ data: [], nextCursor: null });
+    (
+      window as unknown as { desktop: unknown }
+    ).desktop.api.feed.list.mockResolvedValue({ data: [], nextCursor: null });
 
     render(<Feed />);
 
@@ -34,21 +42,25 @@ describe('Feed', () => {
   });
 
   it('displays a valid post correctly', async () => {
-    (window as unknown as { desktop: any }).desktop.api.feed.list.mockResolvedValue({
-      data: [{
-        id: 'post1',
-        content: 'Hello world',
-        likesCount: 10,
-        commentsCount: 2,
-        createdAt: new Date().toISOString(),
-        author: {
-          id: 'author1',
-          displayName: 'TestUser',
-          twitchLogin: 'testuser',
-          avatarUrl: null
-        }
-      }],
-      nextCursor: null
+    (
+      window as unknown as { desktop: unknown }
+    ).desktop.api.feed.list.mockResolvedValue({
+      data: [
+        {
+          id: 'post1',
+          content: 'Hello world',
+          likesCount: 10,
+          commentsCount: 2,
+          createdAt: new Date().toISOString(),
+          author: {
+            id: 'author1',
+            displayName: 'TestUser',
+            twitchLogin: 'testuser',
+            avatarUrl: null,
+          },
+        },
+      ],
+      nextCursor: null,
     });
 
     render(<Feed />);
@@ -66,12 +78,16 @@ describe('Feed', () => {
     console.error = vi.fn();
 
     // Simulate what happens when validation in main throws, or network throws
-    (window as unknown as { desktop: any }).desktop.api.feed.list.mockRejectedValue(new Error('Некорректный ответ сервиса'));
+    (
+      window as unknown as { desktop: unknown }
+    ).desktop.api.feed.list.mockRejectedValue(
+      new Error('Некорректный ответ сервиса'),
+    );
 
     render(
       <RouteErrorBoundary>
         <Feed />
-      </RouteErrorBoundary>
+      </RouteErrorBoundary>,
     );
 
     await waitFor(() => {
@@ -84,8 +100,12 @@ describe('Feed', () => {
   });
 
   it('calls create post and refetches', async () => {
-    (window as unknown as { desktop: any }).desktop.api.feed.list.mockResolvedValue({ data: [], nextCursor: null });
-    (window as unknown as { desktop: any }).desktop.api.feed.create.mockResolvedValue(null);
+    (
+      window as unknown as { desktop: unknown }
+    ).desktop.api.feed.list.mockResolvedValue({ data: [], nextCursor: null });
+    (
+      window as unknown as { desktop: unknown }
+    ).desktop.api.feed.create.mockResolvedValue(null);
 
     render(<Feed />);
 
@@ -95,36 +115,46 @@ describe('Feed', () => {
 
     const textarea = screen.getByPlaceholderText('Что нового, стример?');
     fireEvent.change(textarea, { target: { value: 'New Test Post' } });
-    
+
     const submitBtn = screen.getByText('Опубликовать');
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect((window as unknown as { desktop: any }).desktop.api.feed.create).toHaveBeenCalledWith({ content: 'New Test Post' });
+      expect(
+        (window as unknown as { desktop: unknown }).desktop.api.feed.create,
+      ).toHaveBeenCalledWith({ content: 'New Test Post' });
       // list should be called twice: initial load and refetch after create
-      expect((window as unknown as { desktop: any }).desktop.api.feed.list).toHaveBeenCalledTimes(2);
+      expect(
+        (window as unknown as { desktop: unknown }).desktop.api.feed.list,
+      ).toHaveBeenCalledTimes(2);
     });
   });
 
   it('updates likes correctly', async () => {
-    (window as unknown as { desktop: any }).desktop.api.feed.list.mockResolvedValue({
-      data: [{
-        id: 'post1',
-        content: 'Like me',
-        likesCount: 5,
-        commentsCount: 0,
-        createdAt: new Date().toISOString(),
-        author: {
-          id: 'author1',
-          displayName: 'TestUser',
-          twitchLogin: 'testuser',
-          avatarUrl: null
-        }
-      }],
-      nextCursor: null
+    (
+      window as unknown as { desktop: unknown }
+    ).desktop.api.feed.list.mockResolvedValue({
+      data: [
+        {
+          id: 'post1',
+          content: 'Like me',
+          likesCount: 5,
+          commentsCount: 0,
+          createdAt: new Date().toISOString(),
+          author: {
+            id: 'author1',
+            displayName: 'TestUser',
+            twitchLogin: 'testuser',
+            avatarUrl: null,
+          },
+        },
+      ],
+      nextCursor: null,
     });
 
-    (window as unknown as { desktop: any }).desktop.api.feed.like.mockResolvedValue({ liked: false });
+    (
+      window as unknown as { desktop: unknown }
+    ).desktop.api.feed.like.mockResolvedValue({ liked: false });
 
     render(<Feed />);
 
@@ -140,7 +170,9 @@ describe('Feed', () => {
     fireEvent.click(likeButton!);
 
     await waitFor(() => {
-      expect((window as unknown as { desktop: any }).desktop.api.feed.like).toHaveBeenCalledWith('post1');
+      expect(
+        (window as unknown as { desktop: unknown }).desktop.api.feed.like,
+      ).toHaveBeenCalledWith('post1');
       // liked: false should decrease to 4
       expect(screen.getByText('4')).toBeDefined();
     });

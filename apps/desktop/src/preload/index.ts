@@ -2,7 +2,9 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 const API = {
   platform: process.platform,
-  appVersion: process.env.npm_package_version || '1.0.0', // Fallback version
+  app: {
+    getVersion: () => ipcRenderer.invoke('app:getVersion'),
+  },
   openExternalUrl: (url: string) => {
     return ipcRenderer.invoke('shell:openExternal', url);
   },
@@ -110,13 +112,16 @@ const API = {
     getSnapshot: () => ipcRenderer.invoke('obs:getSnapshot'),
     execute: (command: unknown) => ipcRenderer.invoke('obs:execute', command),
     subscribe: (callback: (event: unknown) => void) => {
-      ipcRenderer.on('obs:event', (_, event) => callback(event));
+      const handler = (_event: Electron.IpcRendererEvent, data: unknown) =>
+        callback(data);
+      ipcRenderer.on('obs:event', handler);
       return () => {
-        ipcRenderer.removeAllListeners('obs:event');
+        ipcRenderer.removeListener('obs:event', handler);
       };
     },
     saveSettings: (settings: unknown) =>
       ipcRenderer.invoke('obs:saveSettings', settings),
+    clearSettings: () => ipcRenderer.invoke('obs:clearSettings'),
   },
   api: {
     getWsUrl: () => ipcRenderer.invoke('api:getWsUrl'),
@@ -137,8 +142,6 @@ const API = {
         ipcRenderer.invoke('api:calendar:list', start, end),
       create: (data: unknown) =>
         ipcRenderer.invoke('api:calendar:create', data),
-      update: (id: string, data: unknown) =>
-        ipcRenderer.invoke('api:calendar:update', id, data),
       delete: (id: string) => ipcRenderer.invoke('api:calendar:delete', id),
     },
     profile: {

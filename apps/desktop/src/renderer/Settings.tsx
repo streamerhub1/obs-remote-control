@@ -7,13 +7,19 @@ import {
   Button,
 } from '@obs-remote/ui';
 
+import { useTheme } from './useTheme';
+
 export function Settings() {
-  const version = window.desktop?.appVersion || '1.0.0';
+  const [version, setVersion] = React.useState('Загрузка...');
+  const { theme, setTheme } = useTheme();
   const [updaterState, setUpdaterState] = React.useState<{ status: string }>({
     status: 'idle',
   });
 
   React.useEffect(() => {
+    if (window.desktop?.app?.getVersion) {
+      window.desktop.app.getVersion().then(setVersion).catch(console.error);
+    }
     if (!window.desktop?.updater) return;
     window.desktop.updater.getState().then((state: unknown) => {
       setUpdaterState(state as { status: string });
@@ -54,7 +60,13 @@ export function Settings() {
                   Выберите светлую или темную тему
                 </p>
               </div>
-              <select className="bg-black border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+              <select
+                value={theme}
+                onChange={(e) =>
+                  setTheme(e.target.value as 'dark' | 'light' | 'system')
+                }
+                className="bg-[var(--input-bg,black)] border border-[var(--border,#374151)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary,white)] focus:outline-none focus:border-[var(--accent,#3b82f6)]"
+              >
                 <option value="dark">Темная</option>
                 <option value="light">Светлая</option>
                 <option value="system">Системная</option>

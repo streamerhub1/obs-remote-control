@@ -95,6 +95,17 @@ describe('Collaborations API Integration', () => {
     await app.close();
   });
 
+  it('should return empty list on GET /collaborations', async () => {
+    currentUserId = streamerId;
+    const res = await app.inject({
+      method: 'GET',
+      url: '/collaborations',
+    });
+    expect(res.statusCode).toBe(200);
+    const data = JSON.parse(res.payload);
+    expect(data).toEqual({ data: [], nextCursor: null });
+  });
+
   it('should create an open collaboration and join', async () => {
     currentUserId = streamerId;
 

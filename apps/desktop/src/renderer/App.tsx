@@ -28,6 +28,7 @@ import { Settings } from './Settings';
 import { Home as HomeView } from './Home';
 import { AuthGate } from './AuthGate';
 import { RouteErrorBoundary } from './ErrorBoundary';
+import { useTheme } from './useTheme';
 
 type UpdaterState =
   | { status: 'idle' }
@@ -198,11 +199,19 @@ function NavItem({
 }
 
 export default function App() {
-  const version = window.desktop?.appVersion || '1.0.0';
+  const [version, setVersion] = React.useState('Загрузка...');
+
+  // Initialize theme at the root
+  useTheme();
+
+  React.useEffect(() => {
+    if (window.desktop?.app?.getVersion) {
+      window.desktop.app.getVersion().then(setVersion).catch(console.error);
+    }
+  }, []);
 
   const [obsState, setObsState] = React.useState<string>('disconnected');
-  const [obsHost, setObsHost] = React.useState('127.0.0.1');
-  const [obsPort, setObsPort] = React.useState(4455);
+  const [obsError, setObsError] = React.useState<string | null>(null);
   const [obsPassword, setObsPassword] = React.useState('');
 
   const [currentRoute, setCurrentRoute] = React.useState<
@@ -233,6 +242,9 @@ export default function App() {
     if (!window.desktop?.obs) return;
     const cleanup = window.desktop.obs.subscribe((event: unknown) => {
       setObsState((event as { state: string }).state);
+      if ((event as { state: string }).state === 'connected') {
+        setObsError(null);
+      }
     });
     window.desktop.obs.getStatus().then(setObsState);
     return cleanup;
@@ -356,11 +368,30 @@ export default function App() {
   const handleConnectOBS = async () => {
     if (!window.desktop?.obs) return;
     setObsState('connecting');
-    await window.desktop.obs.connect({
-      host: obsHost,
-      port: obsPort,
-      password: obsPassword,
-    });
+    setObsError(null);
+    try {
+      const result = (await window.desktop.obs.connect({
+        host: '127.0.0.1',
+        port: 4455,
+        password: obsPassword,
+      })) as { success: boolean; error?: string };
+      if (!result.success) {
+        setObsError(
+          result.error === 'obs_not_running'
+            ? 'obs_not_running'
+            : result.error || 'Неизвестная ошибка',
+        );
+      }
+    } catch (e: unknown) {
+      setObsError((e as Error).message);
+    }
+  };
+
+  const handleClearObsSettings = async () => {
+    if (!window.desktop?.obs) return;
+    await window.desktop.obs.clearSettings();
+    setObsPassword('');
+    setObsError(null);
   };
 
   const startRemoteSession = async (directToken?: string) => {
@@ -549,52 +580,62 @@ export default function App() {
                         </div>
                       ) : (
                         <div className="space-y-4">
-                          <p className="text-gray-400 text-sm mb-4">
-                            Нажмите кнопку ниже для подключения к локальному OBS
-                            Studio с параметрами по умолчанию (127.0.0.1:4455).
-                          </p>
+                          {obsError === 'obs_not_running' ? (
+                            <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg mb-4">
+                              <h4 className="text-yellow-400 font-medium mb-1">
+                                OBS Studio не запущен
+                              </h4>
+                              <p className="text-yellow-200/70 text-sm">
+                                Пожалуйста, откройте OBS Studio. Убедитесь, что
+                                сервер WebSocket включен (Инструменты &gt;
+                                Настройки сервера WebSocket).
+                              </p>
+                            </div>
+                          ) : obsError ? (
+                            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg mb-4">
+                              <h4 className="text-red-400 font-medium mb-1">
+                                Ошибка подключения
+                              </h4>
+                              <p className="text-red-200/70 text-sm">
+                                {obsError}
+                              </p>
+                            </div>
+                          ) : (
+                            <p className="text-gray-400 text-sm mb-4">
+                              Нажмите кнопку ниже для подключения к локальному
+                              OBS Studio.
+                            </p>
+                          )}
                           <button
                             onClick={handleConnectOBS}
-                            className="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-lg text-white font-medium transition-colors shadow-lg shadow-blue-500/20"
+                            disabled={obsState === 'connecting'}
+                            className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 disabled:cursor-not-allowed rounded-lg text-white font-medium transition-colors shadow-lg shadow-blue-500/20"
                           >
-                            Подключить OBS
+                            {obsState === 'connecting'
+                              ? 'Подключение...'
+                              : obsError
+                                ? 'Повторить попытку'
+                                : 'Подключить OBS'}
                           </button>
 
-                          <div className="mt-4 pt-4 border-t border-gray-800">
-                            <button
-                              onClick={() => setObsSettingsOpen(!obsSettingsOpen)}
-                              className="text-sm text-gray-500 hover:text-gray-300"
-                            >
-                              Расширенные настройки
-                            </button>
-                            {obsSettingsOpen && (
-                              <div className="space-y-3 mt-3">
-                                <div className="flex gap-3">
-                                  <input
-                                    type="text"
-                                    value={obsHost}
-                                    onChange={(e) => setObsHost(e.target.value)}
-                                    placeholder="IP"
-                                    className="flex-1 bg-black border border-gray-800 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none"
-                                  />
-                                  <input
-                                    type="number"
-                                    value={obsPort}
-                                    onChange={(e) =>
-                                      setObsPort(parseInt(e.target.value))
-                                    }
-                                    placeholder="Port"
-                                    className="w-24 bg-black border border-gray-800 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none"
-                                  />
-                                </div>
-                                <input
-                                  type="password"
-                                  value={obsPassword}
-                                  onChange={(e) => setObsPassword(e.target.value)}
-                                  placeholder="Пароль (опционально)"
-                                  className="w-full bg-black border border-gray-800 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none"
-                                />
-                              </div>
+                          <div className="mt-4 pt-4 border-t border-gray-800 space-y-3">
+                            <label className="text-sm text-gray-400 block">
+                              Пароль WebSocket (если установлен):
+                            </label>
+                            <input
+                              type="password"
+                              value={obsPassword}
+                              onChange={(e) => setObsPassword(e.target.value)}
+                              placeholder="Пароль"
+                              className="w-full bg-black border border-gray-800 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none transition-colors"
+                            />
+                            {obsError && (
+                              <button
+                                onClick={handleClearObsSettings}
+                                className="w-full py-2 mt-2 text-sm text-gray-500 hover:text-gray-300 transition-colors"
+                              >
+                                Сбросить сохраненные настройки
+                              </button>
                             )}
                           </div>
                         </div>
