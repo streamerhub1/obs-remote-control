@@ -127,8 +127,15 @@ const API = {
     getWsUrl: () => ipcRenderer.invoke('api:getWsUrl'),
     feed: {
       list: () => ipcRenderer.invoke('api:feed:list'),
+      community: () => ipcRenderer.invoke('api:feed:community'),
       create: (data: unknown) => ipcRenderer.invoke('api:feed:create', data),
       like: (id: string) => ipcRenderer.invoke('api:feed:like', id),
+      comments: {
+        list: (postId: string, cursor?: string) =>
+          ipcRenderer.invoke('api:feed:comments:list', postId, cursor),
+        create: (postId: string, content: string) =>
+          ipcRenderer.invoke('api:feed:comments:create', postId, content),
+      },
     },
     collabs: {
       list: () => ipcRenderer.invoke('api:collabs:list'),

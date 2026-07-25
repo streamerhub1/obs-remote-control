@@ -67,9 +67,34 @@ export const notificationsRoutes: FastifyPluginAsync = async (appOriginal) => {
         .orderBy(desc(notifications.createdAt))
         .limit(limit);
 
-      return reply.send(results);
+      const withMessage = results.map((n) => ({
+        ...n,
+        message: buildNotificationMessage(n.type, n.actor?.displayName ?? 'Неизвестный'),
+        read: n.readAt !== null,
+      }));
+
+      return reply.send(withMessage);
     },
   );
+
+  function buildNotificationMessage(type: string, actorName: string): string {
+    switch (type) {
+      case 'moderator_invite':
+        return `${actorName} пригласил вас модератором`;
+      case 'follow':
+        return `${actorName} подписался на вас`;
+      case 'like':
+        return `${actorName} оценил вашу публикацию`;
+      case 'comment':
+        return `${actorName} оставил комментарий`;
+      case 'collab_invite':
+        return `${actorName} предложил коллаборацию`;
+      case 'session_request':
+        return `${actorName} запрашивает доступ к OBS`;
+      default:
+        return `Уведомление от ${actorName}`;
+    }
+  }
 
   // Mark all as read
   app.post('/notifications/mark-read', async (request, reply) => {

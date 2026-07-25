@@ -37,3 +37,32 @@
 .no-drag {
   -webkit-app-region: no-drag;
 }
+
+/* Responsive adjustments for compact window sizes (800px minimum width) */
+@media (max-width: 900px) {
+  /* Sidebar: collapse nav labels, show only icons */
+  [data-sidebar="nav-label"] {
+    display: none;
+  }
+  [data-sidebar="root"] {
+    width: 3.5rem !important;
+    min-width: 3.5rem !important;
+  }
+  /* Main padding reduction */
+  main {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  /* Home grid: stack all columns */
+  .lg\\:grid-cols-3 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  /* Home grid: 2 columns instead of 3 */
+  .lg\\:grid-cols-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+

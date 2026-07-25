@@ -4,6 +4,7 @@ import { getDb } from '../db.js';
 import {
   moderatorRelationships,
   moderatorPermissions,
+  notifications,
   users,
 } from '@obs-remote/database';
 import { eq, and, or } from 'drizzle-orm';
@@ -177,6 +178,15 @@ export const relationshipsRoutes: FastifyPluginAsync = async (appOriginal) => {
           allowed: false,
         })),
       );
+
+      // Create notification for the invited moderator
+      await db.insert(notifications).values({
+        userId: moderator.id,
+        actorId: streamerId,
+        type: 'moderator_invite',
+        targetType: 'moderator_relationship',
+        targetId: relationship.id,
+      });
 
       return reply.status(201).send(relationship);
     },

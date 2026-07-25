@@ -170,6 +170,18 @@ export function setupApiHandlers() {
     }
     return parsed.data;
   });
+  ipcMain.handle('api:feed:community', async () => {
+    const raw = await apiFetch('/api/v1/feed/community');
+    const parsed = FeedListResponseSchema.safeParse(raw);
+    if (!parsed.success) {
+      console.error(
+        'Service returned invalid community feed data:',
+        parsed.error,
+      );
+      throw new Error('Некорректный ответ сервиса');
+    }
+    return parsed.data;
+  });
   ipcMain.handle('api:feed:create', async (_, data: unknown) => {
     const raw = await apiFetch('/api/v1/feed/posts', {
       method: 'POST',
@@ -192,6 +204,28 @@ export function setupApiHandlers() {
     }
     return parsed.data;
   });
+
+  ipcMain.handle(
+    'api:feed:comments:list',
+    async (_, postId: unknown, cursor: unknown) => {
+      const id = z.string().parse(postId);
+      const q = new URLSearchParams();
+      const c = z.string().optional().parse(cursor);
+      if (c) q.set('cursor', c);
+      q.set('limit', '20');
+      return apiFetch(`/api/v1/feed/posts/${id}/comments?${q.toString()}`);
+    },
+  );
+  ipcMain.handle(
+    'api:feed:comments:create',
+    async (_, postId: unknown, content: unknown) => {
+      const id = z.string().parse(postId);
+      return apiFetch(`/api/v1/feed/posts/${id}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ content: z.string().parse(content) }),
+      });
+    },
+  );
 
   ipcMain.handle('api:collabs:list', async () => {
     const raw = await apiFetch('/api/v1/collaborations');
@@ -265,10 +299,10 @@ export function setupApiHandlers() {
     apiFetch('/api/v1/notifications'),
   );
   ipcMain.handle('api:notifications:markAllRead', async () =>
-    apiFetch('/api/v1/notifications/read-all', { method: 'POST' }),
+    apiFetch('/api/v1/notifications/mark-read', { method: 'POST' }),
   );
   ipcMain.handle('api:notifications:markRead', async (_, id: unknown) =>
-    apiFetch(`/api/v1/notifications/${z.string().parse(id)}/read`, {
+    apiFetch(`/api/v1/notifications/${z.string().parse(id)}/mark-read`, {
       method: 'POST',
     }),
   );

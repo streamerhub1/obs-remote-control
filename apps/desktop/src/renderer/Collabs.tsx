@@ -21,7 +21,7 @@ import {
 interface Collab {
   id: string;
   title: string;
-  category: string;
+  category: string | null;
   startAt: string;
   expectedDurationMinutes: number;
   maximumParticipants: number;
@@ -53,8 +53,8 @@ export function Collabs() {
     setLoading(true);
     setError(null);
     try {
-      const data = await window.desktop.api.collabs.list();
-      setCollabs(data.collabs ?? data ?? []);
+      const response = await window.desktop.api.collabs.list();
+      setCollabs(response.data ?? []);
     } catch (e: unknown) {
       setError((e as Error).message);
     } finally {
@@ -108,8 +108,8 @@ export function Collabs() {
 
   const filtered = collabs.filter(
     (c) =>
-      c.title.toLowerCase().includes(search.toLowerCase()) ||
-      c.category.toLowerCase().includes(search.toLowerCase()),
+      (c.title ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (c.category ?? '').toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
@@ -258,7 +258,7 @@ export function Collabs() {
             >
               <CardHeader>
                 <div className="flex justify-between items-start mb-2">
-                  <Badge variant="secondary">{collab.category}</Badge>
+                  <Badge variant="secondary">{collab.category ?? '—'}</Badge>
                   <Badge
                     variant="outline"
                     className="text-blue-400 border-blue-400/20"

@@ -604,9 +604,10 @@ export default function App() {
                                 OBS Studio не запущен
                               </h4>
                               <p className="text-yellow-200/70 text-sm">
-                                Пожалуйста, откройте OBS Studio. Убедитесь, что
-                                сервер WebSocket включен (Инструменты &gt;
-                                Настройки сервера WebSocket).
+                                Пожалуйста, откройте OBS Studio. Затем перейдите:
+                                <strong> Сервис → Настройки сервера WebSocket</strong>.
+                                Включите сервер, убедитесь что порт <strong>4455</strong>.
+                                Если включён пароль — введите его ниже.
                               </p>
                             </div>
                           ) : obsError === 'timeout' ? (
@@ -616,7 +617,9 @@ export default function App() {
                               </h4>
                               <p className="text-orange-200/70 text-sm">
                                 OBS не отвечает. Убедитесь, что OBS Studio
-                                запущен и WebSocket сервер включён.
+                                запущен и WebSocket сервер включён
+                                (<strong>Сервис → Настройки сервера WebSocket</strong>,
+                                порт <strong>4455</strong>).
                               </p>
                             </div>
                           ) : obsError === 'authentication_required' ||

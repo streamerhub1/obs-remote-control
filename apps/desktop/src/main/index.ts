@@ -28,7 +28,7 @@ if (!gotTheLock) {
     mainWindow = new BrowserWindow({
       width: 1280,
       height: 800,
-      minWidth: 900,
+      minWidth: 800,
       minHeight: 600,
       show: false,
       autoHideMenuBar: true,
@@ -110,7 +110,7 @@ if (!gotTheLock) {
 
         if (!isDev) {
           responseHeaders['Content-Security-Policy'] = [
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss: http: https:;",
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.jtvnw.net https://static-cdn.jtvnw.net; connect-src 'self' ws: wss: http: https:;",
           ];
         }
 
@@ -121,6 +121,34 @@ if (!gotTheLock) {
     // Prevent external window creation
     mainWindow.webContents.setWindowOpenHandler((_details) => {
       return { action: 'deny' };
+    });
+
+    // Block will-navigate to external URLs — redirect to shell.openExternal
+    mainWindow.webContents.on('will-navigate', (event, url) => {
+      const currentUrl = mainWindow?.webContents.getURL() ?? '';
+      const isDevUrl =
+        process.env.ELECTRON_RENDERER_URL &&
+        url.startsWith(process.env.ELECTRON_RENDERER_URL);
+      const isFileUrl = url.startsWith('file://');
+      const isSameOrigin = url === currentUrl;
+      if (!isDevUrl && !isFileUrl && !isSameOrigin) {
+        event.preventDefault();
+        const allowlist = ['github.com', 'twitch.tv'];
+        try {
+          const parsedUrl = new URL(url);
+          if (
+            (parsedUrl.protocol === 'https:' ||
+              parsedUrl.protocol === 'http:') &&
+            allowlist.some((domain) => parsedUrl.hostname.endsWith(domain))
+          ) {
+            shell.openExternal(url);
+          } else {
+            console.warn(`Blocked external navigation to: ${url}`);
+          }
+        } catch {
+          console.error(`Invalid navigation URL: ${url}`);
+        }
+      }
     });
 
     // Load URL or local file

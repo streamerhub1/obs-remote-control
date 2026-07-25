@@ -102,6 +102,56 @@ export const feedRoutes: FastifyPluginAsync = async (appOriginal) => {
     },
   );
 
+  // Get community feed (all public posts, reverse chronological)
+  app.get(
+    '/feed/community',
+    {
+      schema: {
+        querystring: z.object({
+          cursor: z.string().optional(),
+          limit: z.coerce.number().min(1).max(50).default(20),
+        }),
+      },
+    },
+    async (request, reply) => {
+      const { cursor, limit } = request.query;
+      const db = getDb();
+
+      const query = db
+        .select({
+          id: posts.id,
+          content: posts.content,
+          mediaUrls: posts.mediaUrls,
+          likesCount: posts.likesCount,
+          commentsCount: posts.commentsCount,
+          createdAt: posts.createdAt,
+          author: {
+            id: users.id,
+            displayName: users.displayName,
+            twitchLogin: users.twitchLogin,
+            avatarUrl: users.avatarUrl,
+          },
+        })
+        .from(posts)
+        .innerJoin(users, eq(posts.authorId, users.id))
+        .where(cursor ? lt(posts.createdAt, new Date(cursor)) : undefined)
+        .orderBy(desc(posts.createdAt))
+        .limit(limit);
+
+      const results = await query;
+
+      const nextCursor =
+        results.length === limit
+          ? results[results.length - 1].createdAt.toISOString()
+          : null;
+
+      return reply.send({
+        data: results,
+        nextCursor,
+      });
+    },
+  );
+
   // Create post
   app.post(
     '/feed/posts',
