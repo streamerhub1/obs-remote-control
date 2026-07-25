@@ -134,6 +134,78 @@ jobs:
 
       - name: Build Desktop and Workspace Dependencies
         run: pnpm --filter @obs-remote/desktop... build
+        env:
+          VITE_STREAMERHUB_API_URL: ${{ vars.VITE_STREAMERHUB_API_URL }}
+          VITE_STREAMERHUB_WS_URL: ${{ vars.VITE_STREAMERHUB_WS_URL }}
+
+      - name: Package Windows Unpacked for Smoke Test
+        run: pnpm --filter @obs-remote/desktop pack:dir
+
+      - name: Runtime Smoke Test
+        run: |
+          Write-Host "Starting unpacked runtime smoke test..."
+          $env:ELECTRON_ENABLE_LOGGING = "1"
+          
+          $ProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
+          $ProcessInfo.FileName = "apps\desktop\release\win-unpacked\StreamerHub.exe"
+          $ProcessInfo.Arguments = "--enable-logging"
+          $ProcessInfo.RedirectStandardOutput = $true
+          $ProcessInfo.RedirectStandardError = $true
+          $ProcessInfo.UseShellExecute = $false
+          $ProcessInfo.CreateNoWindow = $true
+          
+          $Process = New-Object System.Diagnostics.Process
+          $Process.StartInfo = $ProcessInfo
+          $Process.Start() | Out-Null
+          
+          $LogOutput = ""
+          $Ready = $false
+          $ErrorDetected = $false
+          
+          # We wait up to 30 seconds for the app to start and load renderer.
+          for ($i = 0; $i -lt 30; $i++) {
+            Start-Sleep -Seconds 1
+            if ($Process.HasExited) { break }
+            
+            $Out = $Process.StandardOutput.ReadToEnd()
+            $Err = $Process.StandardError.ReadToEnd()
+            $LogOutput += $Out + $Err
+            
+            if ($LogOutput -match "JavaScript error" -or $LogOutput -match "Cannot find module" -or $LogOutput -match "Cannot find package" -or $LogOutput -match "preload-error" -or $LogOutput -match "ERR_") {
+              $ErrorDetected = $true
+              break
+            }
+            if ($LogOutput -match "VITE_STREAMERHUB_API_URL is required") {
+              $ErrorDetected = $true
+              break
+            }
+            # Look for a sign that renderer started successfully (like devtools or just some generic log).
+            # Actually, since it's production, it might not print much. Let's just assume if it stays alive for 10 seconds without errors, it's fine.
+            if ($i -ge 10) {
+              $Ready = $true
+              break
+            }
+          }
+          
+          if (-not $Process.HasExited) {
+            $Process.Kill()
+          }
+          
+          Write-Host "=== SMOKE TEST LOGS ==="
+          Write-Host $LogOutput
+          Write-Host "======================="
+          
+          if ($ErrorDetected) {
+            Write-Error "Smoke test failed: Critical error found in logs."
+            exit 1
+          }
+          
+          if ($Process.HasExited -and $Process.ExitCode -ne 0) {
+            Write-Error "Smoke test failed: Application exited unexpectedly with code $($Process.ExitCode)."
+            exit 1
+          }
+          
+          Write-Host "Runtime smoke test passed!"
 
       - name: Package Windows NSIS installer
         run: pnpm --filter @obs-remote/desktop dist:win:test
@@ -143,7 +215,19 @@ jobs:
 
       - name: Validate Installer Artifact
         run: |
-          $VERSION = $env:GITHUB_REF_NAME.Substring(1)
+          # For tag-based runs, use the tag name. For workflow_dispatch from a branch, read version from package.json.
+          if ("$env:GITHUB_REF" -like 'refs/tags/v*') {
+            $VERSION = $env:GITHUB_REF_NAME.Substring(1)
+            # Ensure tag version matches package.json
+            $PKG_VERSION = node -p "require('./apps/desktop/package.json').version"
+            if ($VERSION -ne $PKG_VERSION) {
+              Write-Error "Tag version ($VERSION) does not match desktop package.json version ($PKG_VERSION)"
+              exit 1
+            }
+          } else {
+            $VERSION = node -p "require('./apps/desktop/package.json').version"
+          }
+          Write-Host "Validating installer for version: $VERSION"
           $ExePath = "apps\desktop\release\StreamerHub-Setup-${VERSION}.exe"
           if (-Not (Test-Path $ExePath)) {
             Write-Error "Installer not found at $ExePath"
@@ -185,7 +269,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: StreamerHub-Windows-${{ github.ref_name }}
+          name: StreamerHub-Windows-${{ github.run_number }}
           path: |
             apps/desktop/release/StreamerHub-Setup-*.exe
             apps/desktop/release/StreamerHub-Setup-*.exe.blockmap

@@ -2,12 +2,32 @@
 @source "../../../../packages/ui";
 
 @layer base {
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f3f4f6;
+    --text-primary: #111827;
+    --text-secondary: #4b5563;
+    --border: #e5e7eb;
+    --input-bg: #ffffff;
+    --accent: #3b82f6;
+  }
+
+  :root[data-theme='dark'] {
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #111111;
+    --text-primary: #ffffff;
+    --text-secondary: #9ca3af;
+    --border: #1f2937;
+    --input-bg: #000000;
+    --accent: #3b82f6;
+  }
+
   body {
     margin: 0;
     padding: 0;
     overflow: hidden;
-    background-color: #0a0a0a;
-    color: white;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
   }
 }
 

@@ -14,12 +14,13 @@ export function Calendar() {
   >([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null);
 
   // New event form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [startAt, setStartAt] = useState('');
-  const [endAt, setEndAt] = useState('');
+  const [startTime, setStartTime] = useState('18:00');
+  const [endTime, setEndTime] = useState('20:00');
 
   useEffect(() => {
     fetchEvents();
@@ -52,26 +53,38 @@ export function Calendar() {
 
   const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !startAt || !endAt) return;
+    if (!title || !startTime || !endTime || !selectedDateStr) return;
 
     try {
+      const startDateTime = new Date(`${selectedDateStr}T${startTime}:00`);
+      const endDateTime = new Date(`${selectedDateStr}T${endTime}:00`);
+
       await window.desktop.api.calendar.create({
         title,
         description,
-        startAt: new Date(startAt).toISOString(),
-        endAt: new Date(endAt).toISOString(),
+        startAt: startDateTime.toISOString(),
+        endAt: endDateTime.toISOString(),
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         sourceType: 'personalPlan',
       });
       setModalOpen(false);
       setTitle('');
       setDescription('');
-      setStartAt('');
-      setEndAt('');
+      setStartTime('18:00');
+      setEndTime('20:00');
       fetchEvents();
     } catch (e: unknown) {
       alert('Ошибка при создании события: ' + (e as Error).message);
     }
+  };
+
+  const openModalForDate = (dateString: string) => {
+    const d = new Date(dateString);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    setSelectedDateStr(`${yyyy}-${mm}-${dd}`);
+    setModalOpen(true);
   };
 
   const prevMonth = () =>
@@ -112,7 +125,14 @@ export function Calendar() {
           </p>
         </div>
         <button
-          onClick={() => setModalOpen(true)}
+          onClick={() => {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            setSelectedDateStr(`${yyyy}-${mm}-${dd}`);
+            setModalOpen(true);
+          }}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white font-medium transition-colors"
         >
           <Plus size={18} />
@@ -171,18 +191,19 @@ export function Calendar() {
               );
 
               return (
-                <div
+                <button
                   key={date}
-                  className="p-2 min-h-[90px] rounded-lg border border-gray-800 bg-[#1A1A1A] hover:border-gray-700 transition-colors flex flex-col"
+                  onClick={() => openModalForDate(dateString)}
+                  className="p-2 min-h-[90px] rounded-lg border border-[var(--border,#1f2937)] bg-[var(--bg-secondary,#111111)] hover:border-[var(--accent,#3b82f6)] transition-colors flex flex-col text-left group"
                 >
-                  <span className="text-sm font-medium text-gray-400 mb-1">
+                  <span className="text-sm font-medium text-gray-400 mb-1 group-hover:text-blue-400 transition-colors">
                     {date}
                   </span>
-                  <div className="flex-1 overflow-hidden space-y-1">
+                  <div className="flex-1 overflow-hidden space-y-1 w-full">
                     {loading ? (
                       <div className="h-4 bg-gray-800 animate-pulse rounded w-full"></div>
                     ) : (
-                      dayEvents.slice(0, 3).map((event) => (
+                      dayEvents.slice(0, 2).map((event) => (
                         <div
                           key={event.id}
                           className="px-1.5 py-1 bg-blue-500/10 border border-blue-500/20 rounded text-xs text-blue-300 truncate"
@@ -196,13 +217,13 @@ export function Calendar() {
                         </div>
                       ))
                     )}
-                    {dayEvents.length > 3 && (
+                    {dayEvents.length > 2 && (
                       <div className="text-[10px] text-gray-500 font-medium px-1">
-                        +{dayEvents.length - 3} ещё
+                        +{dayEvents.length - 2} ещё
                       </div>
                     )}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -255,10 +276,10 @@ export function Calendar() {
                   </label>
                   <input
                     required
-                    type="datetime-local"
-                    value={startAt}
-                    onChange={(e) => setStartAt(e.target.value)}
-                    className="w-full bg-black border border-gray-800 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none [color-scheme:dark]"
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="w-full bg-[var(--input-bg,black)] border border-[var(--border,#1f2937)] rounded-lg px-3 py-2 text-sm focus:border-[var(--accent,#3b82f6)] outline-none [color-scheme:dark]"
                   />
                 </div>
                 <div>
@@ -267,10 +288,10 @@ export function Calendar() {
                   </label>
                   <input
                     required
-                    type="datetime-local"
-                    value={endAt}
-                    onChange={(e) => setEndAt(e.target.value)}
-                    className="w-full bg-black border border-gray-800 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none [color-scheme:dark]"
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="w-full bg-[var(--input-bg,black)] border border-[var(--border,#1f2937)] rounded-lg px-3 py-2 text-sm focus:border-[var(--accent,#3b82f6)] outline-none [color-scheme:dark]"
                   />
                 </div>
               </div>

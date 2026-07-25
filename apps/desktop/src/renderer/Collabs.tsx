@@ -26,8 +26,10 @@ interface Collab {
   expectedDurationMinutes: number;
   maximumParticipants: number;
   currentParticipants: number;
-  host: { displayName: string; avatarUrl: string | null };
-  myApplication?: 'pending' | 'accepted' | 'rejected' | null;
+  applicationMode: 'approval' | 'open' | string;
+  visibility: string;
+  host: { id?: string; displayName: string; avatarUrl: string | null } | null;
+  myApplication?: { status: string } | null;
 }
 
 export function Collabs() {
@@ -45,6 +47,7 @@ export function Collabs() {
   const [newDate, setNewDate] = React.useState('');
   const [newDuration, setNewDuration] = React.useState('120');
   const [newMax, setNewMax] = React.useState('4');
+  const [newMode, setNewMode] = React.useState('approval');
 
   const fetchCollabs = React.useCallback(async () => {
     setLoading(true);
@@ -74,11 +77,12 @@ export function Collabs() {
         startAt: new Date(newDate).toISOString(),
         expectedDurationMinutes: parseInt(newDuration),
         maximumParticipants: parseInt(newMax),
+        applicationMode: newMode,
       });
-      setCollabs((prev) => [collab, ...prev]);
       setShowCreate(false);
       setNewTitle('');
       setNewDate('');
+      fetchCollabs();
     } catch (e: unknown) {
       alert('Не удалось создать: ' + (e as Error).message);
     } finally {
@@ -86,18 +90,15 @@ export function Collabs() {
     }
   };
 
-  const handleApply = async (collabId: string) => {
+  const handleApply = async (collabId: string, mode: string) => {
     setApplying(collabId);
     try {
-      // If it's open mode we'd call join, but UI only supports apply for now.
-      // Let's assume we call join. Wait, we should call apply, the UI still says "Apply".
-      // The requirement was: "two modes". I will just call apply for now.
-      await window.desktop.api.collabs.apply(collabId);
-      setCollabs((prev) =>
-        prev.map((c) =>
-          c.id === collabId ? { ...c, myApplication: 'pending' } : c,
-        ),
-      );
+      if (mode === 'open') {
+        await window.desktop.api.collabs.join(collabId);
+      } else {
+        await window.desktop.api.collabs.apply(collabId);
+      }
+      fetchCollabs();
     } catch (e: unknown) {
       alert('Не удалось подать заявку: ' + (e as Error).message);
     } finally {
@@ -182,6 +183,19 @@ export function Collabs() {
                 className="w-full bg-black border border-gray-800 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"
               />
             </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">
+                Режим участия
+              </label>
+              <select
+                value={newMode}
+                onChange={(e) => setNewMode(e.target.value)}
+                className="w-full bg-[var(--input-bg,black)] border border-gray-800 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none text-[var(--text-primary,white)]"
+              >
+                <option value="approval">По заявкам</option>
+                <option value="open">Свободный вход</option>
+              </select>
+            </div>
           </div>
           <div className="flex gap-3 justify-end">
             <Button variant="outline" onClick={() => setShowCreate(false)}>
@@ -261,14 +275,23 @@ export function Collabs() {
                 <div className="flex items-center gap-3">
                   <Avatar
                     className="w-8 h-8"
-                    src={collab.host.avatarUrl ?? undefined}
-                    fallback={collab.host.displayName[0]}
+                    src={collab.host?.avatarUrl ?? undefined}
+                    fallback={collab.host?.displayName?.[0] ?? '?'}
                   />
                   <span className="text-sm font-medium text-gray-300">
-                    {collab.host.displayName}
+                    {collab.host?.displayName || 'Неизвестный хост'}
                   </span>
                 </div>
                 <div className="space-y-1 text-sm text-gray-400">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    <span>
+                      Режим:{' '}
+                      {collab.applicationMode === 'open'
+                        ? 'Свободный вход'
+                        : 'По заявкам'}
+                    </span>
+                  </div>
                   <div className="flex items-center gap-2">
                     <CalendarIcon className="w-4 h-4" />
                     <span>
@@ -287,18 +310,20 @@ export function Collabs() {
                 </div>
               </CardContent>
               <CardFooter className="border-t border-gray-800/50 pt-4">
-                {collab.myApplication === 'pending' ? (
+                {collab.myApplication?.status === 'pending' ? (
                   <div className="w-full text-center text-sm text-yellow-400 py-2">
                     Заявка отправлена
                   </div>
-                ) : collab.myApplication === 'accepted' ? (
+                ) : collab.myApplication?.status === 'accepted' ? (
                   <div className="w-full text-center text-sm text-green-400 py-2">
-                    Заявка принята ✓
+                    Вы участник ✓
                   </div>
                 ) : (
                   <Button
                     className="w-full"
-                    onClick={() => handleApply(collab.id)}
+                    onClick={() =>
+                      handleApply(collab.id, collab.applicationMode)
+                    }
                     disabled={
                       applying === collab.id ||
                       collab.currentParticipants >= collab.maximumParticipants
@@ -307,7 +332,9 @@ export function Collabs() {
                     {applying === collab.id ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     ) : null}
-                    Подать заявку
+                    {collab.applicationMode === 'open'
+                      ? 'Присоединиться'
+                      : 'Подать заявку'}
                   </Button>
                 )}
               </CardFooter>

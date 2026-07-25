@@ -1,5 +1,4 @@
-import { autoUpdater } from 'electron-updater';
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, app } from 'electron';
 
 export type UpdaterState =
   | { status: 'idle' }
@@ -10,12 +9,20 @@ export type UpdaterState =
   | { status: 'downloaded'; version: string }
   | { status: 'error'; message: string };
 
-let currentState: UpdaterState = { status: 'idle' };
+export async function setupUpdater(mainWindow: BrowserWindow) {
+  let currentState: UpdaterState = { status: 'idle' };
 
-export function setupUpdater(mainWindow: BrowserWindow) {
-  if (process.env.NODE_ENV === 'development') {
+  ipcMain.handle('updater:getState', () => {
+    return currentState;
+  });
+
+  if (!app.isPackaged) {
     return;
   }
+
+  const imported = await import('electron-updater');
+  const updaterPackage = imported.default ?? imported;
+  const autoUpdater = updaterPackage.autoUpdater;
 
   // Basic logging
   autoUpdater.logger = console;
@@ -73,10 +80,6 @@ export function setupUpdater(mainWindow: BrowserWindow) {
   autoUpdater.on('update-downloaded', (info) =>
     updateState({ status: 'downloaded', version: info.version }),
   );
-
-  ipcMain.handle('updater:getState', () => {
-    return currentState;
-  });
 
   ipcMain.on('updater:check', () => {
     if (

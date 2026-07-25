@@ -1,5 +1,9 @@
-import { app, BrowserWindow, shell, ipcMain } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, dialog } from 'electron';
 import path, { join } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import { setupAuthHandlers, handleDeepLink } from './auth';
 import { setupObsHandlers } from './obs';
 import { setupSignaling } from './signaling';
@@ -60,10 +64,39 @@ if (!gotTheLock) {
       },
     );
 
-    mainWindow.webContents.on('render-process-gone', (event, details) => {
+    mainWindow.webContents.on('render-process-gone', async (event, details) => {
       console.error(
         `Render process gone. Reason: ${details.reason}, exitCode: ${details.exitCode}`,
       );
+      if (details.reason !== 'clean-exit') {
+        const result = await dialog.showMessageBox(mainWindow!, {
+          type: 'error',
+          title: 'Сбой процесса',
+          message: 'Процесс отрисовки завершился с ошибкой.',
+          detail: `Причина: ${details.reason}\nКод завершения: ${details.exitCode}\n\nПожалуйста, перезапустите приложение или перезагрузите страницу.`,
+          buttons: ['Перезагрузить', 'Закрыть'],
+          defaultId: 0,
+        });
+        if (result.response === 0) {
+          mainWindow?.webContents.reload();
+        }
+      }
+    });
+
+    mainWindow.webContents.on('unresponsive', async () => {
+      console.error('Render process is unresponsive');
+      const result = await dialog.showMessageBox(mainWindow!, {
+        type: 'warning',
+        title: 'Приложение не отвечает',
+        message: 'Процесс отрисовки перестал отвечать.',
+        detail:
+          'Вы можете подождать или перезагрузить приложение прямо сейчас.',
+        buttons: ['Перезагрузить', 'Подождать'],
+        defaultId: 0,
+      });
+      if (result.response === 0) {
+        mainWindow?.webContents.reload();
+      }
     });
 
     mainWindow.webContents.on('preload-error', (event, preloadPath, error) => {
@@ -111,6 +144,8 @@ if (!gotTheLock) {
     }
 
     // Register IPC handlers
+    ipcMain.handle('app:getVersion', () => app.getVersion());
+
     ipcMain.handle('shell:openExternal', (event, url: string) => {
       const allowlist = ['github.com', 'twitch.tv'];
       try {
@@ -138,7 +173,10 @@ if (!gotTheLock) {
       setupSignaling();
       setupRemoteSessions();
       setupApiHandlers();
-      setupUpdater(mainWindow);
+      void setupUpdater(mainWindow).catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('Updater initialization failed:', message);
+      });
     }
 
     app.on('activate', function () {

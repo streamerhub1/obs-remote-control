@@ -122,9 +122,11 @@ export class ObsAdapter {
     return this.snapshot;
   }
 
-  public async connect(config: ObsConnectionConfig): Promise<boolean> {
+  public async connect(
+    config: ObsConnectionConfig,
+  ): Promise<{ success: boolean; error?: string }> {
     this.config = config;
-    this.shouldReconnect = true;
+    this.shouldReconnect = false; // Only reconnect if we successfully connect first
 
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
@@ -143,15 +145,45 @@ export class ObsAdapter {
       await Promise.race([connectPromise, timeoutPromise]);
 
       this.reconnectAttempts = 0;
+      this.shouldReconnect = true; // Safe to auto-reconnect now
       this.changeState('connected');
 
       await this.fullResync();
 
-      return true;
+      return { success: true };
     } catch (e: unknown) {
       this.changeState('error');
       this.handleDisconnect();
-      return false;
+      const msg = e instanceof Error ? e.message : 'Connection failed';
+
+      // Classify error into a typed reason — never expose raw exception text to renderer
+      let errorReason: string;
+      if (msg.includes('ECONNREFUSED') || msg.includes('ENOTFOUND')) {
+        errorReason = 'obs_not_running';
+      } else if (msg === 'timeout') {
+        errorReason = 'timeout';
+      } else if (
+        msg.toLowerCase().includes('authentication') ||
+        msg.toLowerCase().includes('auth') ||
+        msg.includes('4009') // OBS WS close code for AuthenticationFailed
+      ) {
+        errorReason = 'authentication_required';
+      } else if (
+        msg.toLowerCase().includes('password') ||
+        msg.includes('NotIdentified') ||
+        msg.includes('4008') // OBS WS close code for InvalidSecret
+      ) {
+        errorReason = 'wrong_password';
+      } else if (
+        msg.toLowerCase().includes('version') ||
+        msg.includes('4006')
+      ) {
+        errorReason = 'unsupported';
+      } else {
+        errorReason = 'unknown';
+      }
+
+      return { success: false, error: errorReason };
     }
   }
 
