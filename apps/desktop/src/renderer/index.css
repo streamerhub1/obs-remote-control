@@ -26,8 +26,8 @@
     margin: 0;
     padding: 0;
     overflow: hidden;
-    background-color: #0a0a0a;
-    color: white;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
   }
 }
 

@@ -143,7 +143,19 @@ jobs:
 
       - name: Validate Installer Artifact
         run: |
-          $VERSION = $env:GITHUB_REF_NAME.Substring(1)
+          # For tag-based runs, use the tag name. For workflow_dispatch from a branch, read version from package.json.
+          if ("$env:GITHUB_REF" -like 'refs/tags/v*') {
+            $VERSION = $env:GITHUB_REF_NAME.Substring(1)
+            # Ensure tag version matches package.json
+            $PKG_VERSION = node -p "require('./apps/desktop/package.json').version"
+            if ($VERSION -ne $PKG_VERSION) {
+              Write-Error "Tag version ($VERSION) does not match desktop package.json version ($PKG_VERSION)"
+              exit 1
+            }
+          } else {
+            $VERSION = node -p "require('./apps/desktop/package.json').version"
+          }
+          Write-Host "Validating installer for version: $VERSION"
           $ExePath = "apps\desktop\release\StreamerHub-Setup-${VERSION}.exe"
           if (-Not (Test-Path $ExePath)) {
             Write-Error "Installer not found at $ExePath"
@@ -185,7 +197,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: StreamerHub-Windows-${{ github.ref_name }}
+          name: StreamerHub-Windows-${{ github.run_number }}
           path: |
             apps/desktop/release/StreamerHub-Setup-*.exe
             apps/desktop/release/StreamerHub-Setup-*.exe.blockmap

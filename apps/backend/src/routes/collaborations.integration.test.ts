@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+﻿import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fastify, { FastifyInstance } from 'fastify';
 import { collaborationsRoutes } from './collaborations.js';
 import { initDb, getDb } from '../db.js';
@@ -106,7 +106,7 @@ describe('Collaborations API Integration', () => {
     expect(data).toEqual({ data: [], nextCursor: null });
   });
 
-  it('should create an open collaboration and join', async () => {
+  it('should create an open collaboration and GET returns enriched data', async () => {
     currentUserId = streamerId;
 
     const createRes = await app.inject({
@@ -127,6 +127,39 @@ describe('Collaborations API Integration', () => {
     expect(createdCollab.title).toBe('Epic Stream Collab');
     collaborationId = createdCollab.id;
 
+    // GET as owner — should see 1 collab with enriched host, 1 participant, myApplication accepted
+    currentUserId = streamerId;
+    const listRes = await app.inject({
+      method: 'GET',
+      url: '/collaborations',
+    });
+    expect(listRes.statusCode).toBe(200);
+    const listData = JSON.parse(listRes.payload);
+    expect(listData.data.length).toBeGreaterThanOrEqual(1);
+
+    const collab = listData.data.find(
+      (c: { id: string }) => c.id === collaborationId,
+    );
+    expect(collab).toBeDefined();
+
+    // host fields are populated
+    expect(collab.host).not.toBeNull();
+    expect(collab.host.id).toBe(streamerId);
+    expect(collab.host.displayName).toBe('Collab Streamer');
+
+    // owner is automatically a participant (1 participant)
+    expect(collab.currentParticipants).toBe(1);
+
+    // applicationMode
+    expect(collab.applicationMode).toBe('open');
+
+    // owner's myApplication should be accepted (via participant row)
+    expect(collab.myApplication).not.toBeNull();
+    expect(collab.myApplication.status).toBe('accepted');
+  });
+
+  it('should join open collaboration and GET reflects 2 participants', async () => {
+    // Participant joins the open collaboration
     currentUserId = participantId;
 
     const joinRes = await app.inject({
@@ -135,27 +168,22 @@ describe('Collaborations API Integration', () => {
     });
     expect(joinRes.statusCode).toBe(200);
 
-    const db = getDb();
-    const participants = await db
-      .select()
-      .from(collaborationParticipants)
-      .where(eq(collaborationParticipants.collaborationId, collaborationId));
+    // GET as participant — should now see 2 participants
+    const listRes = await app.inject({
+      method: 'GET',
+      url: '/collaborations',
+    });
+    expect(listRes.statusCode).toBe(200);
+    const listData = JSON.parse(listRes.payload);
 
-    expect(participants).toHaveLength(2);
+    const collab = listData.data.find(
+      (c: { id: string }) => c.id === collaborationId,
+    );
+    expect(collab).toBeDefined();
+    expect(collab.currentParticipants).toBe(2);
 
-    expect(
-      participants.some(
-        (participant) =>
-          participant.userId === streamerId && participant.role === 'owner',
-      ),
-    ).toBe(true);
-
-    expect(
-      participants.some(
-        (participant) =>
-          participant.userId === participantId &&
-          participant.role === 'participant',
-      ),
-    ).toBe(true);
+    // participant myApplication should be accepted (joined via participant row)
+    expect(collab.myApplication).not.toBeNull();
+    expect(collab.myApplication.status).toBe('accepted');
   });
 });

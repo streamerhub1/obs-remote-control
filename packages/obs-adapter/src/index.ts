@@ -155,10 +155,35 @@ export class ObsAdapter {
       this.changeState('error');
       this.handleDisconnect();
       const msg = e instanceof Error ? e.message : 'Connection failed';
-      if (msg.includes('ECONNREFUSED')) {
-        return { success: false, error: 'obs_not_running' };
+
+      // Classify error into a typed reason — never expose raw exception text to renderer
+      let errorReason: string;
+      if (msg.includes('ECONNREFUSED') || msg.includes('ENOTFOUND')) {
+        errorReason = 'obs_not_running';
+      } else if (msg === 'timeout') {
+        errorReason = 'timeout';
+      } else if (
+        msg.toLowerCase().includes('authentication') ||
+        msg.toLowerCase().includes('auth') ||
+        msg.includes('4009') // OBS WS close code for AuthenticationFailed
+      ) {
+        errorReason = 'authentication_required';
+      } else if (
+        msg.toLowerCase().includes('password') ||
+        msg.includes('NotIdentified') ||
+        msg.includes('4008') // OBS WS close code for InvalidSecret
+      ) {
+        errorReason = 'wrong_password';
+      } else if (
+        msg.toLowerCase().includes('version') ||
+        msg.includes('4006')
+      ) {
+        errorReason = 'unsupported';
+      } else {
+        errorReason = 'unknown';
       }
-      return { success: false, error: msg };
+
+      return { success: false, error: errorReason };
     }
   }
 

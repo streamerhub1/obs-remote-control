@@ -10,7 +10,7 @@ import {
   auditLogs,
   users,
 } from '@obs-remote/database';
-import { eq, and, sql, desc } from 'drizzle-orm';
+import { eq, and, sql, desc, inArray } from 'drizzle-orm';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 
 export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
@@ -64,7 +64,8 @@ export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
 
       const collabIds = collabs.map((c) => c.id);
 
-      // Get hosts
+      // Get hosts using inArray on unique ownerIds
+      const ownerIds = [...new Set(collabs.map((collab) => collab.ownerId))];
       const hosts = await db
         .select({
           id: users.id,
@@ -72,9 +73,7 @@ export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
           avatarUrl: users.avatarUrl,
         })
         .from(users)
-        .where(
-          sql`${users.id} IN (SELECT "ownerId" FROM collaborations WHERE id IN ${collabIds})`,
-        );
+        .where(inArray(users.id, ownerIds));
 
       // Get participants count
       const participants = await db
@@ -83,9 +82,7 @@ export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
           count: sql<number>`count(*)`,
         })
         .from(collaborationParticipants)
-        .where(
-          sql`${collaborationParticipants.collaborationId} IN ${collabIds}`,
-        )
+        .where(inArray(collaborationParticipants.collaborationId, collabIds))
         .groupBy(collaborationParticipants.collaborationId);
 
       // Get my applications
@@ -94,7 +91,7 @@ export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
         .from(collaborationApplications)
         .where(
           and(
-            sql`${collaborationApplications.collaborationId} IN ${collabIds}`,
+            inArray(collaborationApplications.collaborationId, collabIds),
             eq(collaborationApplications.userId, userId),
           ),
         );
@@ -105,7 +102,7 @@ export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
         .from(collaborationParticipants)
         .where(
           and(
-            sql`${collaborationParticipants.collaborationId} IN ${collabIds}`,
+            inArray(collaborationParticipants.collaborationId, collabIds),
             eq(collaborationParticipants.userId, userId),
           ),
         );

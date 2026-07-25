@@ -4,6 +4,7 @@ import { Button } from '@obs-remote/ui';
 interface ErrorBoundaryProps {
   children: React.ReactNode;
   fallbackType?: 'root' | 'route';
+  onGoHome?: () => void;
 }
 
 interface ErrorBoundaryState {
@@ -36,10 +37,12 @@ export class ErrorBoundary extends React.Component<
 
   handleGoHome = () => {
     this.setState({ hasError: false, error: null });
-    // In a real app we'd dispatch a navigation event or use React Router,
-    // but here we might just reload or reset state. Since this app uses state-based routing:
-    window.location.hash = ''; // simplistic way to reset to home if hash based, or just reload
-    window.location.reload();
+    if (this.props.onGoHome) {
+      this.props.onGoHome();
+    } else {
+      // fallback for root boundary: full reload
+      window.location.reload();
+    }
   };
 
   render() {
@@ -92,6 +95,11 @@ export const RootErrorBoundary: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => <ErrorBoundary fallbackType="root">{children}</ErrorBoundary>;
 
-export const RouteErrorBoundary: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => <ErrorBoundary fallbackType="route">{children}</ErrorBoundary>;
+export const RouteErrorBoundary: React.FC<{
+  children: React.ReactNode;
+  onGoHome?: () => void;
+}> = ({ children, onGoHome }) => (
+  <ErrorBoundary fallbackType="route" onGoHome={onGoHome}>
+    {children}
+  </ErrorBoundary>
+);

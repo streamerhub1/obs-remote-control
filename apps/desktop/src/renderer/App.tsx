@@ -365,6 +365,8 @@ export default function App() {
 
   const handleLogout = () => window.desktop?.auth?.logout();
 
+  const [obsPasswordVisible, setObsPasswordVisible] = React.useState(false);
+
   const handleConnectOBS = async () => {
     if (!window.desktop?.obs) return;
     setObsState('connecting');
@@ -376,14 +378,15 @@ export default function App() {
         password: obsPassword,
       })) as { success: boolean; error?: string };
       if (!result.success) {
-        setObsError(
-          result.error === 'obs_not_running'
-            ? 'obs_not_running'
-            : result.error || 'Неизвестная ошибка',
-        );
+        const err = result.error || 'unknown';
+        setObsError(err);
+        // Show password field automatically if auth is required
+        if (err === 'authentication_required' || err === 'wrong_password') {
+          setObsPasswordVisible(true);
+        }
       }
     } catch (e: unknown) {
-      setObsError((e as Error).message);
+      setObsError('unknown');
     }
   };
 
@@ -421,8 +424,20 @@ export default function App() {
 
   return (
     <AuthGate>
-      <div className="flex h-screen w-screen bg-[#0A0A0A] text-white font-sans overflow-hidden drag-region">
-        <aside className="w-64 bg-[#111111] border-r border-gray-800 flex flex-col no-drag">
+      <div
+        className="flex h-screen w-screen font-sans overflow-hidden drag-region"
+        style={{
+          backgroundColor: 'var(--bg-primary)',
+          color: 'var(--text-primary)',
+        }}
+      >
+        <aside
+          className="w-64 border-r flex flex-col no-drag"
+          style={{
+            backgroundColor: 'var(--bg-secondary)',
+            borderColor: 'var(--border)',
+          }}
+        >
           <div className="p-6 drag-region">
             <h1 className="text-xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent pointer-events-none">
               StreamerHub
@@ -541,7 +556,10 @@ export default function App() {
 
         <main className="flex-1 overflow-y-auto p-8 pt-12 no-drag">
           <div className="max-w-5xl mx-auto space-y-8">
-            <RouteErrorBoundary>
+            <RouteErrorBoundary
+              key={currentRoute}
+              onGoHome={() => setCurrentRoute('home')}
+            >
               {currentRoute === 'my_obs' && (
                 <>
                   <header>
@@ -591,13 +609,48 @@ export default function App() {
                                 Настройки сервера WebSocket).
                               </p>
                             </div>
+                          ) : obsError === 'timeout' ? (
+                            <div className="p-4 bg-orange-500/10 border border-orange-500/20 rounded-lg mb-4">
+                              <h4 className="text-orange-400 font-medium mb-1">
+                                Превышено время ожидания
+                              </h4>
+                              <p className="text-orange-200/70 text-sm">
+                                OBS не отвечает. Убедитесь, что OBS Studio
+                                запущен и WebSocket сервер включён.
+                              </p>
+                            </div>
+                          ) : obsError === 'authentication_required' ||
+                            obsError === 'wrong_password' ? (
+                            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg mb-4">
+                              <h4 className="text-red-400 font-medium mb-1">
+                                {obsError === 'wrong_password'
+                                  ? 'Неверный пароль'
+                                  : 'Требуется пароль'}
+                              </h4>
+                              <p className="text-red-200/70 text-sm">
+                                {obsError === 'wrong_password'
+                                  ? 'Введённый пароль неверен. Проверьте настройки WebSocket в OBS.'
+                                  : 'OBS защищён паролем. Введите пароль WebSocket ниже.'}
+                              </p>
+                            </div>
+                          ) : obsError === 'unsupported' ? (
+                            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg mb-4">
+                              <h4 className="text-red-400 font-medium mb-1">
+                                Версия OBS не поддерживается
+                              </h4>
+                              <p className="text-red-200/70 text-sm">
+                                Обновите OBS Studio и плагин WebSocket до
+                                последней версии.
+                              </p>
+                            </div>
                           ) : obsError ? (
                             <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg mb-4">
                               <h4 className="text-red-400 font-medium mb-1">
                                 Ошибка подключения
                               </h4>
                               <p className="text-red-200/70 text-sm">
-                                {obsError}
+                                Не удалось подключиться к OBS. Попробуйте ещё
+                                раз.
                               </p>
                             </div>
                           ) : (
@@ -618,26 +671,43 @@ export default function App() {
                                 : 'Подключить OBS'}
                           </button>
 
-                          <div className="mt-4 pt-4 border-t border-gray-800 space-y-3">
-                            <label className="text-sm text-gray-400 block">
-                              Пароль WebSocket (если установлен):
-                            </label>
-                            <input
-                              type="password"
-                              value={obsPassword}
-                              onChange={(e) => setObsPassword(e.target.value)}
-                              placeholder="Пароль"
-                              className="w-full bg-black border border-gray-800 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none transition-colors"
-                            />
-                            {obsError && (
+                          {/* Password field: show when auth error or user clicks toggle */}
+                          {(obsPasswordVisible ||
+                            obsError === 'authentication_required' ||
+                            obsError === 'wrong_password') && (
+                            <div className="mt-4 pt-4 border-t border-gray-800 space-y-3">
+                              <label className="text-sm text-gray-400 block">
+                                Пароль WebSocket:
+                              </label>
+                              <input
+                                type="password"
+                                value={obsPassword}
+                                onChange={(e) => setObsPassword(e.target.value)}
+                                placeholder="Пароль"
+                                className="w-full bg-black border border-gray-800 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none transition-colors"
+                              />
+                              {obsError && (
+                                <button
+                                  onClick={handleClearObsSettings}
+                                  className="w-full py-2 mt-2 text-sm text-gray-500 hover:text-gray-300 transition-colors"
+                                >
+                                  Сбросить сохраненные настройки
+                                </button>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Link to show password field for users with a password-protected OBS */}
+                          {!obsPasswordVisible &&
+                            obsError !== 'authentication_required' &&
+                            obsError !== 'wrong_password' && (
                               <button
-                                onClick={handleClearObsSettings}
-                                className="w-full py-2 mt-2 text-sm text-gray-500 hover:text-gray-300 transition-colors"
+                                onClick={() => setObsPasswordVisible(true)}
+                                className="text-xs text-gray-500 hover:text-gray-400 transition-colors"
                               >
-                                Сбросить сохраненные настройки
+                                OBS защищён паролем?
                               </button>
                             )}
-                          </div>
                         </div>
                       )}
                     </div>

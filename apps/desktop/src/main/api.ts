@@ -45,6 +45,21 @@ const BackendProfileResponseSchema = z.object({
   }),
 });
 
+function normalizeProfile(raw: unknown) {
+  const parsed = BackendProfileResponseSchema.parse(raw);
+  return {
+    id: parsed.user.id,
+    displayName: parsed.user.displayName,
+    twitchLogin: parsed.user.twitchLogin,
+    avatarUrl: parsed.user.avatarUrl,
+    bio: parsed.bio,
+    languages: parsed.languages,
+    categories: parsed.categories,
+    timezone: parsed.timezone,
+    twitchUrl: `https://twitch.tv/${parsed.user.twitchLogin}`,
+  };
+}
+
 const CollaborationAuthorSchema = z.object({
   id: z.string(),
   displayName: z.string(),
@@ -233,26 +248,17 @@ export function setupApiHandlers() {
 
   ipcMain.handle('api:profile:getMe', async () => {
     const raw = await apiFetch('/api/v1/profiles/me');
-    const parsed = BackendProfileResponseSchema.parse(raw);
-    return {
-      id: parsed.user.id,
-      displayName: parsed.user.displayName,
-      twitchLogin: parsed.user.twitchLogin,
-      avatarUrl: parsed.user.avatarUrl,
-      bio: parsed.bio,
-      languages: parsed.languages,
-      categories: parsed.categories,
-      timezone: parsed.timezone,
-      twitchUrl: `https://twitch.tv/${parsed.user.twitchLogin}`,
-    };
+    return normalizeProfile(raw);
   });
   ipcMain.handle('api:profile:updateMe', async (_, data: unknown) => {
-    const raw = await apiFetch('/api/v1/profiles/me', {
+    // 1. Apply the update
+    await apiFetch('/api/v1/profiles/me', {
       method: 'PATCH',
       body: JSON.stringify(z.record(z.unknown()).parse(data)),
     });
-    // Optional: we can return raw or just rely on a refetch.
-    return raw;
+    // 2. Refetch full profile so we always return a flat normalized UserProfile
+    const fresh = await apiFetch('/api/v1/profiles/me');
+    return normalizeProfile(fresh);
   });
 
   ipcMain.handle('api:notifications:list', async () =>
