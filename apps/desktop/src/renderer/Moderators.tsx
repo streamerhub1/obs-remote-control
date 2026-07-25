@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Shield, UserPlus, Trash, CheckCircle, XCircle } from 'lucide-react';
+import { Shield, UserPlus, Trash, CheckCircle, XCircle, Copy, Check } from 'lucide-react';
 
 export function Moderators({
   onConnectRemote,
 }: {
   onConnectRemote: (token: string) => void;
 }) {
+  const [myInviteCode, setMyInviteCode] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [asStreamer, setAsStreamer] = useState<
     Array<{
       id: string;
@@ -38,6 +40,22 @@ export function Moderators({
   const [inviteIdentifier, setInviteIdentifier] = useState('');
   const [managingPermsFor, setManagingPermsFor] = useState<string | null>(null);
   const [currentPerms, setCurrentPerms] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    window.desktop.api.profile
+      .getMe()
+      .then((p: { inviteCode?: string | null } | null) => {
+        if (p?.inviteCode) setMyInviteCode(p.inviteCode);
+      })
+      .catch(() => {});
+  }, []);
+
+  const copyInviteCode = () => {
+    if (!myInviteCode) return;
+    navigator.clipboard.writeText(myInviteCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const fetchRelationships = async () => {
     try {
@@ -134,6 +152,28 @@ export function Moderators({
           Управление доступом к вашему OBS и ваши права модератора.
         </p>
       </header>
+
+      {/* Invite code display */}
+      {myInviteCode && (
+        <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-xs text-purple-300 font-medium mb-1">Ваш Invite Code</p>
+            <p className="text-lg font-mono font-bold text-purple-200 tracking-wider">
+              {myInviteCode}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Отправьте этот код стримеру, чтобы он пригласил вас модератором
+            </p>
+          </div>
+          <button
+            onClick={copyInviteCode}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-700/40 hover:bg-purple-700/60 text-purple-200 rounded-lg transition-colors border border-purple-600/30 text-sm"
+          >
+            {copied ? <Check size={16} /> : <Copy size={16} />}
+            {copied ? 'Скопировано!' : 'Копировать'}
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Streamer Section: People I have invited */}
