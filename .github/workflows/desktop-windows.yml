@@ -153,8 +153,13 @@ jobs:
 
           Start-Sleep -Seconds 15
 
-          if (-not $Process.HasExited) {
-            $Process.Kill()
+          $ExitedEarly = $Process.HasExited
+          $EarlyExitCode = $null
+
+          if ($ExitedEarly) {
+            $EarlyExitCode = $Process.ExitCode
+          } else {
+            taskkill /PID $Process.Id /T /F | Out-Null
           }
 
           Start-Sleep -Seconds 1
@@ -179,8 +184,8 @@ jobs:
             exit 1
           }
 
-          if ($Process.HasExited -and $Process.ExitCode -ne 0) {
-            Write-Error "Smoke test failed: Application exited unexpectedly with code $($Process.ExitCode)."
+          if ($ExitedEarly) {
+            Write-Error "Smoke test failed: Application exited before the 15-second validation window. Exit code: $EarlyExitCode"
             exit 1
           }
 
