@@ -42,8 +42,8 @@ export function Feed() {
     setLoading(true);
     setError(null);
     try {
-      const data = await window.desktop.api.feed.list();
-      setPosts(data.posts ?? data ?? []);
+      const response = await window.desktop.api.feed.list();
+      setPosts(response.data);
     } catch (e: unknown) {
       setError((e as Error).message);
     } finally {
@@ -60,11 +60,11 @@ export function Feed() {
     if (!newPostContent.trim()) return;
     setPosting(true);
     try {
-      const post = await window.desktop.api.feed.create({
+      await window.desktop.api.feed.create({
         content: newPostContent.trim(),
       });
-      setPosts((prev) => [post, ...prev]);
       setNewPostContent('');
+      await fetchPosts();
     } catch (e: unknown) {
       alert('Не удалось опубликовать: ' + (e as Error).message);
     } finally {
@@ -74,10 +74,15 @@ export function Feed() {
 
   const handleLike = async (postId: string) => {
     try {
-      await window.desktop.api.feed.like(postId);
+      const result = await window.desktop.api.feed.like(postId);
       setPosts((prev) =>
-        prev.map((p) =>
-          p.id === postId ? { ...p, likesCount: p.likesCount + 1 } : p,
+        prev.map((post) =>
+          post.id === postId
+            ? {
+                ...post,
+                likesCount: Math.max(0, post.likesCount + (result.liked ? 1 : -1)),
+              }
+            : post,
         ),
       );
     } catch {

@@ -27,6 +27,7 @@ import { Notifications } from './Notifications';
 import { Settings } from './Settings';
 import { Home as HomeView } from './Home';
 import { AuthGate } from './AuthGate';
+import { RouteErrorBoundary } from './ErrorBoundary';
 
 type UpdaterState =
   | { status: 'idle' }
@@ -509,146 +510,148 @@ export default function App() {
 
         <main className="flex-1 overflow-y-auto p-8 pt-12 no-drag">
           <div className="max-w-5xl mx-auto space-y-8">
-            {currentRoute === 'my_obs' && (
-              <>
-                <header>
-                  <h2 className="text-3xl font-semibold text-gray-100">
-                    Мой OBS
-                  </h2>
-                  <p className="text-gray-400 mt-2">
-                    Локальное управление вашим OBS Studio.
-                  </p>
-                </header>
+            <RouteErrorBoundary>
+              {currentRoute === 'my_obs' && (
+                <>
+                  <header>
+                    <h2 className="text-3xl font-semibold text-gray-100">
+                      Мой OBS
+                    </h2>
+                    <p className="text-gray-400 mt-2">
+                      Локальное управление вашим OBS Studio.
+                    </p>
+                  </header>
 
-                <div className="max-w-md mx-auto">
-                  <div className="bg-[#161616] border border-gray-800 rounded-xl p-6 shadow-lg">
-                    <h3 className="text-lg font-medium flex items-center gap-2 mb-4">
-                      <Activity
-                        size={20}
-                        className={
-                          obsState === 'connected'
-                            ? 'text-green-400'
-                            : 'text-red-400'
-                        }
-                      />{' '}
-                      Подключение OBS Studio
-                    </h3>
-                    {obsState === 'connected' ? (
-                      <div className="space-y-4">
-                        <div className="py-2 px-4 bg-green-500/10 text-green-400 rounded-lg text-sm border border-green-500/20 text-center">
-                          Успешно подключено к OBS
-                        </div>
-                        <button
-                          onClick={() => window.desktop.obs.disconnect()}
-                          className="w-full py-2 bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-lg transition-colors border border-red-500/20"
-                        >
-                          Отключиться
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <p className="text-gray-400 text-sm mb-4">
-                          Нажмите кнопку ниже для подключения к локальному OBS
-                          Studio с параметрами по умолчанию (127.0.0.1:4455).
-                        </p>
-                        <button
-                          onClick={handleConnectOBS}
-                          className="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-lg text-white font-medium transition-colors shadow-lg shadow-blue-500/20"
-                        >
-                          Подключить OBS
-                        </button>
-
-                        <div className="mt-4 pt-4 border-t border-gray-800">
+                  <div className="max-w-md mx-auto">
+                    <div className="bg-[#161616] border border-gray-800 rounded-xl p-6 shadow-lg">
+                      <h3 className="text-lg font-medium flex items-center gap-2 mb-4">
+                        <Activity
+                          size={20}
+                          className={
+                            obsState === 'connected'
+                              ? 'text-green-400'
+                              : 'text-red-400'
+                          }
+                        />{' '}
+                        Подключение OBS Studio
+                      </h3>
+                      {obsState === 'connected' ? (
+                        <div className="space-y-4">
+                          <div className="py-2 px-4 bg-green-500/10 text-green-400 rounded-lg text-sm border border-green-500/20 text-center">
+                            Успешно подключено к OBS
+                          </div>
                           <button
-                            onClick={() => setObsSettingsOpen(!obsSettingsOpen)}
-                            className="text-sm text-gray-500 hover:text-gray-300"
+                            onClick={() => window.desktop.obs.disconnect()}
+                            className="w-full py-2 bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-lg transition-colors border border-red-500/20"
                           >
-                            Расширенные настройки
+                            Отключиться
                           </button>
-                          {obsSettingsOpen && (
-                            <div className="space-y-3 mt-3">
-                              <div className="flex gap-3">
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <p className="text-gray-400 text-sm mb-4">
+                            Нажмите кнопку ниже для подключения к локальному OBS
+                            Studio с параметрами по умолчанию (127.0.0.1:4455).
+                          </p>
+                          <button
+                            onClick={handleConnectOBS}
+                            className="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-lg text-white font-medium transition-colors shadow-lg shadow-blue-500/20"
+                          >
+                            Подключить OBS
+                          </button>
+
+                          <div className="mt-4 pt-4 border-t border-gray-800">
+                            <button
+                              onClick={() => setObsSettingsOpen(!obsSettingsOpen)}
+                              className="text-sm text-gray-500 hover:text-gray-300"
+                            >
+                              Расширенные настройки
+                            </button>
+                            {obsSettingsOpen && (
+                              <div className="space-y-3 mt-3">
+                                <div className="flex gap-3">
+                                  <input
+                                    type="text"
+                                    value={obsHost}
+                                    onChange={(e) => setObsHost(e.target.value)}
+                                    placeholder="IP"
+                                    className="flex-1 bg-black border border-gray-800 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none"
+                                  />
+                                  <input
+                                    type="number"
+                                    value={obsPort}
+                                    onChange={(e) =>
+                                      setObsPort(parseInt(e.target.value))
+                                    }
+                                    placeholder="Port"
+                                    className="w-24 bg-black border border-gray-800 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none"
+                                  />
+                                </div>
                                 <input
-                                  type="text"
-                                  value={obsHost}
-                                  onChange={(e) => setObsHost(e.target.value)}
-                                  placeholder="IP"
-                                  className="flex-1 bg-black border border-gray-800 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none"
-                                />
-                                <input
-                                  type="number"
-                                  value={obsPort}
-                                  onChange={(e) =>
-                                    setObsPort(parseInt(e.target.value))
-                                  }
-                                  placeholder="Port"
-                                  className="w-24 bg-black border border-gray-800 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none"
+                                  type="password"
+                                  value={obsPassword}
+                                  onChange={(e) => setObsPassword(e.target.value)}
+                                  placeholder="Пароль (опционально)"
+                                  className="w-full bg-black border border-gray-800 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none"
                                 />
                               </div>
-                              <input
-                                type="password"
-                                value={obsPassword}
-                                onChange={(e) => setObsPassword(e.target.value)}
-                                placeholder="Пароль (опционально)"
-                                className="w-full bg-black border border-gray-800 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none"
-                              />
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                {obsState === 'connected' && (
-                  <ObsDashboard dataSource={localObsDataSource} />
-                )}
-              </>
-            )}
+                  {obsState === 'connected' && (
+                    <ObsDashboard dataSource={localObsDataSource} />
+                  )}
+                </>
+              )}
 
-            {currentRoute === 'remote_obs' && (
-              <>
-                <header>
-                  <h2 className="text-3xl font-semibold text-gray-100">
-                    Удаленный OBS
-                  </h2>
-                  <p className="text-gray-400 mt-2">
-                    Управление OBS стримера через WebSocket Relay.
-                  </p>
-                </header>
-
-                {!remoteObsDataSource ? (
-                  <div className="bg-[#161616] border border-gray-800 rounded-xl p-6 shadow-lg text-center">
-                    <p className="text-gray-400 mb-4">
-                      Вы не подключены к удаленному сеансу.
+              {currentRoute === 'remote_obs' && (
+                <>
+                  <header>
+                    <h2 className="text-3xl font-semibold text-gray-100">
+                      Удаленный OBS
+                    </h2>
+                    <p className="text-gray-400 mt-2">
+                      Управление OBS стримера через WebSocket Relay.
                     </p>
-                    <p className="text-sm text-gray-500">
-                      Удаленная сессия создается через раздел "Модераторы".
-                    </p>
-                  </div>
-                ) : (
-                  <ObsDashboard dataSource={remoteObsDataSource} />
-                )}
-              </>
-            )}
+                  </header>
 
-            {currentRoute === 'home' && (
-              <HomeView
-                obsState={obsState}
-                navigate={setCurrentRoute as (r: string) => void}
-              />
-            )}
+                  {!remoteObsDataSource ? (
+                    <div className="bg-[#161616] border border-gray-800 rounded-xl p-6 shadow-lg text-center">
+                      <p className="text-gray-400 mb-4">
+                        Вы не подключены к удаленному сеансу.
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Удаленная сессия создается через раздел "Модераторы".
+                      </p>
+                    </div>
+                  ) : (
+                    <ObsDashboard dataSource={remoteObsDataSource} />
+                  )}
+                </>
+              )}
 
-            {currentRoute === 'feed' && <Feed />}
-            {currentRoute === 'collabs' && <Collabs />}
-            {currentRoute === 'calendar' && <Calendar />}
-            {currentRoute === 'profile' && <Profile />}
-            {currentRoute === 'notifications' && <Notifications />}
-            {currentRoute === 'settings' && <Settings />}
+              {currentRoute === 'home' && (
+                <HomeView
+                  obsState={obsState}
+                  navigate={setCurrentRoute as (r: string) => void}
+                />
+              )}
 
-            {currentRoute === 'moderators' && (
-              <Moderators onConnectRemote={startRemoteSession} />
-            )}
+              {currentRoute === 'feed' && <Feed />}
+              {currentRoute === 'collabs' && <Collabs />}
+              {currentRoute === 'calendar' && <Calendar />}
+              {currentRoute === 'profile' && <Profile />}
+              {currentRoute === 'notifications' && <Notifications />}
+              {currentRoute === 'settings' && <Settings />}
+
+              {currentRoute === 'moderators' && (
+                <Moderators onConnectRemote={startRemoteSession} />
+              )}
+            </RouteErrorBoundary>
           </div>
         </main>
 

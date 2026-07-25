@@ -2,6 +2,31 @@ import { ipcMain, app } from 'electron';
 import { getAccessToken } from './auth.js';
 import { z } from 'zod';
 
+const FeedAuthorSchema = z.object({
+  id: z.string(),
+  displayName: z.string(),
+  twitchLogin: z.string(),
+  avatarUrl: z.string().nullable(),
+});
+
+const FeedPostSchema = z.object({
+  id: z.string(),
+  content: z.string(),
+  likesCount: z.number(),
+  commentsCount: z.number(),
+  createdAt: z.string(),
+  author: FeedAuthorSchema,
+});
+
+const FeedListResponseSchema = z.object({
+  data: z.array(FeedPostSchema),
+  nextCursor: z.string().nullable(),
+});
+
+const FeedLikeResponseSchema = z.object({
+  liked: z.boolean(),
+});
+
 export const getApiUrl = () => {
   // Compile-time env vars injected by electron-vite
   const url =
@@ -74,16 +99,34 @@ async function apiFetch(path: string, options: RequestInit = {}) {
 
 export function setupApiHandlers() {
   ipcMain.handle('api:getWsUrl', () => getWsUrl());
-  ipcMain.handle('api:feed:list', async () => apiFetch('/api/v1/feed'));
-  ipcMain.handle('api:feed:create', async (_, data: unknown) =>
-    apiFetch('/api/v1/feed', {
+  ipcMain.handle('api:feed:list', async () => {
+    const raw = await apiFetch('/api/v1/feed');
+    const parsed = FeedListResponseSchema.safeParse(raw);
+    if (!parsed.success) {
+      console.error('Service returned invalid feed list data:', parsed.error);
+      throw new Error('Некорректный ответ сервиса');
+    }
+    return parsed.data;
+  });
+  ipcMain.handle('api:feed:create', async (_, data: unknown) => {
+    const raw = await apiFetch('/api/v1/feed/posts', {
       method: 'POST',
       body: JSON.stringify(z.record(z.unknown()).parse(data)),
-    }),
-  );
-  ipcMain.handle('api:feed:like', async (_, id: unknown) =>
-    apiFetch(`/api/v1/feed/${z.string().parse(id)}/like`, { method: 'POST' }),
-  );
+    });
+    // Optional: parse the response, though the user requested to refetch
+    // on create. Still good to validate it if it matches FeedPostSchema
+    // or just return it.
+    return raw;
+  });
+  ipcMain.handle('api:feed:like', async (_, id: unknown) => {
+    const raw = await apiFetch(`/api/v1/feed/posts/${z.string().parse(id)}/like`, { method: 'POST' });
+    const parsed = FeedLikeResponseSchema.safeParse(raw);
+    if (!parsed.success) {
+      console.error('Service returned invalid feed like data:', parsed.error);
+      throw new Error('Некорректный ответ сервиса');
+    }
+    return parsed.data;
+  });
 
   ipcMain.handle('api:collabs:list', async () => apiFetch('/api/v1/collabs'));
   ipcMain.handle('api:collabs:create', async (_, data: unknown) =>
