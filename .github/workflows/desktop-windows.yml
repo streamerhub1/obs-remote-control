@@ -147,22 +147,22 @@ jobs:
           Write-Host "Starting unpacked runtime smoke test..."
           $env:ELECTRON_ENABLE_LOGGING = "1"
           $OutFile = "$PWD\smoke-test.log"
-          
+
           $Process = Start-Process -FilePath "apps\desktop\release\win-unpacked\StreamerHub.exe" -ArgumentList "--enable-logging" -PassThru -RedirectStandardOutput $OutFile -RedirectStandardError $OutFile -NoNewWindow
-          
+
           Start-Sleep -Seconds 15
-          
+
           if (-not $Process.HasExited) {
             $Process.Kill()
           }
-          
+
           Start-Sleep -Seconds 1
           $LogOutput = Get-Content $OutFile -Raw -ErrorAction SilentlyContinue
-          
+
           Write-Host "=== SMOKE TEST LOGS ==="
           Write-Host $LogOutput
           Write-Host "======================="
-          
+
           $ErrorDetected = $false
           if ($LogOutput -match "JavaScript error" -or $LogOutput -match "Cannot find module" -or $LogOutput -match "Cannot find package" -or $LogOutput -match "preload-error" -or $LogOutput -match "ERR_") {
             $ErrorDetected = $true
@@ -170,17 +170,17 @@ jobs:
           if ($LogOutput -match "VITE_STREAMERHUB_API_URL is required") {
             $ErrorDetected = $true
           }
-          
+
           if ($ErrorDetected) {
             Write-Error "Smoke test failed: Critical error found in logs."
             exit 1
           }
-          
+
           if ($Process.HasExited -and $Process.ExitCode -ne 0) {
             Write-Error "Smoke test failed: Application exited unexpectedly with code $($Process.ExitCode)."
             exit 1
           }
-          
+
           Write-Host "Runtime smoke test passed!"
 
       - name: Package Windows NSIS installer
