@@ -1,5 +1,9 @@
 import { app, BrowserWindow, shell, ipcMain, dialog } from 'electron';
 import path, { join } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import { setupAuthHandlers, handleDeepLink } from './auth';
 import { setupObsHandlers } from './obs';
 import { setupSignaling } from './signaling';

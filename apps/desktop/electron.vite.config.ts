@@ -1,5 +1,5 @@
 import { resolve } from 'path';
-import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
+import { defineConfig } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 import { execSync } from 'child_process';
 
@@ -12,9 +12,15 @@ const appVersion = process.env.npm_package_version || '1.0.0';
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
     build: {
       outDir: 'dist/main',
+      externalizeDeps: {
+        exclude: [
+          '@obs-remote/obs-adapter',
+          '@obs-remote/obs-contracts',
+          '@obs-remote/remote-protocol'
+        ]
+      },
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/main/index.ts'),
@@ -23,9 +29,9 @@ export default defineConfig({
     },
   },
   preload: {
-    plugins: [externalizeDepsPlugin()],
     build: {
       outDir: 'dist/preload',
+      externalizeDeps: false,
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/preload/index.ts'),
