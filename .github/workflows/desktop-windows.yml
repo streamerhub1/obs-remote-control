@@ -146,9 +146,10 @@ jobs:
         run: |
           Write-Host "Starting unpacked runtime smoke test..."
           $env:ELECTRON_ENABLE_LOGGING = "1"
-          $OutFile = "$PWD\smoke-test.log"
+          $OutFile = "$PWD\smoke-test-out.log"
+          $ErrFile = "$PWD\smoke-test-err.log"
 
-          $Process = Start-Process -FilePath "apps\desktop\release\win-unpacked\StreamerHub.exe" -ArgumentList "--enable-logging" -PassThru -RedirectStandardOutput $OutFile -RedirectStandardError $OutFile -NoNewWindow
+          $Process = Start-Process -FilePath "apps\desktop\release\win-unpacked\StreamerHub.exe" -ArgumentList "--enable-logging" -PassThru -RedirectStandardOutput $OutFile -RedirectStandardError $ErrFile -NoNewWindow
 
           Start-Sleep -Seconds 15
 
@@ -157,7 +158,9 @@ jobs:
           }
 
           Start-Sleep -Seconds 1
-          $LogOutput = Get-Content $OutFile -Raw -ErrorAction SilentlyContinue
+          $LogOutputOut = Get-Content $OutFile -Raw -ErrorAction SilentlyContinue
+          $LogOutputErr = Get-Content $ErrFile -Raw -ErrorAction SilentlyContinue
+          $LogOutput = $LogOutputOut + "`n" + $LogOutputErr
 
           Write-Host "=== SMOKE TEST LOGS ==="
           Write-Host $LogOutput
