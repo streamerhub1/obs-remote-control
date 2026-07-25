@@ -136,7 +136,7 @@ jobs:
         run: pnpm --filter @obs-remote/desktop... build
 
       - name: Package Windows NSIS installer
-        run: pnpm --filter @obs-remote/desktop dist:win
+        run: pnpm --filter @obs-remote/desktop dist:win:test
         env:
           CSC_LINK: ''
           CSC_KEY_PASSWORD: ''
@@ -171,6 +171,15 @@ jobs:
             Write-Error "Expected exactly 1 exe, found $Count."
             exit 1
           }
+          if (-Not (Test-Path "apps\desktop\release\latest.yml")) {
+            Write-Error "latest.yml not found."
+            exit 1
+          }
+          $BlockmapPath = "apps\desktop\release\StreamerHub-Setup-${VERSION}.exe.blockmap"
+          if (-Not (Test-Path $BlockmapPath)) {
+            Write-Error "Blockmap not found at $BlockmapPath"
+            exit 1
+          }
           Write-Host "Installer validation passed!"
 
       - name: Upload build artifact
@@ -179,6 +188,8 @@ jobs:
           name: StreamerHub-Windows-${{ github.ref_name }}
           path: |
             apps/desktop/release/StreamerHub-Setup-*.exe
+            apps/desktop/release/StreamerHub-Setup-*.exe.blockmap
+            apps/desktop/release/latest.yml
           retention-days: 30
 
       - name: Create GitHub Release
@@ -203,6 +214,8 @@ jobs:
             - OBS Studio with WebSocket plugin (optional)
           files: |
             apps/desktop/release/StreamerHub-Setup-*.exe
+            apps/desktop/release/StreamerHub-Setup-*.exe.blockmap
+            apps/desktop/release/latest.yml
           generate_release_notes: true
           draft: false
           prerelease: false

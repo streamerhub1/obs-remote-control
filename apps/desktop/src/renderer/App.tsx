@@ -28,6 +28,141 @@ import { Settings } from './Settings';
 import { Home as HomeView } from './Home';
 import { AuthGate } from './AuthGate';
 
+type UpdaterState =
+  | { status: 'idle' }
+  | { status: 'checking' }
+  | { status: 'available'; version: string }
+  | { status: 'not-available' }
+  | { status: 'downloading'; version: string; percent: number }
+  | { status: 'downloaded'; version: string }
+  | { status: 'error'; message: string };
+
+function UpdateBanner() {
+  const [updaterState, setUpdaterState] = React.useState<UpdaterState>({
+    status: 'idle',
+  });
+  const [showError, setShowError] = React.useState(false);
+  const [showDownloaded, setShowDownloaded] = React.useState(true); // to control 'Later' dismissal
+
+  React.useEffect(() => {
+    if (!window.desktop?.updater) return;
+
+    window.desktop.updater.getState().then((state: unknown) => {
+      setUpdaterState(state as UpdaterState);
+    });
+
+    const cleanup = window.desktop.updater.onStateChanged(
+      (status: string, data?: unknown) => {
+        const payload = data as Record<string, unknown> | undefined;
+        setUpdaterState((prev) => {
+          let newState = { ...prev, status } as UpdaterState;
+          if (status === 'available' || status === 'downloaded') {
+            newState = {
+              status: status as any,
+              version: payload?.version as string,
+            };
+          } else if (status === 'downloading') {
+            newState = {
+              status: 'downloading',
+              version: payload?.version as string,
+              percent: payload?.percent as number,
+            };
+          } else if (status === 'error') {
+            newState = { status: 'error', message: payload?.message as string };
+            setShowError(true);
+            setTimeout(() => setShowError(false), 5000); // hide error after 5s
+          }
+          if (status === 'downloaded') {
+            setShowDownloaded(true);
+          }
+          return newState;
+        });
+      },
+    );
+
+    return cleanup;
+  }, []);
+
+  if (
+    updaterState.status === 'idle' ||
+    updaterState.status === 'checking' ||
+    updaterState.status === 'not-available'
+  ) {
+    return null;
+  }
+
+  if (updaterState.status === 'error') {
+    if (!showError) return null;
+    return (
+      <div className="fixed bottom-6 right-6 bg-[#1a1a1a] border border-gray-700 text-gray-300 p-4 rounded-xl shadow-2xl z-50 flex items-center gap-3">
+        <Bell className="text-gray-500" size={20} />
+        <span className="text-sm">
+          Не удалось проверить обновления. Приложение продолжит работу.
+        </span>
+      </div>
+    );
+  }
+
+  if (
+    updaterState.status === 'available' ||
+    updaterState.status === 'downloading'
+  ) {
+    const percent =
+      updaterState.status === 'downloading'
+        ? Math.round(updaterState.percent || 0)
+        : 0;
+    return (
+      <div className="fixed bottom-6 right-6 bg-[#161616] border border-blue-900/50 p-4 rounded-xl shadow-2xl z-50 flex flex-col gap-2 min-w-[280px]">
+        <div className="flex items-center gap-3">
+          <Activity className="text-blue-400 animate-pulse" size={20} />
+          <span className="text-sm font-medium text-blue-100">
+            Загружается обновление StreamerHub v{updaterState.version}
+          </span>
+        </div>
+        <div className="w-full bg-gray-800 rounded-full h-1.5 mt-1 overflow-hidden">
+          <div
+            className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+            style={{ width: `${percent}%` }}
+          ></div>
+        </div>
+        <div className="text-right text-xs text-blue-400">{percent}%</div>
+      </div>
+    );
+  }
+
+  if (updaterState.status === 'downloaded' && showDownloaded) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div className="bg-[#161616] border border-gray-700 rounded-xl p-8 max-w-md w-full shadow-2xl">
+          <h3 className="text-xl font-bold mb-4 text-white">
+            Обновление готово
+          </h3>
+          <p className="text-gray-300 mb-6">
+            Обновление v{updaterState.version} готово. Перезапустить StreamerHub
+            и установить обновление?
+          </p>
+          <div className="flex justify-end gap-4">
+            <button
+              onClick={() => setShowDownloaded(false)}
+              className="px-4 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+            >
+              Позже
+            </button>
+            <button
+              onClick={() => window.desktop?.updater.install()}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium shadow-lg shadow-blue-500/20 transition-all"
+            >
+              Перезапустить и обновить
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -514,6 +649,8 @@ export default function App() {
             )}
           </div>
         </main>
+
+        <UpdateBanner />
 
         <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }

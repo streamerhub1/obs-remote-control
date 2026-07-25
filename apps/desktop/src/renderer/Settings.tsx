@@ -8,6 +8,28 @@ import {
 } from '@obs-remote/ui';
 
 export function Settings() {
+  const version = window.desktop?.appVersion || '1.0.0';
+  const [updaterState, setUpdaterState] = React.useState<{ status: string }>({
+    status: 'idle',
+  });
+
+  React.useEffect(() => {
+    if (!window.desktop?.updater) return;
+    window.desktop.updater.getState().then((state: unknown) => {
+      setUpdaterState(state as { status: string });
+    });
+    const cleanup = window.desktop.updater.onStateChanged((status) => {
+      setUpdaterState({ status });
+    });
+    return cleanup;
+  }, []);
+
+  const handleCheckUpdates = () => {
+    if (window.desktop?.updater) {
+      window.desktop.updater.check();
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <header>
@@ -79,36 +101,47 @@ export function Settings() {
 
         <Card className="bg-[#161616] border-gray-800">
           <CardHeader>
-            <CardTitle className="text-xl">О приложении (About)</CardTitle>
+            <CardTitle className="text-xl">О приложении</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2 text-sm text-gray-300">
               <div className="flex justify-between">
                 <span className="text-gray-500">Название:</span>
-                <span className="font-medium">
-                  Streamly (StreamerHub Desktop)
-                </span>
+                <span className="font-medium">StreamerHub</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                 <span className="text-gray-500">Версия:</span>
-                <span className="font-medium">v1.0.5</span>
+                <span className="font-medium">v{version}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Сборка (Commit SHA):</span>
-                <span className="font-mono text-purple-400">latest</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Дата сборки:</span>
-                <span className="font-medium">Недавно</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Окружение:</span>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Статус обновления:</span>
                 <span className="font-medium">
-                  {import.meta.env.MODE === 'development'
-                    ? 'Development'
-                    : 'Production'}
+                  {updaterState.status === 'idle' &&
+                    'Актуально (или не проверено)'}
+                  {updaterState.status === 'checking' &&
+                    'Проверка обновлений...'}
+                  {updaterState.status === 'available' && 'Доступно обновление'}
+                  {updaterState.status === 'downloading' && 'Загрузка...'}
+                  {updaterState.status === 'downloaded' && 'Готово к установке'}
+                  {updaterState.status === 'error' && 'Ошибка проверки'}
+                  {updaterState.status === 'not-available' &&
+                    'У вас последняя версия'}
                 </span>
               </div>
+            </div>
+
+            <div className="pt-4 border-t border-gray-800">
+              <Button
+                onClick={handleCheckUpdates}
+                disabled={
+                  updaterState.status === 'checking' ||
+                  updaterState.status === 'downloading'
+                }
+              >
+                {updaterState.status === 'checking'
+                  ? 'Проверка...'
+                  : 'Проверить обновления'}
+              </Button>
             </div>
           </CardContent>
         </Card>
