@@ -11,3 +11,6 @@ dist/
 apps/desktop/release/
 apps/desktop/dist/
 apps/desktop/out/
+
+*.tsbuildinfo
+coverage/

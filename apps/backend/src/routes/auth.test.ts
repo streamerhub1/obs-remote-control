@@ -73,6 +73,11 @@ describe('Auth Routes Security Tests', () => {
     (getDb as Mock).mockReturnValue(mockDb);
   });
 
+  afterEach(async () => {
+    await app.close();
+    vi.clearAllMocks();
+  });
+
   it('Device Identity: generate key pair, request challenge, sign, successful verify', async () => {
     const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
     const pubKeyPem = publicKey.export({
@@ -323,9 +328,15 @@ describe('Twitch OAuth Flow', () => {
     global.fetch = fetchMock;
   });
 
-  afterEach(() => {
-    process.env = { ...originalEnv };
+  afterEach(async () => {
+    process.env.TWITCH_CLIENT_ID = originalEnv.TWITCH_CLIENT_ID;
+    process.env.TWITCH_CLIENT_SECRET = originalEnv.TWITCH_CLIENT_SECRET;
+    process.env.TWITCH_REDIRECT_URI = originalEnv.TWITCH_REDIRECT_URI;
+    process.env.TOKEN_ENCRYPTION_KEY = originalEnv.TOKEN_ENCRYPTION_KEY;
+    process.env.DESKTOP_DEEP_LINK = originalEnv.DESKTOP_DEEP_LINK;
     global.fetch = originalFetch;
+    await app.close();
+    vi.clearAllMocks();
   });
 
   it('1 & 2. authorize URL contains correct redirect_uri, state, and no PKCE', async () => {
@@ -397,7 +408,7 @@ describe('Twitch OAuth Flow', () => {
     mockDb.where.mockResolvedValueOnce([]); // No existing user
     mockDb.returning.mockResolvedValueOnce([{ id: 'new-user-id' }]); // User insert
     mockDb.where.mockResolvedValueOnce([]); // No existing oauth
-    mockDb.values.mockResolvedValueOnce([{ id: 'new-oauth-id' }]); // OAuth insert
+    // OAuth insert uses values() chained, which returns the query builder mock return value from mockDb
 
     const response = await app.inject({
       method: 'GET',

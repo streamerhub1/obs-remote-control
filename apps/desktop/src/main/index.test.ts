@@ -39,6 +39,15 @@ vi.mock('electron', () => {
   };
 });
 
+vi.mock('electron-updater', () => {
+  return {
+    autoUpdater: {
+      on: vi.fn(),
+      checkForUpdatesAndNotify: vi.fn(),
+    },
+  };
+});
+
 describe('Main Process Security Settings', () => {
   beforeEach(() => {
     vi.resetModules();

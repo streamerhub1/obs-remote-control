@@ -1,20 +1,21 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import fastify from 'fastify';
+import fastify, { FastifyInstance } from 'fastify';
 import { collaborationsRoutes } from './collaborations.js';
 import { initDb, getDb } from '../db.js';
 import {
   users,
   collaborations,
   collaborationParticipants,
+  calendarEvents,
 } from '@obs-remote/database';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 
 describe('Collaborations API Integration', () => {
-  let app: any;
+  let app: FastifyInstance;
   let streamerId: string;
   let participantId: string;
+  let currentUserId: string;
 
   beforeAll(async () => {
     initDb(process.env.DATABASE_URL!);
@@ -26,22 +27,20 @@ describe('Collaborations API Integration', () => {
     app.setValidatorCompiler(validatorCompiler);
     app.setSerializerCompiler(serializerCompiler);
 
-    // Mock user for requests
-    app.addHook('onRequest', async (request: any) => {
-      request.jwtVerify = async () => ({ sub: streamerId });
-      request.user = { sub: streamerId };
+    app.addHook('onRequest', async (request) => {
+      request.jwtVerify = async () => ({ sub: currentUserId });
+      request.user = { sub: currentUserId };
     });
 
     await app.register(collaborationsRoutes);
 
     const db = getDb();
 
-    // Create a test streamer
     const streamerResult = await db
       .insert(users)
       .values({
-        twitchId: 'collab_streamer123',
-        twitchLogin: 'collabstreamer',
+        twitchId: crypto.randomUUID(),
+        twitchLogin: crypto.randomUUID(),
         displayName: 'Collab Streamer',
         avatarUrl: '',
         inviteCode: crypto.randomUUID(),
@@ -50,12 +49,11 @@ describe('Collaborations API Integration', () => {
       .returning();
     streamerId = streamerResult[0].id;
 
-    // Create a participant
     const participantResult = await db
       .insert(users)
       .values({
-        twitchId: 'collab_participant123',
-        twitchLogin: 'collabparticipant',
+        twitchId: crypto.randomUUID(),
+        twitchLogin: crypto.randomUUID(),
         displayName: 'Collab Participant',
         avatarUrl: '',
         inviteCode: crypto.randomUUID(),
@@ -71,14 +69,19 @@ describe('Collaborations API Integration', () => {
       .delete(collaborationParticipants)
       .where(eq(collaborationParticipants.userId, participantId));
     await db
+      .delete(calendarEvents)
+      .where(eq(calendarEvents.ownerId, streamerId));
+    await db
       .delete(collaborations)
       .where(eq(collaborations.ownerId, streamerId));
     await db.delete(users).where(eq(users.id, streamerId));
     await db.delete(users).where(eq(users.id, participantId));
+    await app.close();
   });
 
-  it('should create a collaboration, open it, and join', async () => {
-    // 1. Create a collaboration
+  it('should create an open collaboration and join', async () => {
+    currentUserId = streamerId;
+
     const createRes = await app.inject({
       method: 'POST',
       url: '/collaborations',
@@ -96,23 +99,21 @@ describe('Collaborations API Integration', () => {
     const createdCollab = JSON.parse(createRes.payload);
     expect(createdCollab.title).toBe('Epic Stream Collab');
 
-    // 2. Open it
-    const openRes = await app.inject({
-      method: 'POST',
-      url: `/collaborations/${createdCollab.id}/open`,
-    });
-    expect(openRes.statusCode).toBe(200);
-
-    // 3. Join it as participant
-    app.addHook('onRequest', async (request: any) => {
-      request.jwtVerify = async () => ({ sub: participantId });
-      request.user = { sub: participantId };
-    });
+    currentUserId = participantId;
 
     const joinRes = await app.inject({
       method: 'POST',
       url: `/collaborations/${createdCollab.id}/join`,
     });
     expect(joinRes.statusCode).toBe(200);
+
+    const db = getDb();
+    const participants = await db
+      .select()
+      .from(collaborationParticipants)
+      .where(eq(collaborationParticipants.collaborationId, createdCollab.id));
+
+    expect(participants.length).toBe(1);
+    expect(participants[0].userId).toBe(participantId);
   });
 });

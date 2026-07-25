@@ -6,8 +6,8 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "vitest run",
-    "test:integration": "vitest run --testPathPattern integration",
+    "test": "vitest run --exclude \"**/*.integration.test.ts\"",
+    "test:integration": "vitest run integration --no-file-parallelism",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },

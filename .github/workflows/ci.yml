@@ -44,14 +44,17 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://streamerhub:streamerhub_password@localhost:5432/streamerhub_test
+      DATABASE_DIRECT_URL: postgresql://streamerhub:streamerhub_password@localhost:5432/streamerhub_test
       REDIS_URL: redis://localhost:6379
       JWT_SECRET: test-jwt-secret-12345
       SESSION_SECRET: test-session-secret-12345
       TOKEN_ENCRYPTION_KEY: 1234567890123456789012345678901234567890123456789012345678901234
       TWITCH_CLIENT_ID: test_client_id
       TWITCH_CLIENT_SECRET: test_client_secret
-      TWITCH_REDIRECT_URI: http://localhost:3000/api/v1/auth/callback
+      TWITCH_REDIRECT_URI: http://localhost:3000/api/v1/auth/twitch/callback
       DESKTOP_DEEP_LINK: streamerhub://auth/callback
+      WEBSITE_ORIGIN: http://localhost:3001
+      NEXT_PUBLIC_API_URL: http://localhost:3000
 
     steps:
       - uses: actions/checkout@v4
@@ -88,6 +91,9 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Prepare Docker Compose env
+        run: cp infrastructure/docker/.env.example infrastructure/docker/.env
 
       - name: Verify Docker Compose config
         run: docker compose -f infrastructure/docker/docker-compose.yml config

@@ -1,6 +1,22 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { buildApp } from './app.js';
+
+vi.mock('./redis.js', () => ({
+  initRedis: vi.fn(),
+  getRedis: vi.fn().mockReturnValue({
+    ping: vi.fn().mockResolvedValue('PONG'),
+    duplicate: vi.fn().mockReturnValue({
+      subscribe: vi.fn(),
+      on: vi.fn(),
+    }),
+  }),
+}));
+
+vi.mock('./db.js', () => ({
+  initDb: vi.fn(),
+  getDb: vi.fn().mockReturnValue({ execute: vi.fn().mockResolvedValue(true) }),
+}));
 
 describe('App', () => {
   let app: any;

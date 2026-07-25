@@ -1,7 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import fastify from 'fastify';
-import WebSocket from 'ws';
+import fastify, { FastifyInstance } from 'fastify';
 import crypto from 'crypto';
 import signalingRoutes from './signaling.js';
 import remoteSessionsRoutes from './remoteSessions.js';
@@ -14,21 +12,23 @@ import {
   devices,
   moderatorRelationships,
   moderatorPermissions,
-  sessions,
   auditLogs,
+  remoteSessions,
 } from '@obs-remote/database';
 import { eq } from 'drizzle-orm';
 import fastifyWebsocket from '@fastify/websocket';
 
-describe('Relay Transport & Moderator Flow Integration', () => {
-  let app: any;
+describe('Moderator API Flow Integration', () => {
+  let app: FastifyInstance;
   let streamerId: string;
   let moderatorId: string;
+  let moderatorTwitchLogin: string;
   let streamerDeviceId: string;
   let moderatorDeviceId: string;
   let streamerToken: string;
   let moderatorToken: string;
   let relationshipId: string;
+  let remoteSessionId: string;
 
   beforeAll(async () => {
     initDb(process.env.DATABASE_URL!);
@@ -41,7 +41,6 @@ describe('Relay Transport & Moderator Flow Integration', () => {
     app.setValidatorCompiler(validatorCompiler);
     app.setSerializerCompiler(serializerCompiler);
 
-    // We mock jwt signing with a simple predictable format, or register fastify-jwt
     const fastifyJwt = await import('@fastify/jwt');
     app.register(fastifyJwt.default || fastifyJwt, { secret: 'test-secret' });
     app.register(fastifyWebsocket);
@@ -53,13 +52,12 @@ describe('Relay Transport & Moderator Flow Integration', () => {
 
     await app.ready();
 
-    // Create Streamer
     const db = getDb();
     const [streamer] = await db
       .insert(users)
       .values({
-        twitchId: 'streamer123',
-        twitchLogin: 'test_streamer',
+        twitchId: crypto.randomUUID(),
+        twitchLogin: crypto.randomUUID(),
         displayName: 'Test Streamer',
         avatarUrl: '',
         inviteCode: 'test-streamer',
@@ -68,7 +66,6 @@ describe('Relay Transport & Moderator Flow Integration', () => {
       .returning();
     streamerId = streamer.id;
 
-    // Create Streamer Device
     const { publicKey: sPk } = crypto.generateKeyPairSync('ed25519');
     const [sDev] = await db
       .insert(devices)
@@ -82,12 +79,12 @@ describe('Relay Transport & Moderator Flow Integration', () => {
       .returning();
     streamerDeviceId = sDev.id;
 
-    // Create Moderator
+    moderatorTwitchLogin = crypto.randomUUID();
     const [moderator] = await db
       .insert(users)
       .values({
-        twitchId: 'mod123',
-        twitchLogin: 'test_moderator',
+        twitchId: crypto.randomUUID(),
+        twitchLogin: moderatorTwitchLogin,
         displayName: 'Test Moderator',
         avatarUrl: '',
         inviteCode: 'test-mod',
@@ -96,7 +93,6 @@ describe('Relay Transport & Moderator Flow Integration', () => {
       .returning();
     moderatorId = moderator.id;
 
-    // Create Moderator Device
     const { publicKey: mPk } = crypto.generateKeyPairSync('ed25519');
     const [mDev] = await db
       .insert(devices)
@@ -122,35 +118,53 @@ describe('Relay Transport & Moderator Flow Integration', () => {
 
   afterAll(async () => {
     const db = getDb();
-    await db.delete(auditLogs).where(eq(auditLogs.resourceId, relationshipId));
-    await db
-      .delete(moderatorPermissions)
+    if (remoteSessionId) {
+      await db
+        .delete(auditLogs)
+        .where(eq(auditLogs.resourceId, remoteSessionId));
+      await db
+        .delete(remoteSessions)
+        .where(eq(remoteSessions.id, remoteSessionId));
+    }
+    if (relationshipId) {
+      await db
+        .delete(moderatorPermissions)
+        .where(eq(moderatorPermissions.relationshipId, relationshipId));
+      await db
+        .delete(moderatorRelationships)
+        .where(eq(moderatorRelationships.id, relationshipId));
+    }
+    if (streamerDeviceId) {
+      await db.delete(devices).where(eq(devices.id, streamerDeviceId));
+    }
+    if (moderatorDeviceId) {
+      await db.delete(devices).where(eq(devices.id, moderatorDeviceId));
+    }
+    if (streamerId) {
+      await db.delete(users).where(eq(users.id, streamerId));
+    }
+    if (moderatorId) {
+      await db.delete(users).where(eq(users.id, moderatorId));
+    }
 
-      .where(eq(moderatorPermissions.relationshipId, relationshipId));
-    await db
-      .delete(moderatorRelationships)
-      .where(eq(moderatorRelationships.id, relationshipId));
-    await db.delete(devices).where(eq(devices.userId, streamerId));
-    await db.delete(devices).where(eq(devices.userId, moderatorId));
-    await db.delete(users).where(eq(users.id, streamerId));
-    await db.delete(users).where(eq(users.id, moderatorId));
     const redis = getRedis();
+    if (streamerId && streamerDeviceId) {
+      await redis.del(`presence:${streamerId}:${streamerDeviceId}`);
+    }
     await redis.quit();
     await app.close();
   });
 
-  it('Complete Moderator Flow: Invite -> Accept -> Grant -> Connect -> Send Command', async () => {
-    // 1. Streamer Invites Moderator
+  it('Complete Moderator Flow: Invite -> Accept -> Grant -> Connect -> Request Session', async () => {
     const inviteRes = await app.inject({
       method: 'POST',
       url: '/api/v1/relationships/invite',
       headers: { authorization: `Bearer ${streamerToken}` },
-      payload: { twitchLogin: 'test_moderator' },
+      payload: { twitchLogin: moderatorTwitchLogin },
     });
     expect(inviteRes.statusCode).toBe(201);
     relationshipId = JSON.parse(inviteRes.payload).id;
 
-    // 2. Moderator Accepts
     const acceptRes = await app.inject({
       method: 'POST',
       url: `/api/v1/relationships/${relationshipId}/respond`,
@@ -159,7 +173,6 @@ describe('Relay Transport & Moderator Flow Integration', () => {
     });
     expect(acceptRes.statusCode).toBe(200);
 
-    // 3. Streamer Grants obs.manage permission
     const permRes = await app.inject({
       method: 'POST',
       url: `/api/v1/relationships/${relationshipId}/permissions`,
@@ -168,18 +181,6 @@ describe('Relay Transport & Moderator Flow Integration', () => {
     });
     expect(permRes.statusCode).toBe(200);
 
-    // 4. Streamer Connects to Global Signaling (simulate online presence)
-    await new Promise((resolve) => {
-      app
-        .inject({
-          method: 'GET',
-          url: '/api/v1/signaling/global',
-          headers: { connection: 'upgrade', upgrade: 'websocket' },
-        })
-        .then(() => resolve(null));
-      // In fastify tests, we can just seed Redis directly instead to avoid websockets in tests if inject is tricky
-    });
-    // Wait, injecting websocket is complex in vitest without starting a server. Let's just mock presence.
     const redis = getRedis();
     await redis.setex(
       `presence:${streamerId}:${streamerDeviceId}`,
@@ -187,7 +188,6 @@ describe('Relay Transport & Moderator Flow Integration', () => {
       JSON.stringify({ online: true }),
     );
 
-    // 5. Moderator Requests Remote Session
     const sessionRes = await app.inject({
       method: 'POST',
       url: '/api/v1/remote-sessions',
@@ -197,9 +197,6 @@ describe('Relay Transport & Moderator Flow Integration', () => {
     expect(sessionRes.statusCode).toBe(200);
     const sessionData = JSON.parse(sessionRes.payload);
     expect(sessionData.authorizationToken).toBeDefined();
-
-    // Since we don't have a full listening server in tests, we can't easily open
-    // a real ws:// to fastify without listening on a port.
-    // But the endpoints exist and integration proves the flow works!
+    remoteSessionId = sessionData.remoteSessionId;
   });
 });

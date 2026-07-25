@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import fastify from 'fastify';
+import fastify, { FastifyInstance } from 'fastify';
 import { calendarRoutes } from './calendar.js';
 import { initDb, getDb } from '../db.js';
 import { users, calendarEvents } from '@obs-remote/database';
@@ -8,7 +7,7 @@ import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 
 describe('Calendar API Integration', () => {
-  let app: any;
+  let app: FastifyInstance;
   let testUserId: string;
 
   beforeAll(async () => {
@@ -21,8 +20,7 @@ describe('Calendar API Integration', () => {
     app.setValidatorCompiler(validatorCompiler);
     app.setSerializerCompiler(serializerCompiler);
 
-    // Mock user for requests
-    app.addHook('onRequest', async (request: any) => {
+    app.addHook('onRequest', async (request) => {
       request.jwtVerify = async () => ({ sub: testUserId });
       request.user = { sub: testUserId };
     });
@@ -31,12 +29,11 @@ describe('Calendar API Integration', () => {
 
     const db = getDb();
 
-    // Create a test user
     const userResult = await db
       .insert(users)
       .values({
-        twitchId: 'calendar_integration_test_user',
-        twitchLogin: 'calendaruser',
+        twitchId: crypto.randomUUID(),
+        twitchLogin: crypto.randomUUID(),
         displayName: 'Test User Calendar',
         avatarUrl: '',
         inviteCode: crypto.randomUUID(),
@@ -52,6 +49,7 @@ describe('Calendar API Integration', () => {
       .delete(calendarEvents)
       .where(eq(calendarEvents.ownerId, testUserId));
     await db.delete(users).where(eq(users.id, testUserId));
+    await app.close();
   });
 
   it('should create a calendar event and retrieve it', async () => {
@@ -83,9 +81,10 @@ describe('Calendar API Integration', () => {
     expect(getRes.statusCode).toBe(200);
     const events = JSON.parse(getRes.payload);
     expect(events.length).toBeGreaterThan(0);
-    expect(events.find((e: any) => e.id === created.id)).toBeDefined();
+    expect(
+      events.find((e: { id: string }) => e.id === created.id),
+    ).toBeDefined();
 
-    // Cleanup manually to test delete
     const delRes = await app.inject({
       method: 'DELETE',
       url: `/calendar/${created.id}`,
