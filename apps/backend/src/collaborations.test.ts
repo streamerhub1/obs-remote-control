@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { buildApp } from './app.js';
 
@@ -8,7 +7,10 @@ vi.mock('./redis.js', () => ({
     ping: vi.fn().mockResolvedValue('PONG'),
     duplicate: vi.fn().mockReturnValue({
       subscribe: vi.fn(),
+      unsubscribe: vi.fn(),
       on: vi.fn(),
+      removeAllListeners: vi.fn(),
+      quit: vi.fn(),
     }),
   }),
 }));
@@ -19,7 +21,7 @@ vi.mock('./db.js', () => ({
 }));
 
 describe('Collaborations API', () => {
-  let app: any;
+  let app: Awaited<ReturnType<typeof buildApp>>;
 
   beforeAll(async () => {
     process.env.JWT_SECRET = 'test-secret';

@@ -7,6 +7,9 @@ import {
   collaborations,
   collaborationParticipants,
   calendarEvents,
+  auditLogs,
+  collaborationApplications,
+  collaborationInvitations,
 } from '@obs-remote/database';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
@@ -16,6 +19,7 @@ describe('Collaborations API Integration', () => {
   let streamerId: string;
   let participantId: string;
   let currentUserId: string;
+  let collaborationId: string;
 
   beforeAll(async () => {
     initDb(process.env.DATABASE_URL!);
@@ -65,17 +69,29 @@ describe('Collaborations API Integration', () => {
 
   afterAll(async () => {
     const db = getDb();
-    await db
-      .delete(collaborationParticipants)
-      .where(eq(collaborationParticipants.userId, participantId));
-    await db
-      .delete(calendarEvents)
-      .where(eq(calendarEvents.ownerId, streamerId));
-    await db
-      .delete(collaborations)
-      .where(eq(collaborations.ownerId, streamerId));
-    await db.delete(users).where(eq(users.id, streamerId));
-    await db.delete(users).where(eq(users.id, participantId));
+    if (collaborationId) {
+      await db
+        .delete(auditLogs)
+        .where(eq(auditLogs.resourceId, collaborationId));
+      await db
+        .delete(calendarEvents)
+        .where(eq(calendarEvents.sourceId, collaborationId));
+      await db
+        .delete(collaborationParticipants)
+        .where(eq(collaborationParticipants.collaborationId, collaborationId));
+      await db
+        .delete(collaborationApplications)
+        .where(eq(collaborationApplications.collaborationId, collaborationId));
+      await db
+        .delete(collaborationInvitations)
+        .where(eq(collaborationInvitations.collaborationId, collaborationId));
+      await db
+        .delete(collaborations)
+        .where(eq(collaborations.id, collaborationId));
+    }
+    if (streamerId) await db.delete(users).where(eq(users.id, streamerId));
+    if (participantId)
+      await db.delete(users).where(eq(users.id, participantId));
     await app.close();
   });
 
@@ -98,12 +114,13 @@ describe('Collaborations API Integration', () => {
     expect(createRes.statusCode).toBe(201);
     const createdCollab = JSON.parse(createRes.payload);
     expect(createdCollab.title).toBe('Epic Stream Collab');
+    collaborationId = createdCollab.id;
 
     currentUserId = participantId;
 
     const joinRes = await app.inject({
       method: 'POST',
-      url: `/collaborations/${createdCollab.id}/join`,
+      url: `/collaborations/${collaborationId}/join`,
     });
     expect(joinRes.statusCode).toBe(200);
 
@@ -111,9 +128,23 @@ describe('Collaborations API Integration', () => {
     const participants = await db
       .select()
       .from(collaborationParticipants)
-      .where(eq(collaborationParticipants.collaborationId, createdCollab.id));
+      .where(eq(collaborationParticipants.collaborationId, collaborationId));
 
-    expect(participants.length).toBe(1);
-    expect(participants[0].userId).toBe(participantId);
+    expect(participants).toHaveLength(2);
+
+    expect(
+      participants.some(
+        (participant) =>
+          participant.userId === streamerId && participant.role === 'owner',
+      ),
+    ).toBe(true);
+
+    expect(
+      participants.some(
+        (participant) =>
+          participant.userId === participantId &&
+          participant.role === 'participant',
+      ),
+    ).toBe(true);
   });
 });

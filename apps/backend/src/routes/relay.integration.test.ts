@@ -53,6 +53,7 @@ describe('Moderator API Flow Integration', () => {
     await app.ready();
 
     const db = getDb();
+    const streamerInviteCode = crypto.randomUUID();
     const [streamer] = await db
       .insert(users)
       .values({
@@ -60,8 +61,8 @@ describe('Moderator API Flow Integration', () => {
         twitchLogin: crypto.randomUUID(),
         displayName: 'Test Streamer',
         avatarUrl: '',
-        inviteCode: 'test-streamer',
-        inviteCodeNormalized: 'test-streamer',
+        inviteCode: streamerInviteCode,
+        inviteCodeNormalized: streamerInviteCode,
       })
       .returning();
     streamerId = streamer.id;
@@ -80,6 +81,7 @@ describe('Moderator API Flow Integration', () => {
     streamerDeviceId = sDev.id;
 
     moderatorTwitchLogin = crypto.randomUUID();
+    const moderatorInviteCode = crypto.randomUUID();
     const [moderator] = await db
       .insert(users)
       .values({
@@ -87,8 +89,8 @@ describe('Moderator API Flow Integration', () => {
         twitchLogin: moderatorTwitchLogin,
         displayName: 'Test Moderator',
         avatarUrl: '',
-        inviteCode: 'test-mod',
-        inviteCodeNormalized: 'test-mod',
+        inviteCode: moderatorInviteCode,
+        inviteCodeNormalized: moderatorInviteCode,
       })
       .returning();
     moderatorId = moderator.id;
@@ -121,12 +123,15 @@ describe('Moderator API Flow Integration', () => {
     if (remoteSessionId) {
       await db
         .delete(auditLogs)
-        .where(eq(auditLogs.resourceId, remoteSessionId));
+        .where(eq(auditLogs.remoteSessionId, remoteSessionId));
       await db
         .delete(remoteSessions)
         .where(eq(remoteSessions.id, remoteSessionId));
     }
     if (relationshipId) {
+      await db
+        .delete(auditLogs)
+        .where(eq(auditLogs.relationshipId, relationshipId));
       await db
         .delete(moderatorPermissions)
         .where(eq(moderatorPermissions.relationshipId, relationshipId));
@@ -151,8 +156,8 @@ describe('Moderator API Flow Integration', () => {
     if (streamerId && streamerDeviceId) {
       await redis.del(`presence:${streamerId}:${streamerDeviceId}`);
     }
-    await redis.quit();
     await app.close();
+    await redis.quit();
   });
 
   it('Complete Moderator Flow: Invite -> Accept -> Grant -> Connect -> Request Session', async () => {

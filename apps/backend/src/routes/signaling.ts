@@ -72,6 +72,15 @@ export default async function signalingRoutes(app: FastifyInstance) {
     }
   });
 
+  app.addHook('onClose', async () => {
+    pubSubClient.removeAllListeners();
+    await pubSubClient.unsubscribe(
+      'signaling:global:notifications',
+      'signaling:session:messages',
+    );
+    await pubSubClient.quit();
+  });
+
   app.get(
     '/signaling/global',
     { websocket: true },
