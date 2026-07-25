@@ -21,7 +21,9 @@ export function Settings() {
     const cleanup = window.desktop.updater.onStateChanged((status) => {
       setUpdaterState({ status });
     });
-    return cleanup;
+    return () => {
+      cleanup();
+    };
   }, []);
 
   const handleCheckUpdates = () => {

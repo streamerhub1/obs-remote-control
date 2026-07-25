@@ -80,7 +80,9 @@ function UpdateBanner() {
       },
     );
 
-    return cleanup;
+    return () => {
+      cleanup();
+    };
   }, []);
 
   if (
