@@ -19,6 +19,10 @@ export default defineConfig({
           '@obs-remote/obs-adapter',
           '@obs-remote/obs-contracts',
           '@obs-remote/remote-protocol',
+          'electron-updater',
+          'jose',
+          'zod',
+          'ws',
         ],
       },
       rollupOptions: {
