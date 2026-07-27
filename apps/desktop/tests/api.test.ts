@@ -42,6 +42,14 @@ describe('Main process api', () => {
       'api:feed:like',
       expect.any(Function),
     );
+    expect(ipcMain.handle).toHaveBeenCalledWith(
+      'api:feed:comments:list',
+      expect.any(Function),
+    );
+    expect(ipcMain.handle).toHaveBeenCalledWith(
+      'api:feed:comments:create',
+      expect.any(Function),
+    );
   });
 
   it('validates feed list response structure', async () => {
@@ -102,3 +110,5 @@ describe('Main process api', () => {
     );
   });
 });
+
+

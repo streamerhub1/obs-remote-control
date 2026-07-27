@@ -160,6 +160,7 @@ export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
         body: z.object({
           title: z.string().min(1),
           description: z.string().optional(),
+          category: z.string().nullable().optional(),
           startAt: z.string().datetime(),
           expectedDurationMinutes: z.number().int().min(1),
           timezone: z.string().default('UTC'),
@@ -192,6 +193,7 @@ export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
             ownerId: userId,
             title: data.title,
             description: data.description || '',
+            category: data.category ?? null,
             startAt: new Date(data.startAt),
             expectedDurationMinutes: data.expectedDurationMinutes,
             timezone: data.timezone,
@@ -517,3 +519,7 @@ export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
     },
   );
 };
+
+
+
+

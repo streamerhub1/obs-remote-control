@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fastify, { FastifyInstance } from 'fastify';
 import { collaborationsRoutes } from './collaborations.js';
 import { initDb, getDb } from '../db.js';
@@ -125,6 +125,7 @@ describe('Collaborations API Integration', () => {
     expect(createRes.statusCode).toBe(201);
     const createdCollab = JSON.parse(createRes.payload);
     expect(createdCollab.title).toBe('Epic Stream Collab');
+    expect(createdCollab.category).toBeNull();
     collaborationId = createdCollab.id;
 
     // GET as owner — should see 1 collab with enriched host, 1 participant, myApplication accepted
@@ -152,6 +153,7 @@ describe('Collaborations API Integration', () => {
 
     // applicationMode
     expect(collab.applicationMode).toBe('open');
+    expect(collab.category).toBeNull();
 
     // owner's myApplication should be accepted (via participant row)
     expect(collab.myApplication).not.toBeNull();
@@ -187,3 +189,4 @@ describe('Collaborations API Integration', () => {
     expect(collab.myApplication.status).toBe('accepted');
   });
 });
+

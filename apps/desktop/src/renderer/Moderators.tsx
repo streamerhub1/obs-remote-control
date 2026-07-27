@@ -1,359 +1,346 @@
-import React, { useEffect, useState } from 'react';
-import { Shield, UserPlus, Trash, CheckCircle, XCircle } from 'lucide-react';
+import React from 'react';
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@obs-remote/ui';
+import {
+  Shield,
+  UserPlus,
+  Trash,
+  CheckCircle,
+  XCircle,
+  Settings2,
+  MonitorPlay,
+  Loader2,
+} from 'lucide-react';
+
+interface Relationship {
+  id: string;
+  status: string;
+  streamerId?: string;
+  moderatorId?: string;
+  streamerName?: string;
+  streamerLogin?: string;
+  moderatorName?: string;
+  moderatorLogin?: string;
+  createdAt?: string;
+}
+
+const PERMISSIONS = [
+  ['scenes.read', 'Сцены: просмотр'],
+  ['scenes.switch', 'Сцены: переключение'],
+  ['sceneItems.read', 'Источники: просмотр'],
+  ['sceneItems.visibility', 'Источники: видимость'],
+  ['audio.read', 'Аудио: просмотр'],
+  ['audio.mute', 'Аудио: mute'],
+  ['audio.volume', 'Аудио: громкость'],
+  ['stream.read', 'Стрим: статус'],
+  ['stream.start', 'Стрим: запуск'],
+  ['stream.stop', 'Стрим: остановка'],
+  ['record.read', 'Запись: статус'],
+  ['record.start', 'Запись: запуск'],
+  ['record.stop', 'Запись: остановка'],
+  ['obs.manage', 'OBS: управление'],
+] as const;
+
+function statusLabel(status: string) {
+  if (status === 'pending') return 'Ожидает ответа';
+  if (status === 'active') return 'Активен';
+  if (status === 'rejected') return 'Отклонено';
+  if (status === 'revoked') return 'Отозвано';
+  return status;
+}
+
+function statusVariant(status: string) {
+  if (status === 'active') return 'success' as const;
+  if (status === 'pending') return 'secondary' as const;
+  if (status === 'rejected' || status === 'revoked') return 'danger' as const;
+  return 'outline' as const;
+}
 
 export function Moderators({
   onConnectRemote,
 }: {
   onConnectRemote: (token: string) => void;
 }) {
-  const [asStreamer, setAsStreamer] = useState<
-    Array<{
-      id: string;
-      status: string;
-      streamerId: string;
-      moderatorId: string;
-      streamerName: string;
-      streamerLogin: string;
-      moderatorName: string;
-      moderatorLogin: string;
-      permissions: unknown[];
-      permissionsVersion: number;
-    }>
-  >([]);
-  const [asModerator, setAsModerator] = useState<
-    Array<{
-      id: string;
-      status: string;
-      streamerId: string;
-      moderatorId: string;
-      streamerName: string;
-      streamerLogin: string;
-      moderatorName: string;
-      moderatorLogin: string;
-      permissions: unknown[];
-      permissionsVersion: number;
-    }>
-  >([]);
-  const [loading, setLoading] = useState(true);
-  const [inviteIdentifier, setInviteIdentifier] = useState('');
-  const [managingPermsFor, setManagingPermsFor] = useState<string | null>(null);
-  const [currentPerms, setCurrentPerms] = useState<Record<string, boolean>>({});
+  const [asStreamer, setAsStreamer] = React.useState<Relationship[]>([]);
+  const [asModerator, setAsModerator] = React.useState<Relationship[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [busy, setBusy] = React.useState<string | null>(null);
+  const [inviteIdentifier, setInviteIdentifier] = React.useState('');
+  const [managingPermsFor, setManagingPermsFor] = React.useState<Relationship | null>(null);
+  const [currentPerms, setCurrentPerms] = React.useState<Record<string, boolean>>({});
+  const [error, setError] = React.useState<string | null>(null);
 
-  const fetchRelationships = async () => {
+  const fetchRelationships = React.useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const response = await window.desktop.api.relationships.list();
-      if (response) {
-        setAsStreamer(response.asStreamer);
-        setAsModerator(response.asModerator);
-      }
-    } catch (e) {
-      console.error(e);
+      setAsStreamer(response?.asStreamer ?? []);
+      setAsModerator(response?.asModerator ?? []);
+    } catch (e: unknown) {
+      setError((e as Error).message);
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchRelationships();
   }, []);
 
-  const handleInvite = async () => {
-    if (!inviteIdentifier) return;
-    try {
-      const isCode = inviteIdentifier.toUpperCase().startsWith('PH-');
-      const body = isCode
-        ? { inviteCode: inviteIdentifier }
-        : { twitchLogin: inviteIdentifier };
+  React.useEffect(() => {
+    void fetchRelationships();
+  }, [fetchRelationships]);
 
-      await window.desktop.api.relationships.invite(body);
+  const handleInvite = async () => {
+    const value = inviteIdentifier.trim();
+    if (!value) return;
+    setBusy('invite');
+    try {
+      const isCode = value.toUpperCase().startsWith('PH-');
+      await window.desktop.api.relationships.invite(
+        isCode ? { inviteCode: value } : { twitchLogin: value },
+      );
       setInviteIdentifier('');
-      fetchRelationships();
+      await Promise.all([
+        fetchRelationships(),
+        window.desktop.api.notifications.list().catch(() => null),
+      ]);
     } catch (e: unknown) {
-      alert('Failed to invite: ' + (e as Error).message);
-      console.error(e);
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
     }
   };
 
   const handleRespond = async (id: string, action: 'accept' | 'reject') => {
+    setBusy(`${action}:${id}`);
     try {
       await window.desktop.api.relationships.respond(id, { action });
-      fetchRelationships();
-    } catch (e) {
-      console.error(e);
+      await fetchRelationships();
+    } catch (e: unknown) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
     }
   };
 
   const handleRevoke = async (id: string) => {
+    setBusy(`revoke:${id}`);
     try {
       await window.desktop.api.relationships.revoke(id);
-      fetchRelationships();
-    } catch (e) {
-      console.error(e);
+      await fetchRelationships();
+    } catch (e: unknown) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
     }
   };
 
-  const openPermissionsModal = async (id: string) => {
+  const openPermissionsModal = async (relationship: Relationship) => {
+    setBusy(`permissions:${relationship.id}`);
     try {
-      const perms = await window.desktop.api.relationships.getPermissions(id);
+      const perms = await window.desktop.api.relationships.getPermissions(relationship.id);
       const map: Record<string, boolean> = {};
-      perms.forEach(
-        (p: { permissionKey: string; allowed: boolean }) =>
-          (map[p.permissionKey] = p.allowed),
-      );
+      (perms as Array<{ permissionKey: string; allowed: boolean }>).forEach((perm) => {
+        map[perm.permissionKey] = perm.allowed;
+      });
       setCurrentPerms(map);
-      setManagingPermsFor(id);
-    } catch (e) {
-      console.error(e);
+      setManagingPermsFor(relationship);
+    } catch (e: unknown) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
     }
   };
 
   const savePermissions = async () => {
     if (!managingPermsFor) return;
+    setBusy(`save:${managingPermsFor.id}`);
     try {
-      await window.desktop.api.relationships.setPermissions(managingPermsFor, {
+      await window.desktop.api.relationships.setPermissions(managingPermsFor.id, {
         permissions: currentPerms,
       });
-      alert('Permissions updated');
       setManagingPermsFor(null);
-    } catch (e) {
-      console.error(e);
+      await fetchRelationships();
+    } catch (e: unknown) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
     }
   };
 
-  if (loading) return <div>Загрузка...</div>;
+  const requestRemoteSession = async (relationship: Relationship) => {
+    setBusy(`session:${relationship.id}`);
+    try {
+      const data = await window.desktop.api.remoteSessions.create({ relationshipId: relationship.id });
+      if (data?.authorizationToken) onConnectRemote(data.authorizationToken);
+    } catch (e: unknown) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
 
   return (
-    <div className="space-y-8">
-      <header>
-        <h2 className="text-3xl font-semibold text-gray-100 flex items-center gap-3">
-          <Shield className="text-blue-500" size={32} />
-          Модераторы
+    <div className="space-y-6">
+      <header className="flex flex-col gap-2">
+        <h2 className="flex items-center gap-3 text-2xl font-semibold text-gray-100 sm:text-3xl">
+          <Shield className="text-blue-500" size={30} /> Модераторы
         </h2>
-        <p className="text-gray-400 mt-2">
-          Управление доступом к вашему OBS и ваши права модератора.
+        <p className="text-sm text-gray-400 sm:text-base">
+          Приглашения, права доступа и запросы удалённого управления OBS.
         </p>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Streamer Section: People I have invited */}
-        <section className="bg-[#161616] border border-gray-800 rounded-xl p-6 shadow-lg">
-          <h3 className="text-xl font-medium mb-4 flex items-center gap-2">
-            <UserPlus size={24} className="text-purple-400" />
-            Мои модераторы
-          </h3>
+      {error && (
+        <div className="rounded-lg border border-red-800/40 bg-red-900/20 p-4 text-sm text-red-300">
+          {error}
+        </div>
+      )}
 
-          <div className="flex gap-3 mb-6">
-            <input
-              type="text"
-              value={inviteIdentifier}
-              onChange={(e) => setInviteIdentifier(e.target.value)}
-              placeholder="Twitch логин или Invite Code (PH-...)"
-              className="flex-1 bg-black border border-gray-800 rounded-lg px-4 py-2 text-sm focus:border-purple-500 outline-none"
-            />
-            <button
-              onClick={handleInvite}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-medium transition-colors border border-purple-500/50"
-            >
-              Пригласить
-            </button>
-          </div>
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <Card className="border-gray-800 bg-[#161616]">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <UserPlus className="h-5 w-5 text-purple-400" /> Пригласить модератора
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <input
+                type="text"
+                value={inviteIdentifier}
+                onChange={(e) => setInviteIdentifier(e.target.value)}
+                placeholder="Twitch логин или invite code PH-..."
+                className="min-w-0 flex-1 rounded-lg border border-gray-800 bg-black px-4 py-2 text-sm outline-none focus:border-purple-500"
+              />
+              <Button onClick={handleInvite} disabled={busy === 'invite' || !inviteIdentifier.trim()}>
+                {busy === 'invite' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Пригласить
+              </Button>
+            </div>
+            <p className="text-xs text-gray-500">
+              После отправки модератор получит системное уведомление. Список обновляется сразу.
+            </p>
+          </CardContent>
+        </Card>
 
-          <div className="space-y-4">
-            {asStreamer.length === 0 && (
-              <p className="text-gray-500 text-sm">
-                У вас пока нет модераторов.
-              </p>
-            )}
-            {asStreamer.map((rel) => (
-              <div
-                key={rel.id}
-                className="p-4 bg-black/50 border border-gray-800 rounded-lg flex items-center justify-between"
-              >
-                <div>
-                  <div className="font-medium text-gray-200">
-                    {rel.moderatorName}{' '}
-                    <span className="text-gray-500 text-xs">
-                      ({rel.moderatorLogin})
-                    </span>
-                  </div>
-                  <div className="text-xs mt-1">
-                    Статус:{' '}
-                    <span
-                      className={
-                        rel.status === 'active'
-                          ? 'text-green-400'
-                          : 'text-yellow-400'
-                      }
-                    >
-                      {rel.status}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  {rel.status === 'active' && (
-                    <button
-                      onClick={() => openPermissionsModal(rel.id)}
-                      className="px-3 py-1 bg-blue-600/20 text-blue-400 rounded hover:bg-blue-600/30 text-xs border border-blue-500/20"
-                    >
-                      Настроить доступ
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleRevoke(rel.id)}
-                    className="p-2 text-red-400 hover:bg-red-900/30 rounded-lg transition-colors"
-                  >
-                    <Trash size={16} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Moderator Section: Streamers I moderate */}
-        <section className="bg-[#161616] border border-gray-800 rounded-xl p-6 shadow-lg">
-          <h3 className="text-xl font-medium mb-4 flex items-center gap-2">
-            <Shield size={24} className="text-blue-400" />Я модератор
-          </h3>
-
-          <div className="space-y-4">
-            {asModerator.length === 0 && (
-              <p className="text-gray-500 text-sm">
-                У вас пока нет приглашений.
-              </p>
-            )}
-            {asModerator.map((rel) => (
-              <div
-                key={rel.id}
-                className="p-4 bg-black/50 border border-gray-800 rounded-lg flex items-center justify-between"
-              >
-                <div>
-                  <div className="font-medium text-gray-200">
-                    {rel.streamerName}{' '}
-                    <span className="text-gray-500 text-xs">
-                      ({rel.streamerLogin})
-                    </span>
-                  </div>
-                  <div className="text-xs mt-1">
-                    Статус:{' '}
-                    <span
-                      className={
-                        rel.status === 'active'
-                          ? 'text-green-400'
-                          : 'text-yellow-400'
-                      }
-                    >
-                      {rel.status}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  {rel.status === 'pending' && (
-                    <>
-                      <button
-                        onClick={() => handleRespond(rel.id, 'accept')}
-                        className="p-2 text-green-400 hover:bg-green-900/30 rounded-lg transition-colors"
-                      >
-                        <CheckCircle size={20} />
-                      </button>
-                      <button
-                        onClick={() => handleRespond(rel.id, 'reject')}
-                        className="p-2 text-red-400 hover:bg-red-900/30 rounded-lg transition-colors"
-                      >
-                        <XCircle size={20} />
-                      </button>
-                    </>
-                  )}
-                  {rel.status === 'active' && (
-                    <>
-                      <button
-                        onClick={async () => {
-                          try {
-                            const data =
-                              await window.desktop.api.remoteSessions.create({
-                                relationshipId: rel.id,
-                              });
-                            if (data && data.authorizationToken) {
-                              onConnectRemote(data.authorizationToken);
-                            }
-                          } catch (e: unknown) {
-                            alert('Failed to connect: ' + (e as Error).message);
-                          }
-                        }}
-                        className="px-3 py-1 bg-blue-600/20 text-blue-400 rounded hover:bg-blue-600/30 text-xs border border-blue-500/20"
-                      >
-                        Управлять OBS
-                      </button>
-                      <button
-                        onClick={() => handleRevoke(rel.id)}
-                        className="px-3 py-1 bg-red-600/20 text-red-400 rounded hover:bg-red-600/30 text-xs border border-red-500/20"
-                      >
-                        Отказаться
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        <Card className="border-gray-800 bg-[#161616]">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <MonitorPlay className="h-5 w-5 text-cyan-400" /> Как проходит доступ
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-3 text-sm text-gray-300 sm:grid-cols-4">
+            <div className="rounded-lg bg-black/40 p-3">1. Инвайт</div>
+            <div className="rounded-lg bg-black/40 p-3">2. Ответ</div>
+            <div className="rounded-lg bg-black/40 p-3">3. Права</div>
+            <div className="rounded-lg bg-black/40 p-3">4. Подтверждение</div>
+          </CardContent>
+        </Card>
       </div>
 
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-gray-500">
+          <Loader2 className="mr-3 h-6 w-6 animate-spin" /> Загрузка
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+          <section className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-100">Мои модераторы</h3>
+            {asStreamer.length === 0 ? (
+              <div className="rounded-xl border border-gray-800 bg-[#161616] p-6 text-sm text-gray-500">
+                У вас пока нет модераторов.
+              </div>
+            ) : (
+              asStreamer.map((rel) => (
+                <Card key={rel.id} className="border-gray-800 bg-[#161616]">
+                  <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium text-gray-100">{rel.moderatorName ?? 'Модератор'}</div>
+                      <div className="truncate text-xs text-gray-500">@{rel.moderatorLogin ?? 'unknown'}</div>
+                      <div className="mt-2"><Badge variant={statusVariant(rel.status)}>{statusLabel(rel.status)}</Badge></div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" onClick={() => void openPermissionsModal(rel)} title="Настроить права">
+                        <Settings2 className="h-4 w-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => void handleRevoke(rel.id)} disabled={busy === `revoke:${rel.id}`} title="Отозвать доступ">
+                        <Trash className="h-4 w-4 text-red-400" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </section>
+
+          <section className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-100">Где я модератор</h3>
+            {asModerator.length === 0 ? (
+              <div className="rounded-xl border border-gray-800 bg-[#161616] p-6 text-sm text-gray-500">
+                Приглашений и активных доступов нет.
+              </div>
+            ) : (
+              asModerator.map((rel) => (
+                <Card key={rel.id} className="border-gray-800 bg-[#161616]">
+                  <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium text-gray-100">{rel.streamerName ?? 'Стример'}</div>
+                      <div className="truncate text-xs text-gray-500">@{rel.streamerLogin ?? 'unknown'}</div>
+                      <div className="mt-2"><Badge variant={statusVariant(rel.status)}>{statusLabel(rel.status)}</Badge></div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {rel.status === 'pending' && (
+                        <>
+                          <Button variant="outline" size="sm" onClick={() => void handleRespond(rel.id, 'accept')} title="Принять">
+                            <CheckCircle className="h-4 w-4 text-green-400" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => void handleRespond(rel.id, 'reject')} title="Отклонить">
+                            <XCircle className="h-4 w-4 text-red-400" />
+                          </Button>
+                        </>
+                      )}
+                      {rel.status === 'active' && (
+                        <>
+                          <Button size="sm" onClick={() => void requestRemoteSession(rel)} disabled={busy === `session:${rel.id}`}>
+                            {busy === `session:${rel.id}` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MonitorPlay className="mr-2 h-4 w-4" />}
+                            Запросить сессию
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => void handleRevoke(rel.id)}>Отказаться</Button>
+                        </>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </section>
+        </div>
+      )}
+
       {managingPermsFor && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="bg-[#161616] border border-gray-800 rounded-xl p-6 shadow-2xl max-w-lg w-full">
-            <h3 className="text-xl font-medium mb-4">Настройка прав доступа</h3>
-            <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 mb-6 text-sm">
-              {[
-                'scenes.read',
-                'scenes.switch',
-                'sceneItems.read',
-                'sceneItems.visibility',
-                'audio.read',
-                'audio.mute',
-                'audio.volume',
-                'stream.read',
-                'stream.start',
-                'stream.stop',
-                'record.read',
-                'record.start',
-                'record.stop',
-                'obs.manage',
-              ].map((perm) => (
-                <label
-                  key={perm}
-                  className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-white/5"
-                >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-xl border border-gray-800 bg-[#161616] shadow-2xl">
+            <div className="border-b border-gray-800 p-5">
+              <h3 className="text-xl font-medium">Права доступа</h3>
+              <p className="mt-1 text-sm text-gray-500">{managingPermsFor.moderatorName ?? 'Модератор'}</p>
+            </div>
+            <div className="grid max-h-[58vh] grid-cols-1 gap-2 overflow-y-auto p-5 sm:grid-cols-2">
+              {PERMISSIONS.map(([key, label]) => (
+                <label key={key} className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-800 bg-black/30 p-3 text-sm hover:bg-white/5">
                   <input
                     type="checkbox"
-                    checked={!!currentPerms[perm]}
-                    onChange={(e) =>
-                      setCurrentPerms({
-                        ...currentPerms,
-                        [perm]: e.target.checked,
-                      })
-                    }
-                    className="rounded border-gray-700 text-purple-600 focus:ring-purple-500 bg-black"
+                    checked={!!currentPerms[key]}
+                    onChange={(e) => setCurrentPerms((prev) => ({ ...prev, [key]: e.target.checked }))}
+                    className="rounded border-gray-700 bg-black text-blue-600 focus:ring-blue-500"
                   />
-                  <span>{perm}</span>
+                  <span>{label}</span>
                 </label>
               ))}
             </div>
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-800">
-              <button
-                onClick={() => setManagingPermsFor(null)}
-                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
-              >
-                Отмена
-              </button>
-              <button
-                onClick={savePermissions}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-medium transition-colors"
-              >
+            <div className="flex justify-end gap-3 border-t border-gray-800 p-5">
+              <Button variant="outline" onClick={() => setManagingPermsFor(null)}>Отмена</Button>
+              <Button onClick={() => void savePermissions()} disabled={busy === `save:${managingPermsFor.id}`}>
+                {busy === `save:${managingPermsFor.id}` && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Сохранить
-              </button>
+              </Button>
             </div>
           </div>
         </div>

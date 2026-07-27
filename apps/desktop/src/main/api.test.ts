@@ -70,7 +70,9 @@ describe('API Handlers', () => {
       languages: ['ru'],
       categories: [],
       timezone: 'UTC',
+      collaborationAvailability: true,
       twitchUrl: 'https://twitch.tv/testuser',
     });
   });
 });
+

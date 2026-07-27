@@ -7,6 +7,7 @@ import {
   remoteSessions,
   auditLogs,
   devices,
+  notifications,
 } from '@obs-remote/database';
 import { eq, and, or } from 'drizzle-orm';
 import { z } from 'zod';
@@ -205,6 +206,14 @@ export default async function remoteSessionsRoutes(app: FastifyInstance) {
           session.id,
         );
 
+        await tx.insert(notifications).values({
+          userId: streamerUserId,
+          actorId: moderatorUserId,
+          type: 'session_request',
+          targetType: 'remote_session',
+          targetId: session.id,
+        });
+
         // Notify streamer device via Global Signaling Connection
         // Just write to Redis PubSub or directly notify if same instance
         // But since we use Redis, we can publish a message that signaling nodes subscribe to.
@@ -240,10 +249,28 @@ export default async function remoteSessionsRoutes(app: FastifyInstance) {
           200: z.array(
             z.object({
               id: z.string(),
+              publicId: z.string(),
               status: z.string(),
               streamerId: z.string(),
               moderatorId: z.string(),
               createdAt: z.string(),
+              endedAt: z.string().nullable(),
+              streamer: z
+                .object({
+                  id: z.string(),
+                  displayName: z.string(),
+                  twitchLogin: z.string(),
+                  avatarUrl: z.string().nullable(),
+                })
+                .nullable(),
+              moderator: z
+                .object({
+                  id: z.string(),
+                  displayName: z.string(),
+                  twitchLogin: z.string(),
+                  avatarUrl: z.string().nullable(),
+                })
+                .nullable(),
             }),
           ),
         },
@@ -256,10 +283,12 @@ export default async function remoteSessionsRoutes(app: FastifyInstance) {
       const sessions = await db
         .select({
           id: remoteSessions.id,
+          publicId: remoteSessions.publicId,
           status: remoteSessions.status,
           streamerId: remoteSessions.streamerId,
           moderatorId: remoteSessions.moderatorId,
           createdAt: remoteSessions.createdAt,
+          endedAt: remoteSessions.endedAt,
         })
         .from(remoteSessions)
         .where(
@@ -269,9 +298,27 @@ export default async function remoteSessionsRoutes(app: FastifyInstance) {
           ),
         );
 
+      const userIds = [
+        ...new Set(sessions.flatMap((s) => [s.streamerId, s.moderatorId])),
+      ];
+      const people = userIds.length
+        ? await db
+            .select({
+              id: users.id,
+              displayName: users.displayName,
+              twitchLogin: users.twitchLogin,
+              avatarUrl: users.avatarUrl,
+            })
+            .from(users)
+            .where(or(...userIds.map((id) => eq(users.id, id))))
+        : [];
+
       return sessions.map((s) => ({
         ...s,
         createdAt: s.createdAt.toISOString(),
+        endedAt: s.endedAt?.toISOString() ?? null,
+        streamer: people.find((p) => p.id === s.streamerId) ?? null,
+        moderator: people.find((p) => p.id === s.moderatorId) ?? null,
       }));
     },
   );
@@ -380,3 +427,5 @@ export default async function remoteSessionsRoutes(app: FastifyInstance) {
     },
   );
 }
+
+

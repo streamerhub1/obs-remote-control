@@ -126,9 +126,15 @@ const API = {
   api: {
     getWsUrl: () => ipcRenderer.invoke('api:getWsUrl'),
     feed: {
-      list: () => ipcRenderer.invoke('api:feed:list'),
+      list: (options?: unknown) => ipcRenderer.invoke('api:feed:list', options),
       create: (data: unknown) => ipcRenderer.invoke('api:feed:create', data),
       like: (id: string) => ipcRenderer.invoke('api:feed:like', id),
+      comments: {
+        list: (postId: string, options?: unknown) =>
+          ipcRenderer.invoke('api:feed:comments:list', postId, options),
+        create: (postId: string, data: unknown) =>
+          ipcRenderer.invoke('api:feed:comments:create', postId, data),
+      },
     },
     collabs: {
       list: () => ipcRenderer.invoke('api:collabs:list'),
@@ -169,6 +175,7 @@ const API = {
         ipcRenderer.invoke('api:relationships:setPermissions', id, data),
     },
     remoteSessions: {
+      list: () => ipcRenderer.invoke('api:remoteSessions:list'),
       create: (data: unknown) =>
         ipcRenderer.invoke('api:remoteSessions:create', data),
     },
@@ -199,3 +206,4 @@ if (process.contextIsolated) {
 } else {
   window.desktop = API;
 }
+

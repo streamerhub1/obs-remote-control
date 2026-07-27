@@ -138,7 +138,7 @@ function UpdateBanner() {
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
         <div className="bg-[#161616] border border-gray-700 rounded-xl p-8 max-w-md w-full shadow-2xl">
-          <h3 className="text-xl font-bold mb-4 text-white">
+          <h3 className="text-base font-bold md:text-xl mb-4 text-white">
             Обновление готово
           </h3>
           <p className="text-gray-300 mb-6">
@@ -193,7 +193,7 @@ function NavItem({
       )}
     >
       {icon}
-      {label}
+      <span className="hidden truncate md:inline">{label}</span>
     </div>
   );
 }
@@ -432,20 +432,20 @@ export default function App() {
         }}
       >
         <aside
-          className="w-64 border-r flex flex-col no-drag"
+          className="w-20 shrink-0 border-r flex flex-col no-drag md:w-56 lg:w-64"
           style={{
             backgroundColor: 'var(--bg-secondary)',
             borderColor: 'var(--border)',
           }}
         >
-          <div className="p-6 drag-region">
-            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent pointer-events-none">
+          <div className="p-4 drag-region md:p-6">
+            <h1 className="text-base font-bold md:text-xl bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent pointer-events-none">
               StreamerHub
             </h1>
           </div>
 
-          <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto custom-scrollbar">
-            <div className="text-xs font-semibold text-gray-500 mb-2 mt-4 px-3 uppercase tracking-wider">
+          <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4 custom-scrollbar md:px-4">
+            <div className="hidden text-xs font-semibold text-gray-500 mb-2 mt-4 px-3 uppercase tracking-wider md:block">
               Социальное
             </div>
             <NavItem
@@ -473,7 +473,7 @@ export default function App() {
               onClick={() => setCurrentRoute('calendar')}
             />
 
-            <div className="text-xs font-semibold text-gray-500 mb-2 mt-6 px-3 uppercase tracking-wider">
+            <div className="hidden text-xs font-semibold text-gray-500 mb-2 mt-6 px-3 uppercase tracking-wider md:block">
               Студия
             </div>
             <NavItem
@@ -495,7 +495,7 @@ export default function App() {
               onClick={() => setCurrentRoute('moderators')}
             />
 
-            <div className="text-xs font-semibold text-gray-500 mb-2 mt-6 px-3 uppercase tracking-wider">
+            <div className="hidden text-xs font-semibold text-gray-500 mb-2 mt-6 px-3 uppercase tracking-wider md:block">
               Аккаунт
             </div>
             <NavItem
@@ -518,7 +518,7 @@ export default function App() {
             />
           </nav>
 
-          <div className="p-4 border-t border-gray-800 text-xs text-gray-500">
+          <div className="hidden p-4 border-t border-gray-800 text-xs text-gray-500 md:block">
             <span>v{version}</span>
           </div>
         </aside>
@@ -527,7 +527,7 @@ export default function App() {
         {incomingSession && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
             <div className="bg-[#161616] border border-gray-700 rounded-xl p-8 max-w-md w-full shadow-2xl">
-              <h3 className="text-xl font-bold mb-4">
+              <h3 className="text-base font-bold md:text-xl mb-4">
                 Входящий запрос на управление
               </h3>
               <p className="text-gray-400 mb-6">
@@ -554,8 +554,8 @@ export default function App() {
         {/* Title Bar drag region for Windows when app is mostly no-drag */}
         <div className="absolute top-0 left-0 right-0 h-8 drag-region pointer-events-none" />
 
-        <main className="flex-1 overflow-y-auto p-8 pt-12 no-drag">
-          <div className="max-w-5xl mx-auto space-y-8">
+        <main className="min-w-0 flex-1 overflow-y-auto p-4 pt-10 no-drag md:p-6 md:pt-12 lg:p-8">
+          <div className="mx-auto max-w-6xl space-y-6">
             <RouteErrorBoundary
               key={currentRoute}
               onGoHome={() => setCurrentRoute('home')}
@@ -605,8 +605,7 @@ export default function App() {
                               </h4>
                               <p className="text-yellow-200/70 text-sm">
                                 Пожалуйста, откройте OBS Studio. Убедитесь, что
-                                сервер WebSocket включен (Инструменты &gt;
-                                Настройки сервера WebSocket).
+                                сервер WebSocket включён: Сервис → Настройки сервера WebSocket, порт 4455.
                               </p>
                             </div>
                           ) : obsError === 'timeout' ? (
@@ -615,8 +614,7 @@ export default function App() {
                                 Превышено время ожидания
                               </h4>
                               <p className="text-orange-200/70 text-sm">
-                                OBS не отвечает. Убедитесь, что OBS Studio
-                                запущен и WebSocket сервер включён.
+                                OBS не отвечает. Проверьте OBS: Сервис → Настройки сервера WebSocket, сервер включён, порт 4455.
                               </p>
                             </div>
                           ) : obsError === 'authentication_required' ||
@@ -629,8 +627,8 @@ export default function App() {
                               </h4>
                               <p className="text-red-200/70 text-sm">
                                 {obsError === 'wrong_password'
-                                  ? 'Введённый пароль неверен. Проверьте настройки WebSocket в OBS.'
-                                  : 'OBS защищён паролем. Введите пароль WebSocket ниже.'}
+                                  ? 'Введённый пароль неверен. Сверьте его в OBS: Сервис → Настройки сервера WebSocket.'
+                                  : 'Введите пароль из OBS: Сервис → Настройки сервера WebSocket. Если пароль выключен в OBS, оставьте поле пустым.'}
                               </p>
                             </div>
                           ) : obsError === 'unsupported' ? (
@@ -778,3 +776,7 @@ export default function App() {
     </AuthGate>
   );
 }
+
+
+
+

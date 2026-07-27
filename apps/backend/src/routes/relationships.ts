@@ -5,6 +5,7 @@ import {
   moderatorRelationships,
   moderatorPermissions,
   users,
+  notifications,
 } from '@obs-remote/database';
 import { eq, and, or } from 'drizzle-orm';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
@@ -106,7 +107,7 @@ export const relationshipsRoutes: FastifyPluginAsync = async (appOriginal) => {
       // Find the user to invite
       let moderator;
       if (inviteCode) {
-        const normalized = inviteCode.toUpperCase().trim();
+        const normalized = inviteCode.toLowerCase().trim();
         [moderator] = await db
           .select()
           .from(users)
@@ -151,6 +152,14 @@ export const relationshipsRoutes: FastifyPluginAsync = async (appOriginal) => {
           status: 'pending',
         })
         .returning();
+
+      await db.insert(notifications).values({
+        userId: moderator.id,
+        actorId: streamerId,
+        type: 'moderator_invite',
+        targetType: 'moderator_relationship',
+        targetId: relationship.id,
+      });
 
       // Setup default permissions (none)
       const granularPerms = [
@@ -227,6 +236,14 @@ export const relationshipsRoutes: FastifyPluginAsync = async (appOriginal) => {
         .update(moderatorRelationships)
         .set({ status, [timestampField]: new Date(), updatedAt: new Date() })
         .where(eq(moderatorRelationships.id, id));
+
+      await db.insert(notifications).values({
+        userId: relationship.streamerId,
+        actorId: moderatorId,
+        type: action === 'accept' ? 'moderator_accepted' : 'moderator_rejected',
+        targetType: 'moderator_relationship',
+        targetId: relationship.id,
+      });
 
       return reply.send({ success: true, status });
     },
@@ -392,3 +409,4 @@ export const relationshipsRoutes: FastifyPluginAsync = async (appOriginal) => {
     },
   );
 };
+

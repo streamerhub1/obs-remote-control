@@ -1,4 +1,4 @@
-import { FastifyInstance, FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { getDb } from '../db.js';
 import {
@@ -7,29 +7,32 @@ import {
   comments,
   reactions,
   follows,
+  notifications,
 } from '@obs-remote/database';
-import { eq, and, desc, lt, inArray, sql } from 'drizzle-orm';
+import { eq, and, desc, lt, inArray, sql, isNull } from 'drizzle-orm';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
+
+type JwtPayload = {
+  sub: string;
+  deviceId?: string;
+  role?: string;
+  remoteSessionId?: string;
+};
+
+const getUserId = (requestUser: unknown) => (requestUser as JwtPayload).sub;
 
 export const feedRoutes: FastifyPluginAsync = async (appOriginal) => {
   const app = appOriginal.withTypeProvider<ZodTypeProvider>();
 
   app.addHook('preHandler', async (request, reply) => {
     try {
-      const decoded = await request.jwtVerify<{
-        sub: string;
-        deviceId?: string;
-        role?: string;
-        remoteSessionId?: string;
-      }>();
-      request.user = decoded;
-    } catch (err) {
+      request.user = await request.jwtVerify<JwtPayload>();
+    } catch (_err) {
       reply.status(401).send({ error: 'Unauthorized' });
       return reply;
     }
   });
 
-  // Get feed (posts from people I follow + mine)
   app.get(
     '/feed',
     {
@@ -37,32 +40,32 @@ export const feedRoutes: FastifyPluginAsync = async (appOriginal) => {
         querystring: z.object({
           cursor: z.string().optional(),
           limit: z.coerce.number().min(1).max(50).default(20),
+          tab: z.enum(['all', 'following', 'forYou']).default('all'),
         }),
       },
     },
     async (request, reply) => {
-      const userId = (
-        request.user as {
-          sub: string;
-          id: string;
-          deviceId?: string;
-          role?: string;
-          remoteSessionId?: string;
-          [key: string]: unknown;
-        }
-      ).sub;
-      const { cursor, limit } = request.query;
+      const userId = getUserId(request.user);
+      const { cursor, limit, tab } = request.query;
       const db = getDb();
 
-      // Get users I follow
-      const myFollows = await db
-        .select({ followingId: follows.followingId })
-        .from(follows)
-        .where(eq(follows.followerId, userId));
+      const whereParts = [
+        isNull(posts.deletedAt),
+        cursor ? lt(posts.createdAt, new Date(cursor)) : undefined,
+      ];
 
-      const authorIds = [userId, ...myFollows.map((f) => f.followingId)];
+      // Feed tab architecture: all = public chronological community feed;
+      // following = subscriptions; forYou currently aliases all until ranking signals exist.
+      if (tab === 'following') {
+        const myFollows = await db
+          .select({ followingId: follows.followingId })
+          .from(follows)
+          .where(eq(follows.followerId, userId));
+        const authorIds = [userId, ...myFollows.map((f) => f.followingId)];
+        whereParts.push(inArray(posts.authorId, authorIds));
+      }
 
-      const query = db
+      const results = await db
         .select({
           id: posts.id,
           content: posts.content,
@@ -72,6 +75,7 @@ export const feedRoutes: FastifyPluginAsync = async (appOriginal) => {
           createdAt: posts.createdAt,
           author: {
             id: users.id,
+            publicId: users.publicId,
             displayName: users.displayName,
             twitchLogin: users.twitchLogin,
             avatarUrl: users.avatarUrl,
@@ -79,30 +83,19 @@ export const feedRoutes: FastifyPluginAsync = async (appOriginal) => {
         })
         .from(posts)
         .innerJoin(users, eq(posts.authorId, users.id))
-        .where(
-          and(
-            inArray(posts.authorId, authorIds),
-            cursor ? lt(posts.createdAt, new Date(cursor)) : undefined,
-          ),
-        )
+        .where(and(...whereParts))
         .orderBy(desc(posts.createdAt))
         .limit(limit);
-
-      const results = await query;
 
       const nextCursor =
         results.length === limit
           ? results[results.length - 1].createdAt.toISOString()
           : null;
 
-      return reply.send({
-        data: results,
-        nextCursor,
-      });
+      return reply.send({ data: results, nextCursor, tab });
     },
   );
 
-  // Create post
   app.post(
     '/feed/posts',
     {
@@ -114,33 +107,19 @@ export const feedRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (
-        request.user as {
-          sub: string;
-          id: string;
-          deviceId?: string;
-          role?: string;
-          remoteSessionId?: string;
-          [key: string]: unknown;
-        }
-      ).sub;
+      const userId = getUserId(request.user);
       const { content, mediaUrls } = request.body;
       const db = getDb();
 
       const [post] = await db
         .insert(posts)
-        .values({
-          authorId: userId,
-          content,
-          mediaUrls,
-        })
+        .values({ authorId: userId, content, mediaUrls })
         .returning();
 
       return reply.status(201).send(post);
     },
   );
 
-  // Like a post
   app.post(
     '/feed/posts/:id/like',
     {
@@ -149,20 +128,17 @@ export const feedRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (
-        request.user as {
-          sub: string;
-          id: string;
-          deviceId?: string;
-          role?: string;
-          remoteSessionId?: string;
-          [key: string]: unknown;
-        }
-      ).sub;
+      const userId = getUserId(request.user);
       const { id } = request.params;
       const db = getDb();
 
       return await db.transaction(async (tx) => {
+        const [post] = await tx
+          .select({ authorId: posts.authorId })
+          .from(posts)
+          .where(and(eq(posts.id, id), isNull(posts.deletedAt)));
+        if (!post) return reply.status(404).send({ error: 'Post not found' });
+
         const [existing] = await tx
           .select()
           .from(reactions)
@@ -176,32 +152,30 @@ export const feedRoutes: FastifyPluginAsync = async (appOriginal) => {
           );
 
         if (existing) {
-          // Unlike
           await tx.delete(reactions).where(eq(reactions.id, existing.id));
           await tx
             .update(posts)
-            .set({ likesCount: sql`${posts.likesCount} - 1` })
+            .set({ likesCount: sql`greatest(${posts.likesCount} - 1, 0)` })
             .where(eq(posts.id, id));
           return reply.send({ liked: false });
-        } else {
-          // Like
-          await tx.insert(reactions).values({
-            userId,
-            targetType: 'post',
-            targetId: id,
-            reactionType: 'like',
-          });
-          await tx
-            .update(posts)
-            .set({ likesCount: sql`${posts.likesCount} + 1` })
-            .where(eq(posts.id, id));
-          return reply.send({ liked: true });
         }
+
+        await tx.insert(reactions).values({
+          userId,
+          targetType: 'post',
+          targetId: id,
+          reactionType: 'like',
+        });
+        await tx
+          .update(posts)
+          .set({ likesCount: sql`${posts.likesCount} + 1` })
+          .where(eq(posts.id, id));
+
+        return reply.send({ liked: true });
       });
     },
   );
 
-  // Comment on a post
   app.post(
     '/feed/posts/:id/comments',
     {
@@ -211,28 +185,21 @@ export const feedRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (
-        request.user as {
-          sub: string;
-          id: string;
-          deviceId?: string;
-          role?: string;
-          remoteSessionId?: string;
-          [key: string]: unknown;
-        }
-      ).sub;
+      const userId = getUserId(request.user);
       const { id } = request.params;
       const { content } = request.body;
       const db = getDb();
 
       return await db.transaction(async (tx) => {
+        const [post] = await tx
+          .select({ authorId: posts.authorId })
+          .from(posts)
+          .where(and(eq(posts.id, id), isNull(posts.deletedAt)));
+        if (!post) return reply.status(404).send({ error: 'Post not found' });
+
         const [comment] = await tx
           .insert(comments)
-          .values({
-            postId: id,
-            authorId: userId,
-            content,
-          })
+          .values({ postId: id, authorId: userId, content })
           .returning();
 
         await tx
@@ -240,12 +207,21 @@ export const feedRoutes: FastifyPluginAsync = async (appOriginal) => {
           .set({ commentsCount: sql`${posts.commentsCount} + 1` })
           .where(eq(posts.id, id));
 
+        if (post.authorId !== userId) {
+          await tx.insert(notifications).values({
+            userId: post.authorId,
+            actorId: userId,
+            type: 'comment',
+            targetType: 'post',
+            targetId: id,
+          });
+        }
+
         return reply.status(201).send(comment);
       });
     },
   );
 
-  // Get comments for a post
   app.get(
     '/feed/posts/:id/comments',
     {
@@ -262,7 +238,7 @@ export const feedRoutes: FastifyPluginAsync = async (appOriginal) => {
       const { cursor, limit } = request.query;
       const db = getDb();
 
-      const query = db
+      const results = await db
         .select({
           id: comments.id,
           content: comments.content,
@@ -270,6 +246,7 @@ export const feedRoutes: FastifyPluginAsync = async (appOriginal) => {
           createdAt: comments.createdAt,
           author: {
             id: users.id,
+            publicId: users.publicId,
             displayName: users.displayName,
             twitchLogin: users.twitchLogin,
             avatarUrl: users.avatarUrl,
@@ -280,22 +257,19 @@ export const feedRoutes: FastifyPluginAsync = async (appOriginal) => {
         .where(
           and(
             eq(comments.postId, id),
+            isNull(comments.deletedAt),
             cursor ? lt(comments.createdAt, new Date(cursor)) : undefined,
           ),
         )
         .orderBy(desc(comments.createdAt))
         .limit(limit);
 
-      const results = await query;
       const nextCursor =
         results.length === limit
           ? results[results.length - 1].createdAt.toISOString()
           : null;
 
-      return reply.send({
-        data: results,
-        nextCursor,
-      });
+      return reply.send({ data: results, nextCursor });
     },
   );
 };

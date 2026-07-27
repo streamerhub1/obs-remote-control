@@ -9,10 +9,12 @@ import {
   varchar,
   integer,
   jsonb,
+  serial,
 } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
+  publicId: serial('public_id').notNull().unique(),
   twitchId: text('twitch_id').unique().notNull(),
   twitchLogin: text('twitch_login').notNull(),
   displayName: text('display_name').notNull(),
@@ -441,3 +443,4 @@ export const calendarEvents = pgTable(
     };
   },
 );
+

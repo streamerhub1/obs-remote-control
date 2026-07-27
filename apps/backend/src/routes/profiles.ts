@@ -1,41 +1,74 @@
-import { FastifyInstance, FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { getDb } from '../db.js';
-import { profiles, users } from '@obs-remote/database';
-import { eq } from 'drizzle-orm';
+import { oauthAccounts, profiles, users } from '@obs-remote/database';
+import { and, eq } from 'drizzle-orm';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
+import { decryptToken } from '../utils/encryption.js';
+import { fetchTwitchUser } from '../services/twitch.js';
+
+type JwtPayload = {
+  sub: string;
+  deviceId?: string;
+  role?: string;
+  remoteSessionId?: string;
+};
+
+const getUserId = (requestUser: unknown) => (requestUser as JwtPayload).sub;
+
+async function syncBaseProfileFromTwitch(userId: string) {
+  const encryptionKey = process.env.TOKEN_ENCRYPTION_KEY;
+  if (!encryptionKey) return;
+
+  const db = getDb();
+  const [account] = await db
+    .select({ encryptedAccessToken: oauthAccounts.encryptedAccessToken })
+    .from(oauthAccounts)
+    .where(
+      and(
+        eq(oauthAccounts.userId, userId),
+        eq(oauthAccounts.provider, 'twitch'),
+      ),
+    );
+
+  if (!account) return;
+
+  try {
+    const accessToken = decryptToken(account.encryptedAccessToken, encryptionKey);
+    const twitchUser = await fetchTwitchUser(accessToken);
+    await db
+      .update(users)
+      .set({
+        twitchLogin: twitchUser.login,
+        displayName: twitchUser.display_name,
+        avatarUrl: twitchUser.profile_image_url,
+        updatedAt: new Date(),
+        lastActiveAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Twitch profile sync skipped: ${message}`);
+  }
+}
 
 export const profilesRoutes: FastifyPluginAsync = async (appOriginal) => {
   const app = appOriginal.withTypeProvider<ZodTypeProvider>();
 
   app.addHook('preHandler', async (request, reply) => {
     try {
-      const decoded = await request.jwtVerify<{
-        sub: string;
-        deviceId?: string;
-        role?: string;
-        remoteSessionId?: string;
-      }>();
-      request.user = decoded;
-    } catch (err) {
+      request.user = await request.jwtVerify<JwtPayload>();
+    } catch (_err) {
       reply.status(401).send({ error: 'Unauthorized' });
       return reply;
     }
   });
 
-  // Get current user profile
   app.get('/profiles/me', async (request, reply) => {
-    const userId = (
-      request.user as {
-        sub: string;
-        id: string;
-        deviceId?: string;
-        role?: string;
-        remoteSessionId?: string;
-        [key: string]: unknown;
-      }
-    ).sub;
+    const userId = getUserId(request.user);
     const db = getDb();
+
+    await syncBaseProfileFromTwitch(userId);
 
     let [profile] = await db
       .select()
@@ -44,14 +77,12 @@ export const profilesRoutes: FastifyPluginAsync = async (appOriginal) => {
     const [user] = await db.select().from(users).where(eq(users.id, userId));
 
     if (!profile) {
-      // Create empty profile if not exists
       [profile] = await db.insert(profiles).values({ userId }).returning();
     }
 
     return reply.send({ ...profile, user });
   });
 
-  // Update current user profile
   app.patch(
     '/profiles/me',
     {
@@ -75,16 +106,7 @@ export const profilesRoutes: FastifyPluginAsync = async (appOriginal) => {
       },
     },
     async (request, reply) => {
-      const userId = (
-        request.user as {
-          sub: string;
-          id: string;
-          deviceId?: string;
-          role?: string;
-          remoteSessionId?: string;
-          [key: string]: unknown;
-        }
-      ).sub;
+      const userId = getUserId(request.user);
       const updates = request.body;
       const db = getDb();
 
@@ -98,10 +120,7 @@ export const profilesRoutes: FastifyPluginAsync = async (appOriginal) => {
 
       const [updatedProfile] = await db
         .update(profiles)
-        .set({
-          ...updates,
-          updatedAt: new Date(),
-        })
+        .set({ ...updates, updatedAt: new Date() })
         .where(eq(profiles.userId, userId))
         .returning();
 
@@ -109,7 +128,6 @@ export const profilesRoutes: FastifyPluginAsync = async (appOriginal) => {
     },
   );
 
-  // Get a specific user profile
   app.get(
     '/profiles/:userId',
     {

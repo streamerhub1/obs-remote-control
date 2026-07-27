@@ -21,6 +21,46 @@ export function getMainWindow() {
   return mainWindow;
 }
 
+export function isAllowedExternalUrl(url: string) {
+  const allowlist = ['github.com', 'twitch.tv'];
+  try {
+    const parsedUrl = new URL(url);
+    return (
+      (parsedUrl.protocol === 'https:' || parsedUrl.protocol === 'http:') &&
+      allowlist.some(
+        (domain) =>
+          parsedUrl.hostname === domain || parsedUrl.hostname.endsWith(`.${domain}`),
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isAppNavigation(url: string) {
+  if (url.startsWith('file://')) return true;
+  if (!process.env.ELECTRON_RENDERER_URL) return false;
+  try {
+    return new URL(url).origin === new URL(process.env.ELECTRON_RENDERER_URL).origin;
+  } catch {
+    return false;
+  }
+}
+
+function openAllowedExternal(url: string) {
+  if (!isAllowedExternalUrl(url)) return false;
+  void shell.openExternal(url);
+  return true;
+}
+
+export function restoreMainWindow(window: BrowserWindow | null) {
+  if (!window || window.isDestroyed()) return false;
+  if (window.isMinimized()) window.restore();
+  if (!window.isVisible()) window.show();
+  window.focus();
+  return true;
+}
+
 if (!gotTheLock) {
   app.quit();
 } else {
@@ -28,7 +68,7 @@ if (!gotTheLock) {
     mainWindow = new BrowserWindow({
       width: 1280,
       height: 800,
-      minWidth: 900,
+      minWidth: 800,
       minHeight: 600,
       show: false,
       autoHideMenuBar: true,
@@ -110,7 +150,7 @@ if (!gotTheLock) {
 
         if (!isDev) {
           responseHeaders['Content-Security-Policy'] = [
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss: http: https:;",
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://static-cdn.jtvnw.net; connect-src 'self' ws: wss: http: https:;",
           ];
         }
 
@@ -118,9 +158,16 @@ if (!gotTheLock) {
       },
     );
 
-    // Prevent external window creation
-    mainWindow.webContents.setWindowOpenHandler((_details) => {
+    // Prevent external window creation inside the app window.
+    mainWindow.webContents.setWindowOpenHandler((details) => {
+      openAllowedExternal(details.url);
       return { action: 'deny' };
+    });
+
+    mainWindow.webContents.on('will-navigate', (event, url) => {
+      if (isAppNavigation(url)) return;
+      event.preventDefault();
+      openAllowedExternal(url);
     });
 
     // Load URL or local file
@@ -146,23 +193,10 @@ if (!gotTheLock) {
     // Register IPC handlers
     ipcMain.handle('app:getVersion', () => app.getVersion());
 
-    ipcMain.handle('shell:openExternal', (event, url: string) => {
-      const allowlist = ['github.com', 'twitch.tv'];
-      try {
-        const parsedUrl = new URL(url);
-        if (
-          (parsedUrl.protocol === 'https:' || parsedUrl.protocol === 'http:') &&
-          allowlist.some((domain) => parsedUrl.hostname.endsWith(domain))
-        ) {
-          shell.openExternal(url);
-          return true;
-        }
-        console.warn(`Blocked attempt to open external URL: ${url}`);
-        return false;
-      } catch {
-        console.error(`Invalid URL provided to openExternal: ${url}`);
-        return false;
-      }
+    ipcMain.handle('shell:openExternal', (_event, url: string) => {
+      const opened = openAllowedExternal(url);
+      if (!opened) console.warn(`Blocked attempt to open external URL: ${url}`);
+      return opened;
     });
 
     createWindow();
@@ -192,13 +226,13 @@ if (!gotTheLock) {
 
   app.on('second-instance', (event, commandLine, workingDirectory) => {
     // Someone tried to run a second instance, we should focus our window.
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
+    restoreMainWindow(mainWindow);
     const url = commandLine.pop();
     if (url && url.startsWith('streamerhub://')) {
       handleDeepLink(url);
     }
   });
 }
+
+
+

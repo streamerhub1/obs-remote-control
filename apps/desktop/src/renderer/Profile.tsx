@@ -19,6 +19,7 @@ import {
 
 interface UserProfile {
   id: string;
+  publicId?: number;
   displayName: string;
   twitchLogin: string;
   avatarUrl: string | null;
@@ -163,7 +164,7 @@ export function Profile() {
       <div className="pt-20 px-8 space-y-6">
         <div>
           <h1 className="text-2xl font-bold">{profile.displayName}</h1>
-          <p className="text-gray-400">@{profile.twitchLogin}</p>
+          <p className="text-gray-400">@{profile.twitchLogin}{profile.publicId ? ` · #${profile.publicId}` : ''}</p>
         </div>
 
         {/* Bio */}
@@ -248,13 +249,14 @@ export function Profile() {
             )}
             {profile.twitchUrl && (
               <div className="flex gap-4 text-gray-400">
-                <a
-                  href={profile.twitchUrl}
-                  className="flex items-center gap-2 hover:text-white transition-colors"
+                <button
+                  type="button"
+                  onClick={() => profile.twitchUrl && window.desktop.openExternalUrl(profile.twitchUrl)}
+                  className="flex items-center gap-2 hover:text-white transition-colors text-left"
                 >
                   <Video className="w-5 h-5" />
                   <span>twitch.tv/{profile.twitchLogin}</span>
-                </a>
+                </button>
               </div>
             )}
             {profile.timezone && (
@@ -269,3 +271,4 @@ export function Profile() {
     </div>
   );
 }
+

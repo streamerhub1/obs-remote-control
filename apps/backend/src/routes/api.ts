@@ -31,6 +31,7 @@ export default async function apiRoutes(app: FastifyInstance) {
         response: {
           200: z.object({
             id: z.string(),
+            publicId: z.number(),
             displayName: z.string(),
             twitchLogin: z.string(),
             avatarUrl: z.string().nullable(),
@@ -47,6 +48,7 @@ export default async function apiRoutes(app: FastifyInstance) {
       const [user] = await db
         .select({
           id: users.id,
+          publicId: users.publicId,
           displayName: users.displayName,
           twitchLogin: users.twitchLogin,
           avatarUrl: users.avatarUrl,
@@ -196,3 +198,4 @@ export default async function apiRoutes(app: FastifyInstance) {
     },
   );
 }
+
