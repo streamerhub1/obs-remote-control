@@ -15,10 +15,23 @@ const gotTheLock = app.requestSingleInstanceLock();
 
 const isDev =
   process.env.NODE_ENV === 'development' || !!process.env.ELECTRON_RENDERER_URL;
+const isSmokeTest = process.argv.includes('--smoke-test');
 
 let mainWindow: BrowserWindow | null = null;
 export function getMainWindow() {
   return mainWindow;
+}
+
+let smokeTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function completeSmokeTest(exitCode: number, detail: string) {
+  if (!isSmokeTest) return;
+  if (smokeTimeout) {
+    clearTimeout(smokeTimeout);
+    smokeTimeout = null;
+  }
+  console.log(`SMOKE_RESULT=${exitCode === 0 ? 'passed' : 'failed'}; ${detail}`);
+  setTimeout(() => app.exit(exitCode), 100);
 }
 
 export function isAllowedExternalUrl(url: string) {
@@ -101,6 +114,7 @@ if (!gotTheLock) {
         console.error(
           `Page failed to load: ${errorDescription} (${errorCode}) at ${validatedURL}`,
         );
+        completeSmokeTest(1, `page failed to load: ${errorDescription} (${errorCode})`);
       },
     );
 
@@ -109,6 +123,10 @@ if (!gotTheLock) {
         `Render process gone. Reason: ${details.reason}, exitCode: ${details.exitCode}`,
       );
       if (details.reason !== 'clean-exit') {
+        if (isSmokeTest) {
+          completeSmokeTest(1, `render process gone: ${details.reason} (${details.exitCode})`);
+          return;
+        }
         const result = await dialog.showMessageBox(mainWindow!, {
           type: 'error',
           title: 'Сбой процесса',
@@ -158,6 +176,10 @@ if (!gotTheLock) {
       },
     );
 
+    mainWindow.webContents.on('did-finish-load', () => {
+      completeSmokeTest(0, 'renderer loaded');
+    });
+
     // Prevent external window creation inside the app window.
     mainWindow.webContents.setWindowOpenHandler((details) => {
       openAllowedExternal(details.url);
@@ -179,6 +201,12 @@ if (!gotTheLock) {
   }
 
   app.whenReady().then(() => {
+    if (isSmokeTest) {
+      smokeTimeout = setTimeout(() => {
+        completeSmokeTest(1, 'timeout waiting for renderer load');
+      }, 20000);
+    }
+
     // Register Deep Link
     if (process.defaultApp) {
       if (process.argv.length >= 2) {
@@ -207,10 +235,12 @@ if (!gotTheLock) {
       setupSignaling();
       setupRemoteSessions();
       setupApiHandlers();
-      void setupUpdater(mainWindow).catch((error: unknown) => {
-        const message = error instanceof Error ? error.message : String(error);
-        console.error('Updater initialization failed:', message);
-      });
+      if (!isSmokeTest) {
+        void setupUpdater(mainWindow).catch((error: unknown) => {
+          const message = error instanceof Error ? error.message : String(error);
+          console.error('Updater initialization failed:', message);
+        });
+      }
     }
 
     app.on('activate', function () {

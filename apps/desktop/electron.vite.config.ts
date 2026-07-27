@@ -21,6 +21,7 @@ export default defineConfig({
           '@obs-remote/remote-protocol',
           'electron-updater',
           'jose',
+          'lru-cache',
           'zod',
           'ws',
         ],
