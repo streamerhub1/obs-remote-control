@@ -193,8 +193,8 @@ export function Calendar() {
               return (
                 <button
                   key={date}
-                  onClick={() => openModalForDate(dateString)}
-                  className="p-2 min-h-[90px] rounded-lg border border-[var(--border,#1f2937)] bg-[var(--bg-secondary,#111111)] hover:border-[var(--accent,#3b82f6)] transition-colors flex flex-col text-left group"
+                  onClick={() => { if (dayEvents.length === 0) openModalForDate(dateString); }}
+                  className={`p-2 min-h-[90px] rounded-lg border border-[var(--border,#1f2937)] bg-[var(--bg-secondary,#111111)] transition-colors flex flex-col text-left group ${dayEvents.length === 0 ? 'hover:border-[var(--accent,#3b82f6)] cursor-pointer' : 'cursor-default'}`}
                 >
                   <span className="text-sm font-medium text-gray-400 mb-1 group-hover:text-blue-400 transition-colors">
                     {date}

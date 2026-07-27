@@ -12,6 +12,10 @@ const appVersion = process.env.npm_package_version || '1.0.0';
 
 export default defineConfig({
   main: {
+    define: {
+      'process.env.WS_NO_BUFFER_UTIL': JSON.stringify('1'),
+      'process.env.WS_NO_UTF_8_VALIDATE': JSON.stringify('1'),
+    },
     build: {
       outDir: 'dist/main',
       externalizeDeps: {

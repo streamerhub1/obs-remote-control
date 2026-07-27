@@ -164,7 +164,7 @@ export function Profile() {
       <div className="pt-20 px-8 space-y-6">
         <div>
           <h1 className="text-2xl font-bold">{profile.displayName}</h1>
-          <p className="text-gray-400">@{profile.twitchLogin}{profile.publicId ? ` · #${profile.publicId}` : ''}</p>
+          <p className="text-gray-400">@{profile.twitchLogin}{profile.publicId ? ` · id: ${profile.publicId}` : ''}</p>
         </div>
 
         {/* Bio */}

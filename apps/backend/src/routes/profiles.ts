@@ -92,7 +92,7 @@ export const profilesRoutes: FastifyPluginAsync = async (appOriginal) => {
           bio: z.string().nullable().optional(),
           languages: z.array(z.string()).optional(),
           categories: z.array(z.string()).optional(),
-          timezone: z.string().optional(),
+          timezone: z.string().nullable().optional(),
           collaborationAvailability: z.boolean().optional(),
           socialLinks: z
             .array(
@@ -110,17 +110,30 @@ export const profilesRoutes: FastifyPluginAsync = async (appOriginal) => {
       const updates = request.body;
       const db = getDb();
 
-      const [existing] = await db
+      let [existing] = await db
         .select()
         .from(profiles)
         .where(eq(profiles.userId, userId));
       if (!existing) {
-        await db.insert(profiles).values({ userId });
+        [existing] = await db.insert(profiles).values({ userId }).returning();
+      }
+
+      const profileUpdates: Partial<typeof profiles.$inferInsert> = {
+        updatedAt: new Date(),
+      };
+      if ('bannerUrl' in updates) profileUpdates.bannerUrl = updates.bannerUrl ?? null;
+      if ('bio' in updates) profileUpdates.bio = updates.bio ?? null;
+      if ('languages' in updates) profileUpdates.languages = updates.languages ?? [];
+      if ('categories' in updates) profileUpdates.categories = updates.categories ?? [];
+      if ('socialLinks' in updates) profileUpdates.socialLinks = updates.socialLinks ?? [];
+      if ('timezone' in updates) profileUpdates.timezone = updates.timezone?.trim() || existing.timezone || 'UTC';
+      if ('collaborationAvailability' in updates) {
+        profileUpdates.collaborationAvailability = updates.collaborationAvailability ?? true;
       }
 
       const [updatedProfile] = await db
         .update(profiles)
-        .set({ ...updates, updatedAt: new Date() })
+        .set(profileUpdates)
         .where(eq(profiles.userId, userId))
         .returning();
 

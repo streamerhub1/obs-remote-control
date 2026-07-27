@@ -111,13 +111,14 @@ export function Home({
   React.useEffect(() => {
     let cancelled = false;
     const now = new Date();
-    const end = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
     async function load() {
       setLoading(true);
       const results = await Promise.allSettled([
         window.desktop.api.profile.getMe(),
-        window.desktop.api.calendar.list(now.toISOString(), end.toISOString()),
+        window.desktop.api.calendar.list(start.toISOString(), end.toISOString()),
         window.desktop.api.feed.list({ tab: 'all', limit: 3 }),
         window.desktop.api.collabs.list(),
         window.desktop.api.notifications.list(),
@@ -130,15 +131,27 @@ export function Home({
 
       if (profileResult.status === 'fulfilled') setProfile(profileResult.value as HomeProfile);
       if (eventsResult.status === 'fulfilled') {
+        const rawEvents = eventsResult.value as HomeEvent[] | { data?: HomeEvent[] } | null;
+        const calendarEvents = Array.isArray(rawEvents) ? rawEvents : (rawEvents?.data ?? []);
         setEvents(
-          ((eventsResult.value as HomeEvent[]) ?? [])
-            .filter((event) => new Date(event.startAt).getTime() >= now.getTime())
-            .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
+          calendarEvents
+            .sort((a, b) => {
+              const aTime = new Date(a.startAt).getTime();
+              const bTime = new Date(b.startAt).getTime();
+              const aFuture = aTime >= now.getTime();
+              const bFuture = bTime >= now.getTime();
+              if (aFuture !== bFuture) return aFuture ? -1 : 1;
+              return aFuture ? aTime - bTime : bTime - aTime;
+            })
             .slice(0, 3),
         );
       }
       if (postsResult.status === 'fulfilled') setPosts(((postsResult.value as { data: HomePost[] }).data ?? []).slice(0, 3));
-      if (collabsResult.status === 'fulfilled') setCollabs(((collabsResult.value as { data: HomeCollab[] }).data ?? []).slice(0, 2));
+      if (collabsResult.status === 'fulfilled') {
+        const rawCollabs = collabsResult.value as HomeCollab[] | { data?: HomeCollab[] } | null;
+        const collabData = Array.isArray(rawCollabs) ? rawCollabs : (rawCollabs?.data ?? []);
+        setCollabs(collabData.slice(0, 2));
+      }
       if (notificationsResult.status === 'fulfilled') setNotifications((notificationsResult.value as HomeNotification[]) ?? []);
       if (relationshipsResult.status === 'fulfilled') setRelationships((relationshipsResult.value as HomeRelationshipResponse) ?? {});
       if (sessionsResult.status === 'fulfilled') setRemoteSessions(((sessionsResult.value as HomeRemoteSession[]) ?? []).slice(0, 3));
@@ -179,7 +192,7 @@ export function Home({
               {profile?.displayName ?? 'Профиль'}
             </span>
             <span className="block truncate text-xs text-gray-500">
-              {profile ? `@${profile.twitchLogin}${profile.publicId ? ` · #${profile.publicId}` : ''}` : 'Открыть профиль'}
+              {profile ? `@${profile.twitchLogin}${profile.publicId ? ` · id: ${profile.publicId}` : ''}` : 'Открыть профиль'}
             </span>
           </span>
         </button>

@@ -83,9 +83,11 @@ export const relationshipsRoutes: FastifyPluginAsync = async (appOriginal) => {
           .object({
             twitchLogin: z.string().optional(),
             inviteCode: z.string().optional(),
+            publicId: z.number().int().positive().optional(),
+            permissions: z.record(z.boolean()).optional(),
           })
-          .refine((data) => data.twitchLogin || data.inviteCode, {
-            message: 'Either twitchLogin or inviteCode must be provided',
+          .refine((data) => data.twitchLogin || data.inviteCode || data.publicId, {
+            message: 'Twitch login, invite code, or publicId must be provided',
           }),
       },
     },
@@ -100,7 +102,7 @@ export const relationshipsRoutes: FastifyPluginAsync = async (appOriginal) => {
           [key: string]: unknown;
         }
       ).sub;
-      const { twitchLogin, inviteCode } = request.body;
+      const { twitchLogin, inviteCode, publicId, permissions = {} } = request.body;
 
       const db = getDb();
 
@@ -112,6 +114,11 @@ export const relationshipsRoutes: FastifyPluginAsync = async (appOriginal) => {
           .select()
           .from(users)
           .where(eq(users.inviteCodeNormalized, normalized));
+      } else if (publicId) {
+        [moderator] = await db
+          .select()
+          .from(users)
+          .where(eq(users.publicId, publicId));
       } else if (twitchLogin) {
         [moderator] = await db
           .select()
@@ -138,30 +145,6 @@ export const relationshipsRoutes: FastifyPluginAsync = async (appOriginal) => {
           ),
         );
 
-      if (existing) {
-        return reply.status(400).send({ error: 'Relationship already exists' });
-      }
-
-      // Create relationship
-      const [relationship] = await db
-        .insert(moderatorRelationships)
-        .values({
-          streamerId,
-          moderatorId: moderator.id,
-          createdBy: streamerId,
-          status: 'pending',
-        })
-        .returning();
-
-      await db.insert(notifications).values({
-        userId: moderator.id,
-        actorId: streamerId,
-        type: 'moderator_invite',
-        targetType: 'moderator_relationship',
-        targetId: relationship.id,
-      });
-
-      // Setup default permissions (none)
       const granularPerms = [
         'scenes.read',
         'scenes.switch',
@@ -179,15 +162,78 @@ export const relationshipsRoutes: FastifyPluginAsync = async (appOriginal) => {
         'obs.manage',
       ];
 
-      await db.insert(moderatorPermissions).values(
-        granularPerms.map((perm) => ({
-          relationshipId: relationship.id,
-          permissionKey: perm,
-          allowed: false,
-        })),
-      );
+      let relationship = existing;
+      if (relationship) {
+        [relationship] = await db
+          .update(moderatorRelationships)
+          .set({
+            status: 'active',
+            acceptedAt: relationship.acceptedAt ?? new Date(),
+            rejectedAt: null,
+            revokedAt: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(moderatorRelationships.id, relationship.id))
+          .returning();
+      } else {
+        [relationship] = await db
+          .insert(moderatorRelationships)
+          .values({
+            streamerId,
+            moderatorId: moderator.id,
+            createdBy: streamerId,
+            status: 'active',
+            acceptedAt: new Date(),
+          })
+          .returning();
+      }
 
-      return reply.status(201).send(relationship);
+      for (const perm of granularPerms) {
+        const allowed = !!permissions[perm];
+        const [existingPermission] = await db
+          .select()
+          .from(moderatorPermissions)
+          .where(
+            and(
+              eq(moderatorPermissions.relationshipId, relationship.id),
+              eq(moderatorPermissions.permissionKey, perm),
+            ),
+          );
+
+        if (existingPermission) {
+          await db
+            .update(moderatorPermissions)
+            .set({ allowed, updatedAt: new Date() })
+            .where(
+              and(
+                eq(moderatorPermissions.relationshipId, relationship.id),
+                eq(moderatorPermissions.permissionKey, perm),
+              ),
+            );
+        } else {
+          await db.insert(moderatorPermissions).values({
+            relationshipId: relationship.id,
+            permissionKey: perm,
+            allowed,
+          });
+        }
+      }
+
+      [relationship] = await db
+        .update(moderatorRelationships)
+        .set({ permissionsVersion: crypto.randomUUID(), updatedAt: new Date() })
+        .where(eq(moderatorRelationships.id, relationship.id))
+        .returning();
+
+      await db.insert(notifications).values({
+        userId: moderator.id,
+        actorId: streamerId,
+        type: 'moderator_assigned',
+        targetType: 'moderator_relationship',
+        targetId: relationship.id,
+      });
+
+      return reply.status(201).send({ ...relationship, status: 'active' });
     },
   );
 
@@ -226,6 +272,9 @@ export const relationshipsRoutes: FastifyPluginAsync = async (appOriginal) => {
         return reply.status(404).send({ error: 'Relationship not found' });
       if (relationship.moderatorId !== moderatorId)
         return reply.status(403).send({ error: 'Not your invitation' });
+      if (relationship.status === 'active' && action === 'accept') {
+        return reply.send({ success: true, status: 'active' });
+      }
       if (relationship.status !== 'pending')
         return reply.status(400).send({ error: 'Invitation not pending' });
 

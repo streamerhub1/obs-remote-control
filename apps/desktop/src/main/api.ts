@@ -97,6 +97,7 @@ const CollaborationSchema = z.object({
   visibility: z.string(),
   host: CollaborationAuthorSchema.nullable().optional(),
   myApplication: z.object({ status: z.string() }).nullable().optional(),
+  inviteUrl: z.string().optional(),
 });
 
 const CollaborationListResponseSchema = z.object({

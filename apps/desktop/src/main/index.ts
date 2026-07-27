@@ -36,7 +36,7 @@ function completeSmokeTest(exitCode: number, detail: string) {
 }
 
 export function isAllowedExternalUrl(url: string) {
-  const allowlist = ['github.com', 'twitch.tv'];
+  const allowlist = ['github.com', 'twitch.tv', 'streamhubb.vercel.app'];
   try {
     const parsedUrl = new URL(url);
     return (
@@ -184,20 +184,25 @@ if (!gotTheLock) {
             completeSmokeTest(1, 'auth click failed: window destroyed');
             return;
           }
-          mainWindow.webContents.sendInputEvent({
-            type: 'mouseDown',
-            x: 640,
-            y: 455,
-            button: 'left',
-            clickCount: 1,
-          });
-          mainWindow.webContents.sendInputEvent({
-            type: 'mouseUp',
-            x: 640,
-            y: 455,
-            button: 'left',
-            clickCount: 1,
-          });
+          void mainWindow.webContents
+            .executeJavaScript(
+              `(() => {
+                const buttons = Array.from(document.querySelectorAll('button'));
+                const button = buttons.find((candidate) => candidate.textContent?.includes('Twitch'));
+                if (!button) return 'missing';
+                button.click();
+                return 'clicked';
+              })()`,
+            )
+            .then((result) => {
+              if (result !== 'clicked') {
+                completeSmokeTest(1, 'auth click failed: twitch button missing');
+              }
+            })
+            .catch((error: unknown) => {
+              const message = error instanceof Error ? error.message : String(error);
+              completeSmokeTest(1, `auth click failed: ${message}`);
+            });
         }, 500);
         return;
       }

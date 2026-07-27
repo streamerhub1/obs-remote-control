@@ -1,15 +1,6 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@obs-remote/ui';
-import {
-  Shield,
-  UserPlus,
-  Trash,
-  CheckCircle,
-  XCircle,
-  Settings2,
-  MonitorPlay,
-  Loader2,
-} from 'lucide-react';
+import { Shield, UserPlus, Trash, Settings2, MonitorPlay, Loader2 } from 'lucide-react';
 
 interface Relationship {
   id: string;
@@ -41,7 +32,7 @@ const PERMISSIONS = [
 ] as const;
 
 function statusLabel(status: string) {
-  if (status === 'pending') return 'Ожидает ответа';
+  if (status === 'pending') return 'Ожидает';
   if (status === 'active') return 'Активен';
   if (status === 'rejected') return 'Отклонено';
   if (status === 'revoked') return 'Отозвано';
@@ -65,6 +56,7 @@ export function Moderators({
   const [loading, setLoading] = React.useState(true);
   const [busy, setBusy] = React.useState<string | null>(null);
   const [inviteIdentifier, setInviteIdentifier] = React.useState('');
+  const [assignPerms, setAssignPerms] = React.useState<Record<string, boolean>>({});
   const [managingPermsFor, setManagingPermsFor] = React.useState<Relationship | null>(null);
   const [currentPerms, setCurrentPerms] = React.useState<Record<string, boolean>>({});
   const [error, setError] = React.useState<string | null>(null);
@@ -87,32 +79,30 @@ export function Moderators({
     void fetchRelationships();
   }, [fetchRelationships]);
 
-  const handleInvite = async () => {
+  const handleAssign = async () => {
     const value = inviteIdentifier.trim();
     if (!value) return;
-    setBusy('invite');
+    setBusy('assign');
+    setError(null);
     try {
-      const isCode = value.toUpperCase().startsWith('PH-');
-      await window.desktop.api.relationships.invite(
-        isCode ? { inviteCode: value } : { twitchLogin: value },
-      );
+      const publicIdMatch = value.match(/^id:\s*(\d+)$/i) ?? value.match(/^(\d+)$/);
+      const isInviteCode = value.toUpperCase().startsWith('PH-');
+      const identity = isInviteCode
+        ? { inviteCode: value }
+        : publicIdMatch
+          ? { publicId: Number(publicIdMatch[1]) }
+          : { twitchLogin: value };
+
+      await window.desktop.api.relationships.invite({
+        ...identity,
+        permissions: assignPerms,
+      });
       setInviteIdentifier('');
+      setAssignPerms({});
       await Promise.all([
         fetchRelationships(),
         window.desktop.api.notifications.list().catch(() => null),
       ]);
-    } catch (e: unknown) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const handleRespond = async (id: string, action: 'accept' | 'reject') => {
-    setBusy(`${action}:${id}`);
-    try {
-      await window.desktop.api.relationships.respond(id, { action });
-      await fetchRelationships();
     } catch (e: unknown) {
       setError((e as Error).message);
     } finally {
@@ -184,7 +174,7 @@ export function Moderators({
           <Shield className="text-blue-500" size={30} /> Модераторы
         </h2>
         <p className="text-sm text-gray-400 sm:text-base">
-          Приглашения, права доступа и запросы удалённого управления OBS.
+          Назначение модераторов, права доступа и запросы удалённого управления OBS.
         </p>
       </header>
 
@@ -194,47 +184,44 @@ export function Moderators({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-        <Card className="border-gray-800 bg-[#161616]">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <UserPlus className="h-5 w-5 text-purple-400" /> Пригласить модератора
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <input
-                type="text"
-                value={inviteIdentifier}
-                onChange={(e) => setInviteIdentifier(e.target.value)}
-                placeholder="Twitch логин или invite code PH-..."
-                className="min-w-0 flex-1 rounded-lg border border-gray-800 bg-black px-4 py-2 text-sm outline-none focus:border-purple-500"
-              />
-              <Button onClick={handleInvite} disabled={busy === 'invite' || !inviteIdentifier.trim()}>
-                {busy === 'invite' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Пригласить
-              </Button>
-            </div>
-            <p className="text-xs text-gray-500">
-              После отправки модератор получит системное уведомление. Список обновляется сразу.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-gray-800 bg-[#161616]">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <MonitorPlay className="h-5 w-5 text-cyan-400" /> Как проходит доступ
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3 text-sm text-gray-300 sm:grid-cols-4">
-            <div className="rounded-lg bg-black/40 p-3">1. Инвайт</div>
-            <div className="rounded-lg bg-black/40 p-3">2. Ответ</div>
-            <div className="rounded-lg bg-black/40 p-3">3. Права</div>
-            <div className="rounded-lg bg-black/40 p-3">4. Подтверждение</div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="max-w-3xl border-gray-800 bg-[#161616]">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <UserPlus className="h-5 w-5 text-purple-400" /> Назначить модератора
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <input
+              type="text"
+              value={inviteIdentifier}
+              onChange={(e) => setInviteIdentifier(e.target.value)}
+              placeholder="Twitch логин, id: 1 или PH-code"
+              className="min-w-0 flex-1 rounded-lg border border-gray-800 bg-black px-4 py-2 text-sm outline-none focus:border-purple-500"
+            />
+            <Button onClick={handleAssign} disabled={busy === 'assign' || !inviteIdentifier.trim()}>
+              {busy === 'assign' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Назначить
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {PERMISSIONS.map(([key, label]) => (
+              <label key={key} className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-800 bg-black/30 p-3 text-sm hover:bg-white/5">
+                <input
+                  type="checkbox"
+                  checked={!!assignPerms[key]}
+                  onChange={(e) => setAssignPerms((prev) => ({ ...prev, [key]: e.target.checked }))}
+                  className="rounded border-gray-700 bg-black text-blue-600 focus:ring-blue-500"
+                />
+                <span>{label}</span>
+              </label>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500">
+            Модератор получает доступ сразу после назначения. Можно указать Twitch логин, публичный id профиля или PH-code.
+          </p>
+        </CardContent>
+      </Card>
 
       {loading ? (
         <div className="flex items-center justify-center py-16 text-gray-500">
@@ -275,7 +262,7 @@ export function Moderators({
             <h3 className="text-lg font-medium text-gray-100">Где я модератор</h3>
             {asModerator.length === 0 ? (
               <div className="rounded-xl border border-gray-800 bg-[#161616] p-6 text-sm text-gray-500">
-                Приглашений и активных доступов нет.
+                Активных доступов нет.
               </div>
             ) : (
               asModerator.map((rel) => (
@@ -287,16 +274,6 @@ export function Moderators({
                       <div className="mt-2"><Badge variant={statusVariant(rel.status)}>{statusLabel(rel.status)}</Badge></div>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {rel.status === 'pending' && (
-                        <>
-                          <Button variant="outline" size="sm" onClick={() => void handleRespond(rel.id, 'accept')} title="Принять">
-                            <CheckCircle className="h-4 w-4 text-green-400" />
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => void handleRespond(rel.id, 'reject')} title="Отклонить">
-                            <XCircle className="h-4 w-4 text-red-400" />
-                          </Button>
-                        </>
-                      )}
                       {rel.status === 'active' && (
                         <>
                           <Button size="sm" onClick={() => void requestRemoteSession(rel)} disabled={busy === `session:${rel.id}`}>

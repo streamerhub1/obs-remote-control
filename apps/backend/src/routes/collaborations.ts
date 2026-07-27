@@ -13,6 +13,27 @@ import {
 import { eq, and, sql, desc, inArray } from 'drizzle-orm';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 
+function buildCollaborationInviteUrl(collab: {
+  id: string;
+  title: string;
+  category: string | null;
+  startAt: Date;
+  expectedDurationMinutes: number;
+  maximumParticipants: number;
+  applicationMode: string;
+}) {
+  const url = new URL('https://streamhubb.vercel.app/');
+  url.searchParams.set('invite', 'collab');
+  url.searchParams.set('collabId', collab.id);
+  url.searchParams.set('title', collab.title);
+  if (collab.category) url.searchParams.set('category', collab.category);
+  url.searchParams.set('startAt', collab.startAt.toISOString());
+  url.searchParams.set('duration', String(collab.expectedDurationMinutes));
+  url.searchParams.set('max', String(collab.maximumParticipants));
+  url.searchParams.set('mode', collab.applicationMode);
+  return url.toString();
+}
+
 export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
   const app = appOriginal.withTypeProvider<ZodTypeProvider>();
 
@@ -142,6 +163,15 @@ export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
               }
             : null,
           myApplication,
+          inviteUrl: buildCollaborationInviteUrl({
+            id: c.id,
+            title: c.title,
+            category: c.category,
+            startAt: c.startAt,
+            expectedDurationMinutes: c.expectedDurationMinutes,
+            maximumParticipants: c.maximumParticipants,
+            applicationMode: c.applicationMode,
+          }),
         };
       });
 
@@ -226,7 +256,10 @@ export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
           sourceId: collab.id,
         });
 
-        return reply.status(201).send(collab);
+        return reply.status(201).send({
+          ...collab,
+          inviteUrl: buildCollaborationInviteUrl(collab),
+        });
       });
     },
   );
