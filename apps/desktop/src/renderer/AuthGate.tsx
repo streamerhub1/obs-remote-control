@@ -42,7 +42,8 @@ export function AuthGate({ children }: AuthGateProps) {
 
   if (authLoading) {
     return (
-      <div className="flex flex-col h-screen w-screen bg-[#0A0A0A] text-white items-center justify-center drag-region">
+      <div className="flex flex-col h-screen w-screen bg-[#0A0A0A] text-white items-center justify-center relative">
+        <div className="absolute top-0 left-0 right-0 h-8 drag-region pointer-events-none" />
         <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent animate-pulse mb-4">
           StreamerHub
         </h1>
@@ -73,8 +74,9 @@ export function AuthGate({ children }: AuthGateProps) {
 
   if (error === 'offline') {
     return (
-      <div className="flex h-screen w-screen bg-[#0A0A0A] text-white items-center justify-center drag-region">
-        <div className="bg-[#161616] border border-gray-800 rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center no-drag">
+      <div className="flex h-screen w-screen bg-[#0A0A0A] text-white items-center justify-center relative">
+        <div className="absolute top-0 left-0 right-0 h-8 drag-region pointer-events-none" />
+        <div className="bg-[#161616] border border-gray-800 rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center">
           <h1 className="text-2xl font-bold text-red-400 mb-2">
             Ошибка подключения
           </h1>
@@ -102,8 +104,9 @@ export function AuthGate({ children }: AuthGateProps) {
 
   if (!authenticated) {
     return (
-      <div className="flex h-screen w-screen bg-[#0A0A0A] text-white items-center justify-center drag-region">
-        <div className="bg-[#161616] border border-gray-800 rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center no-drag">
+      <div className="flex h-screen w-screen bg-[#0A0A0A] text-white items-center justify-center relative">
+        <div className="absolute top-0 left-0 right-0 h-8 drag-region pointer-events-none" />
+        <div className="bg-[#161616] border border-gray-800 rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent mb-2">
             StreamerHub
           </h1>

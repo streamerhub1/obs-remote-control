@@ -15,7 +15,8 @@ const gotTheLock = app.requestSingleInstanceLock();
 
 const isDev =
   process.env.NODE_ENV === 'development' || !!process.env.ELECTRON_RENDERER_URL;
-const isSmokeTest = process.argv.includes('--smoke-test');
+const isAuthClickSmokeTest = process.argv.includes('--smoke-test-auth-click');
+const isSmokeTest = process.argv.includes('--smoke-test') || isAuthClickSmokeTest;
 
 let mainWindow: BrowserWindow | null = null;
 export function getMainWindow() {
@@ -177,6 +178,29 @@ if (!gotTheLock) {
     );
 
     mainWindow.webContents.on('did-finish-load', () => {
+      if (isAuthClickSmokeTest) {
+        setTimeout(() => {
+          if (!mainWindow || mainWindow.isDestroyed()) {
+            completeSmokeTest(1, 'auth click failed: window destroyed');
+            return;
+          }
+          mainWindow.webContents.sendInputEvent({
+            type: 'mouseDown',
+            x: 640,
+            y: 455,
+            button: 'left',
+            clickCount: 1,
+          });
+          mainWindow.webContents.sendInputEvent({
+            type: 'mouseUp',
+            x: 640,
+            y: 455,
+            button: 'left',
+            clickCount: 1,
+          });
+        }, 500);
+        return;
+      }
       completeSmokeTest(0, 'renderer loaded');
     });
 

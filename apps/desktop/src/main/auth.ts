@@ -61,7 +61,13 @@ export function setupAuthHandlers(mainWindow: Electron.BrowserWindow) {
   mainWindowRef = mainWindow;
 
   ipcMain.handle('auth:login', async () => {
-    shell.openExternal(`${getApiUrl()}/api/v1/auth/desktop/login`);
+    if (process.argv.includes('--smoke-test-auth-click')) {
+      console.log('SMOKE_RESULT=passed; auth login invoked');
+      setTimeout(() => app.exit(0), 100);
+      return;
+    }
+
+    await shell.openExternal(`${getApiUrl()}/api/v1/auth/desktop/login`);
   });
 
   ipcMain.handle('auth:logout', async () => {
