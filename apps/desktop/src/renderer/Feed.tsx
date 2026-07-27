@@ -30,6 +30,7 @@ interface Post {
   id: string;
   content: string;
   likesCount: number;
+  likedByMe: boolean;
   commentsCount: number;
   createdAt: string;
   author: FeedAuthor;
@@ -252,7 +253,11 @@ export function Feed() {
       setPosts((prev) =>
         prev.map((post) =>
           post.id === postId
-            ? { ...post, likesCount: Math.max(0, post.likesCount + (result.liked ? 1 : -1)) }
+            ? {
+                ...post,
+                likedByMe: result.liked,
+                likesCount: Math.max(0, post.likesCount + (result.liked ? 1 : -1)),
+              }
             : post,
         ),
       );
@@ -365,9 +370,10 @@ export function Feed() {
               <CardFooter className="flex gap-5 border-t border-gray-800/50 px-4 py-3 text-gray-400 sm:px-6">
                 <button
                   onClick={() => void handleLike(post.id)}
-                  className="flex items-center gap-2 transition-colors hover:text-pink-500"
+                  className={`flex items-center gap-2 transition-colors hover:text-pink-500 ${post.likedByMe ? 'text-pink-500' : ''}`}
+                  title={post.likedByMe ? '?????? ????' : '????'}
                 >
-                  <Heart className="h-5 w-5" />
+                  <Heart className="h-5 w-5" fill={post.likedByMe ? 'currentColor' : 'none'} />
                   <span className="text-sm">{post.likesCount}</span>
                 </button>
                 <button

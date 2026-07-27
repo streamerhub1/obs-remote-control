@@ -34,6 +34,7 @@ interface HomeProfile {
 interface HomeEvent {
   id: string;
   title: string;
+  description?: string | null;
   startAt: string;
   endAt?: string;
   sourceType?: string;
@@ -84,6 +85,15 @@ function formatDate(value: string) {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function eventDescription(event: HomeEvent) {
+  if (event.description?.trim()) return event.description.trim();
+  if (event.sourceType === 'personalPlan') return 'Личное событие';
+  if (event.sourceType === 'collaboration') return 'Коллаборация';
+  if (event.sourceType === 'stream') return 'Стрим';
+  if (event.sourceType === 'reminder') return 'Напоминание';
+  return null;
 }
 
 function statusText(status: string) {
@@ -178,9 +188,6 @@ export function Home({
           <h2 className="truncate text-2xl font-semibold text-gray-100 sm:text-3xl">
             {profile ? `Здравствуйте, ${profile.displayName}` : 'Главная'}
           </h2>
-          <p className="mt-1 text-sm text-gray-400 sm:text-base">
-            Реальные данные профиля, студии и сообщества.
-          </p>
         </div>
         <button
           onClick={() => navigate('profile')}
@@ -266,7 +273,9 @@ export function Home({
                   <div key={event.id} className="border-l-2 border-blue-500 pl-3">
                     <div className="mb-1 text-xs font-semibold text-blue-400">{formatDate(event.startAt)}</div>
                     <div className="text-sm font-medium">{event.title}</div>
-                    <div className="mt-1 text-xs text-gray-500">{event.sourceType ?? 'calendar'}</div>
+                    {eventDescription(event) && (
+                      <div className="mt-1 line-clamp-2 text-xs text-gray-500">{eventDescription(event)}</div>
+                    )}
                   </div>
                 ))
               )}

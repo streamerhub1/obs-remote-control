@@ -32,6 +32,7 @@ describe('Collabs', () => {
           category: null,
           startAt: new Date(Date.now() + 3600000).toISOString(),
           expectedDurationMinutes: 90,
+          timezone: 'Asia/Qyzylorda',
           maximumParticipants: 4,
           currentParticipants: 1,
           applicationMode: 'approval',
@@ -48,6 +49,7 @@ describe('Collabs', () => {
     await waitFor(() => {
       expect(screen.getByText('Late stream')).toBeDefined();
       expect(screen.getByText('Без категории')).toBeDefined();
+      expect(screen.getByText('Часовой пояс: Asia/Qyzylorda')).toBeDefined();
     });
   });
 });

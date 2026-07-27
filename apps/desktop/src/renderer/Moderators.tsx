@@ -14,28 +14,59 @@ interface Relationship {
   createdAt?: string;
 }
 
-const PERMISSIONS = [
-  ['scenes.read', 'Сцены: просмотр'],
-  ['scenes.switch', 'Сцены: переключение'],
-  ['sceneItems.read', 'Источники: просмотр'],
-  ['sceneItems.visibility', 'Источники: видимость'],
-  ['audio.read', 'Аудио: просмотр'],
-  ['audio.mute', 'Аудио: mute'],
-  ['audio.volume', 'Аудио: громкость'],
-  ['stream.read', 'Стрим: статус'],
-  ['stream.start', 'Стрим: запуск'],
-  ['stream.stop', 'Стрим: остановка'],
-  ['record.read', 'Запись: статус'],
-  ['record.start', 'Запись: запуск'],
-  ['record.stop', 'Запись: остановка'],
-  ['obs.manage', 'OBS: управление'],
+const PERMISSION_GROUPS = [
+  {
+    key: 'scenes',
+    label: 'Сцены',
+    description: 'Просмотр и переключение сцен',
+    permissions: ['scenes.read', 'scenes.switch'],
+  },
+  {
+    key: 'sources',
+    label: 'Источники',
+    description: 'Просмотр источников и управление видимостью',
+    permissions: ['sceneItems.read', 'sceneItems.visibility'],
+  },
+  {
+    key: 'audio',
+    label: 'Аудио',
+    description: 'Mute и громкость',
+    permissions: ['audio.read', 'audio.mute', 'audio.volume'],
+  },
+  {
+    key: 'stream',
+    label: 'Стрим: запуск/остановка',
+    description: 'Статус, запуск и остановка стрима',
+    permissions: ['stream.read', 'stream.start', 'stream.stop'],
+  },
 ] as const;
+
+type PermissionGroupKey = (typeof PERMISSION_GROUPS)[number]['key'];
+type PermissionGroupState = Partial<Record<PermissionGroupKey, boolean>>;
+
+function expandPermissionGroups(groups: PermissionGroupState) {
+  const permissions: Record<string, boolean> = {};
+  PERMISSION_GROUPS.forEach((group) => {
+    group.permissions.forEach((permission) => {
+      permissions[permission] = !!groups[group.key];
+    });
+  });
+  return permissions;
+}
+
+function collapsePermissionGroups(permissions: Record<string, boolean>): PermissionGroupState {
+  const groups: PermissionGroupState = {};
+  PERMISSION_GROUPS.forEach((group) => {
+    groups[group.key] = group.permissions.some((permission) => !!permissions[permission]);
+  });
+  return groups;
+}
 
 function statusLabel(status: string) {
   if (status === 'pending') return 'Ожидает';
   if (status === 'active') return 'Активен';
-  if (status === 'rejected') return 'Отклонено';
-  if (status === 'revoked') return 'Отозвано';
+  if (status === 'rejected') return 'Отклонён';
+  if (status === 'revoked') return 'Отозван';
   return status;
 }
 
@@ -56,9 +87,9 @@ export function Moderators({
   const [loading, setLoading] = React.useState(true);
   const [busy, setBusy] = React.useState<string | null>(null);
   const [inviteIdentifier, setInviteIdentifier] = React.useState('');
-  const [assignPerms, setAssignPerms] = React.useState<Record<string, boolean>>({});
+  const [assignPerms, setAssignPerms] = React.useState<PermissionGroupState>({});
   const [managingPermsFor, setManagingPermsFor] = React.useState<Relationship | null>(null);
-  const [currentPerms, setCurrentPerms] = React.useState<Record<string, boolean>>({});
+  const [currentPerms, setCurrentPerms] = React.useState<PermissionGroupState>({});
   const [error, setError] = React.useState<string | null>(null);
 
   const fetchRelationships = React.useCallback(async () => {
@@ -86,16 +117,13 @@ export function Moderators({
     setError(null);
     try {
       const publicIdMatch = value.match(/^id:\s*(\d+)$/i) ?? value.match(/^(\d+)$/);
-      const isInviteCode = value.toUpperCase().startsWith('PH-');
-      const identity = isInviteCode
-        ? { inviteCode: value }
-        : publicIdMatch
-          ? { publicId: Number(publicIdMatch[1]) }
-          : { twitchLogin: value };
+      const identity = publicIdMatch
+        ? { publicId: Number(publicIdMatch[1]) }
+        : { twitchLogin: value };
 
       await window.desktop.api.relationships.invite({
         ...identity,
-        permissions: assignPerms,
+        permissions: expandPermissionGroups(assignPerms),
       });
       setInviteIdentifier('');
       setAssignPerms({});
@@ -130,7 +158,7 @@ export function Moderators({
       (perms as Array<{ permissionKey: string; allowed: boolean }>).forEach((perm) => {
         map[perm.permissionKey] = perm.allowed;
       });
-      setCurrentPerms(map);
+      setCurrentPerms(collapsePermissionGroups(map));
       setManagingPermsFor(relationship);
     } catch (e: unknown) {
       setError((e as Error).message);
@@ -144,7 +172,7 @@ export function Moderators({
     setBusy(`save:${managingPermsFor.id}`);
     try {
       await window.desktop.api.relationships.setPermissions(managingPermsFor.id, {
-        permissions: currentPerms,
+        permissions: expandPermissionGroups(currentPerms),
       });
       setManagingPermsFor(null);
       await fetchRelationships();
@@ -166,6 +194,31 @@ export function Moderators({
       setBusy(null);
     }
   };
+
+  const renderPermissionGroups = (
+    value: PermissionGroupState,
+    setValue: React.Dispatch<React.SetStateAction<PermissionGroupState>>,
+  ) => (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {PERMISSION_GROUPS.map((group) => (
+        <label
+          key={group.key}
+          className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-800 bg-black/30 p-3 text-sm hover:bg-white/5"
+        >
+          <input
+            type="checkbox"
+            checked={!!value[group.key]}
+            onChange={(e) => setValue((prev) => ({ ...prev, [group.key]: e.target.checked }))}
+            className="mt-1 rounded border-gray-700 bg-black text-blue-600 focus:ring-blue-500"
+          />
+          <span className="min-w-0">
+            <span className="block font-medium text-gray-100">{group.label}</span>
+            <span className="block text-xs text-gray-500">{group.description}</span>
+          </span>
+        </label>
+      ))}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -196,7 +249,7 @@ export function Moderators({
               type="text"
               value={inviteIdentifier}
               onChange={(e) => setInviteIdentifier(e.target.value)}
-              placeholder="Twitch логин, id: 1 или PH-code"
+              placeholder="Twitch логин или id: 1"
               className="min-w-0 flex-1 rounded-lg border border-gray-800 bg-black px-4 py-2 text-sm outline-none focus:border-purple-500"
             />
             <Button onClick={handleAssign} disabled={busy === 'assign' || !inviteIdentifier.trim()}>
@@ -204,21 +257,9 @@ export function Moderators({
               Назначить
             </Button>
           </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {PERMISSIONS.map(([key, label]) => (
-              <label key={key} className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-800 bg-black/30 p-3 text-sm hover:bg-white/5">
-                <input
-                  type="checkbox"
-                  checked={!!assignPerms[key]}
-                  onChange={(e) => setAssignPerms((prev) => ({ ...prev, [key]: e.target.checked }))}
-                  className="rounded border-gray-700 bg-black text-blue-600 focus:ring-blue-500"
-                />
-                <span>{label}</span>
-              </label>
-            ))}
-          </div>
+          {renderPermissionGroups(assignPerms, setAssignPerms)}
           <p className="text-xs text-gray-500">
-            Модератор получает доступ сразу после назначения. Можно указать Twitch логин, публичный id профиля или PH-code.
+            Модератор получает доступ сразу после назначения. Укажите Twitch логин или публичный id профиля.
           </p>
         </CardContent>
       </Card>
@@ -294,23 +335,13 @@ export function Moderators({
 
       {managingPermsFor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-xl border border-gray-800 bg-[#161616] shadow-2xl">
+          <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-gray-800 bg-[#161616] shadow-2xl">
             <div className="border-b border-gray-800 p-5">
               <h3 className="text-xl font-medium">Права доступа</h3>
               <p className="mt-1 text-sm text-gray-500">{managingPermsFor.moderatorName ?? 'Модератор'}</p>
             </div>
-            <div className="grid max-h-[58vh] grid-cols-1 gap-2 overflow-y-auto p-5 sm:grid-cols-2">
-              {PERMISSIONS.map(([key, label]) => (
-                <label key={key} className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-800 bg-black/30 p-3 text-sm hover:bg-white/5">
-                  <input
-                    type="checkbox"
-                    checked={!!currentPerms[key]}
-                    onChange={(e) => setCurrentPerms((prev) => ({ ...prev, [key]: e.target.checked }))}
-                    className="rounded border-gray-700 bg-black text-blue-600 focus:ring-blue-500"
-                  />
-                  <span>{label}</span>
-                </label>
-              ))}
+            <div className="p-5">
+              {renderPermissionGroups(currentPerms, setCurrentPerms)}
             </div>
             <div className="flex justify-end gap-3 border-t border-gray-800 p-5">
               <Button variant="outline" onClick={() => setManagingPermsFor(null)}>Отмена</Button>

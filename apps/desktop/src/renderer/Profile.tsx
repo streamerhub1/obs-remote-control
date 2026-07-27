@@ -10,7 +10,6 @@ import {
 import {
   Edit2,
   Link as LinkIcon,
-  MapPin,
   Video,
   Loader2,
   Save,
@@ -26,7 +25,6 @@ interface UserProfile {
   bio: string | null;
   languages: string[];
   categories: string[];
-  timezone: string | null;
   twitchUrl: string | null;
 }
 
@@ -41,7 +39,6 @@ export function Profile() {
   const [bio, setBio] = React.useState('');
   const [languages, setLanguages] = React.useState('');
   const [categories, setCategories] = React.useState('');
-  const [timezone, setTimezone] = React.useState('');
 
   const fetchProfile = React.useCallback(async () => {
     setLoading(true);
@@ -52,7 +49,6 @@ export function Profile() {
       setBio(data.bio ?? '');
       setLanguages((data.languages ?? []).join(', '));
       setCategories((data.categories ?? []).join(', '));
-      setTimezone(data.timezone ?? '');
     } catch (e: unknown) {
       setError((e as Error).message);
     } finally {
@@ -78,7 +74,6 @@ export function Profile() {
           .split(',')
           .map((s) => s.trim())
           .filter(Boolean),
-        timezone: timezone.trim() || null,
       });
       setProfile(updated);
       setEditing(false);
@@ -208,18 +203,6 @@ export function Profile() {
                 />
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Часовой пояс
-              </label>
-              <input
-                type="text"
-                value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
-                className="w-full bg-black border border-gray-800 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"
-                placeholder="UTC+3"
-              />
-            </div>
           </div>
         ) : (
           <>
@@ -257,12 +240,6 @@ export function Profile() {
                   <Video className="w-5 h-5" />
                   <span>twitch.tv/{profile.twitchLogin}</span>
                 </button>
-              </div>
-            )}
-            {profile.timezone && (
-              <div className="flex items-center gap-2 text-gray-400">
-                <MapPin className="w-4 h-4" />
-                <span>{profile.timezone}</span>
               </div>
             )}
           </>

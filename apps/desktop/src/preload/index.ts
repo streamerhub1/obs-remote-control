@@ -148,6 +148,8 @@ const API = {
         ipcRenderer.invoke('api:calendar:list', start, end),
       create: (data: unknown) =>
         ipcRenderer.invoke('api:calendar:create', data),
+      update: (id: string, data: unknown) =>
+        ipcRenderer.invoke('api:calendar:update', id, data),
       delete: (id: string) => ipcRenderer.invoke('api:calendar:delete', id),
     },
     profile: {

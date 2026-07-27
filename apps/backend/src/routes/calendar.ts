@@ -139,6 +139,67 @@ export const calendarRoutes: FastifyPluginAsync = async (appOriginal) => {
     },
   );
 
+  // Update a manual calendar event
+  app.patch(
+    '/calendar/:id',
+    {
+      schema: {
+        params: z.object({ id: z.string().uuid() }),
+        body: z.object({
+          title: z.string().min(1).optional(),
+          description: z.string().nullable().optional(),
+          startAt: z.string().datetime().optional(),
+          endAt: z.string().datetime().optional(),
+          timezone: z.string().optional(),
+          visibility: z.enum(['private', 'public']).optional(),
+        }),
+      },
+    },
+    async (request, reply) => {
+      const userId = (
+        request.user as {
+          sub: string;
+          id: string;
+          deviceId?: string;
+          role?: string;
+          remoteSessionId?: string;
+          [key: string]: unknown;
+        }
+      ).sub;
+      const { id } = request.params;
+      const data = request.body;
+      const db = getDb();
+
+      const [event] = await db
+        .select()
+        .from(calendarEvents)
+        .where(eq(calendarEvents.id, id));
+      if (!event) return reply.status(404).send({ error: 'Not found' });
+      if (event.ownerId !== userId)
+        return reply.status(403).send({ error: 'Forbidden' });
+      if (event.sourceType === 'collaboration')
+        return reply
+          .status(400)
+          .send({ error: 'Collaboration events are edited from collaborations' });
+
+      const updates: Partial<typeof calendarEvents.$inferInsert> = {};
+      if ('title' in data) updates.title = data.title;
+      if ('description' in data) updates.description = data.description ?? '';
+      if ('startAt' in data && data.startAt) updates.startAt = new Date(data.startAt);
+      if ('endAt' in data && data.endAt) updates.endAt = new Date(data.endAt);
+      if ('timezone' in data && data.timezone) updates.timezone = data.timezone;
+      if ('visibility' in data && data.visibility) updates.visibility = data.visibility;
+
+      const [updated] = await db
+        .update(calendarEvents)
+        .set(updates)
+        .where(eq(calendarEvents.id, id))
+        .returning();
+
+      return reply.send(updated);
+    },
+  );
+
   // Delete a manual calendar event
   app.delete(
     '/calendar/:id',

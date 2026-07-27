@@ -365,7 +365,6 @@ export default function App() {
 
   const handleLogout = () => window.desktop?.auth?.logout();
 
-  const [obsPasswordVisible, setObsPasswordVisible] = React.useState(false);
 
   const handleConnectOBS = async () => {
     if (!window.desktop?.obs) return;
@@ -380,10 +379,6 @@ export default function App() {
       if (!result.success) {
         const err = result.error || 'unknown';
         setObsError(err);
-        // Show password field automatically if auth is required
-        if (err === 'authentication_required' || err === 'wrong_password') {
-          setObsPasswordVisible(true);
-        }
       }
     } catch (e: unknown) {
       setObsError('unknown');
@@ -653,10 +648,27 @@ export default function App() {
                             </div>
                           ) : (
                             <p className="text-gray-400 text-sm mb-4">
-                              Нажмите кнопку ниже для подключения к локальному
-                              OBS Studio.
+                              Подключение идёт к локальному OBS WebSocket на
+                              порту 4455.
                             </p>
                           )}
+                          <div className="space-y-2">
+                            <label className="block text-sm font-medium text-gray-300">
+                              Пароль WebSocket
+                            </label>
+                            <input
+                              type="password"
+                              value={obsPassword}
+                              onChange={(e) => setObsPassword(e.target.value)}
+                              placeholder="Пароль из OBS или пусто, если пароль выключен"
+                              className="w-full rounded-lg border border-gray-800 bg-black px-3 py-2 text-sm outline-none transition-colors focus:border-blue-500"
+                            />
+                            <p className="text-xs leading-relaxed text-gray-500">
+                              Пароль находится в OBS Studio: Сервис → Настройки
+                              сервера WebSocket → Пароль сервера. Если пароль в
+                              OBS отключён, оставьте поле пустым.
+                            </p>
+                          </div>
                           <button
                             onClick={handleConnectOBS}
                             disabled={obsState === 'connecting'}
@@ -668,44 +680,14 @@ export default function App() {
                                 ? 'Повторить попытку'
                                 : 'Подключить OBS'}
                           </button>
-
-                          {/* Password field: show when auth error or user clicks toggle */}
-                          {(obsPasswordVisible ||
-                            obsError === 'authentication_required' ||
-                            obsError === 'wrong_password') && (
-                            <div className="mt-4 pt-4 border-t border-gray-800 space-y-3">
-                              <label className="text-sm text-gray-400 block">
-                                Пароль WebSocket:
-                              </label>
-                              <input
-                                type="password"
-                                value={obsPassword}
-                                onChange={(e) => setObsPassword(e.target.value)}
-                                placeholder="Пароль"
-                                className="w-full bg-black border border-gray-800 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none transition-colors"
-                              />
-                              {obsError && (
-                                <button
-                                  onClick={handleClearObsSettings}
-                                  className="w-full py-2 mt-2 text-sm text-gray-500 hover:text-gray-300 transition-colors"
-                                >
-                                  Сбросить сохраненные настройки
-                                </button>
-                              )}
-                            </div>
+                          {obsError && (
+                            <button
+                              onClick={handleClearObsSettings}
+                              className="w-full py-2 text-sm text-gray-500 transition-colors hover:text-gray-300"
+                            >
+                              Сбросить сохранённые настройки
+                            </button>
                           )}
-
-                          {/* Link to show password field for users with a password-protected OBS */}
-                          {!obsPasswordVisible &&
-                            obsError !== 'authentication_required' &&
-                            obsError !== 'wrong_password' && (
-                              <button
-                                onClick={() => setObsPasswordVisible(true)}
-                                className="text-xs text-gray-500 hover:text-gray-400 transition-colors"
-                              >
-                                OBS защищён паролем?
-                              </button>
-                            )}
                         </div>
                       )}
                     </div>

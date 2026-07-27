@@ -12,6 +12,7 @@ import {
 import {
   Calendar as CalendarIcon,
   Clock,
+  Globe,
   Search,
   Loader2,
   Plus,
@@ -26,6 +27,7 @@ interface Collab {
   category: string | null;
   startAt: string;
   expectedDurationMinutes: number;
+  timezone?: string | null;
   maximumParticipants: number;
   currentParticipants: number;
   applicationMode: 'approval' | 'open' | string;
@@ -42,7 +44,7 @@ const toDateInput = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-function buildCollabInviteUrl(collab: Pick<Collab, 'id' | 'title' | 'category' | 'startAt' | 'expectedDurationMinutes' | 'maximumParticipants' | 'applicationMode'>) {
+function buildCollabInviteUrl(collab: Pick<Collab, 'id' | 'title' | 'category' | 'startAt' | 'expectedDurationMinutes' | 'timezone' | 'maximumParticipants' | 'applicationMode'>) {
   const url = new URL('https://streamhubb.vercel.app/');
   url.searchParams.set('invite', 'collab');
   url.searchParams.set('collabId', collab.id);
@@ -50,6 +52,7 @@ function buildCollabInviteUrl(collab: Pick<Collab, 'id' | 'title' | 'category' |
   if (collab.category) url.searchParams.set('category', collab.category);
   url.searchParams.set('startAt', collab.startAt);
   url.searchParams.set('duration', String(collab.expectedDurationMinutes));
+  if (collab.timezone) url.searchParams.set('timezone', collab.timezone);
   url.searchParams.set('max', String(collab.maximumParticipants));
   url.searchParams.set('mode', collab.applicationMode);
   return url.toString();
@@ -72,6 +75,9 @@ export function Collabs() {
   const [newDuration, setNewDuration] = React.useState('120');
   const [newMax, setNewMax] = React.useState('4');
   const [newMode, setNewMode] = React.useState('approval');
+  const [newTimezone, setNewTimezone] = React.useState(() =>
+    Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+  );
 
   const fetchCollabs = React.useCallback(async () => {
     setLoading(true);
@@ -100,6 +106,7 @@ export function Collabs() {
     setNewDuration('120');
     setNewMax('4');
     setNewMode('approval');
+    setNewTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
   };
 
   const handleCreate = async () => {
@@ -120,6 +127,7 @@ export function Collabs() {
         category: newCategory.trim() || null,
         startAt: startAt.toISOString(),
         expectedDurationMinutes: duration,
+        timezone: newTimezone.trim() || 'UTC',
         maximumParticipants,
         applicationMode: newMode,
       })) as Collab;
@@ -129,6 +137,7 @@ export function Collabs() {
         category: created.category ?? (newCategory.trim() || null),
         startAt: created.startAt ?? startAt.toISOString(),
         expectedDurationMinutes: created.expectedDurationMinutes ?? duration,
+        timezone: created.timezone ?? (newTimezone.trim() || 'UTC'),
         maximumParticipants: created.maximumParticipants ?? maximumParticipants,
         applicationMode: created.applicationMode ?? newMode,
       });
@@ -275,6 +284,17 @@ export function Collabs() {
                   <option value="open">Свободный вход</option>
                 </select>
               </div>
+              <div>
+                <label className="mb-1 block text-xs text-gray-400">Часовой пояс</label>
+                <input
+                  type="text"
+                  value={newTimezone}
+                  onChange={(e) => setNewTimezone(e.target.value)}
+                  className="w-full rounded-lg border border-gray-800 bg-black px-3 py-2 text-sm outline-none focus:border-blue-500"
+                  placeholder="Europe/Moscow"
+                />
+                <p className="mt-1 text-xs text-gray-500">Время приглашения будет показано в этом часовом поясе.</p>
+              </div>
             </div>
             <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={() => setShowCreate(false)}>
@@ -352,12 +372,17 @@ export function Collabs() {
                         month: 'long',
                         hour: '2-digit',
                         minute: '2-digit',
+                        timeZone: collab.timezone ?? undefined,
                       })}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4" />
                     <span>{collab.expectedDurationMinutes} мин.</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4" />
+                    <span>Часовой пояс: {collab.timezone ?? 'UTC'}</span>
                   </div>
                 </div>
               </CardContent>

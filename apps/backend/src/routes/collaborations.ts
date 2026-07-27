@@ -19,6 +19,7 @@ function buildCollaborationInviteUrl(collab: {
   category: string | null;
   startAt: Date;
   expectedDurationMinutes: number;
+  timezone?: string | null;
   maximumParticipants: number;
   applicationMode: string;
 }) {
@@ -29,6 +30,7 @@ function buildCollaborationInviteUrl(collab: {
   if (collab.category) url.searchParams.set('category', collab.category);
   url.searchParams.set('startAt', collab.startAt.toISOString());
   url.searchParams.set('duration', String(collab.expectedDurationMinutes));
+  if (collab.timezone) url.searchParams.set('timezone', collab.timezone);
   url.searchParams.set('max', String(collab.maximumParticipants));
   url.searchParams.set('mode', collab.applicationMode);
   return url.toString();
@@ -152,6 +154,7 @@ export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
           startAt: c.startAt.toISOString(),
           expectedDurationMinutes: c.expectedDurationMinutes,
           maximumParticipants: c.maximumParticipants,
+          timezone: c.timezone,
           currentParticipants: Number(participantCount),
           applicationMode: c.applicationMode,
           visibility: c.visibility,
@@ -169,6 +172,7 @@ export const collaborationsRoutes: FastifyPluginAsync = async (appOriginal) => {
             category: c.category,
             startAt: c.startAt,
             expectedDurationMinutes: c.expectedDurationMinutes,
+            timezone: c.timezone,
             maximumParticipants: c.maximumParticipants,
             applicationMode: c.applicationMode,
           }),

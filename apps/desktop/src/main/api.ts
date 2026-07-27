@@ -16,6 +16,7 @@ const FeedPostSchema = z.object({
   id: z.string(),
   content: z.string(),
   likesCount: z.number(),
+  likedByMe: z.boolean().default(false),
   commentsCount: z.number(),
   createdAt: z.string(),
   author: FeedAuthorSchema,
@@ -91,6 +92,7 @@ const CollaborationSchema = z.object({
   category: z.string().nullable().optional(),
   startAt: z.string(),
   expectedDurationMinutes: z.number(),
+  timezone: z.string().nullable().optional(),
   maximumParticipants: z.number(),
   currentParticipants: z.number(),
   applicationMode: z.string(),
@@ -280,6 +282,12 @@ export function setupApiHandlers() {
   ipcMain.handle('api:calendar:create', async (_, data: unknown) =>
     apiFetch('/api/v1/calendar', {
       method: 'POST',
+      body: JSON.stringify(z.record(z.unknown()).parse(data)),
+    }),
+  );
+  ipcMain.handle('api:calendar:update', async (_, id: unknown, data: unknown) =>
+    apiFetch(`/api/v1/calendar/${z.string().parse(id)}`, {
+      method: 'PATCH',
       body: JSON.stringify(z.record(z.unknown()).parse(data)),
     }),
   );

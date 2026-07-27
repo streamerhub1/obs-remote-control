@@ -87,12 +87,38 @@ export const feedRoutes: FastifyPluginAsync = async (appOriginal) => {
         .orderBy(desc(posts.createdAt))
         .limit(limit);
 
+      const likedPostIds = new Set<string>();
+      if (results.length > 0) {
+        const myLikes = await db
+          .select({ targetId: reactions.targetId })
+          .from(reactions)
+          .where(
+            and(
+              eq(reactions.userId, userId),
+              eq(reactions.targetType, 'post'),
+              eq(reactions.reactionType, 'like'),
+              inArray(
+                reactions.targetId,
+                results.map((post) => post.id),
+              ),
+            ),
+          );
+        myLikes.forEach((like) => likedPostIds.add(like.targetId));
+      }
+
       const nextCursor =
         results.length === limit
           ? results[results.length - 1].createdAt.toISOString()
           : null;
 
-      return reply.send({ data: results, nextCursor, tab });
+      return reply.send({
+        data: results.map((post) => ({
+          ...post,
+          likedByMe: likedPostIds.has(post.id),
+        })),
+        nextCursor,
+        tab,
+      });
     },
   );
 
