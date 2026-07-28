@@ -2,7 +2,7 @@
   "name": "@obs-remote/desktop",
   "productName": "StreamerHub",
   "description": "StreamerHub Desktop — unified app for streamers",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "type": "module",
   "main": "dist/main/index.js",
   "scripts": {
